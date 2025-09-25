@@ -46,3 +46,11 @@ Thumbs.db
 *.tar.gz
 
 docs
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test databases
+test.db
