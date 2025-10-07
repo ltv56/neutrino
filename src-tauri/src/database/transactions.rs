@@ -7,6 +7,7 @@ use super::errors::DatabaseError;
 
 type DbResult<T> = Result<T, DatabaseError>;
 
+#[derive(Clone)]
 pub struct TransactionService {
     pool: Arc<SqlitePool>,
 }
@@ -32,7 +33,7 @@ impl TransactionService {
             self.create_document_tx(&mut tx, &session.id, doc_req).await?;
         }
 
-        tx.commit().await.map_err(|e| DatabaseError::TransactionError {
+        tx.commit().await.map_err(|e| DatabaseError::TransactionFailed {
             reason: e.to_string(),
         })?;
 
@@ -67,7 +68,7 @@ impl TransactionService {
             self.create_note_tx(&mut tx, &session.id, None, note).await?;
         }
 
-        tx.commit().await.map_err(|e| DatabaseError::TransactionError {
+        tx.commit().await.map_err(|e| DatabaseError::TransactionFailed {
             reason: e.to_string(),
         })?;
 
@@ -85,12 +86,14 @@ impl TransactionService {
         let now = Utc::now();
         let now_str = now.to_rfc3339();
 
+        let session_id_str = session_id.to_string();
+
         sqlx::query!(
             r#"
             INSERT INTO research_sessions (id, title, goal, phase, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
             "#,
-            session_id.to_string(),
+            session_id_str,
             title,
             goal,
             "exploration",
@@ -121,13 +124,16 @@ impl TransactionService {
         let now = Utc::now();
         let now_str = now.to_rfc3339();
 
+        let document_id_str = document_id.to_string();
+        let session_id_str = session_id.to_string();
+
         sqlx::query!(
             r#"
             INSERT INTO documents (id, session_id, title, file_path, content_type, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
-            document_id.to_string(),
-            session_id.to_string(),
+            document_id_str,
+            session_id_str,
             doc_req.title,
             doc_req.file_path,
             doc_req.content_type,
@@ -161,14 +167,18 @@ impl TransactionService {
         let now = Utc::now();
         let now_str = now.to_rfc3339();
 
+        let note_id_str = note_id.to_string();
+        let session_id_str = session_id.to_string();
+        let document_id_str = document_id.map(|id| id.to_string());
+
         sqlx::query!(
             r#"
             INSERT INTO notes (id, session_id, document_id, title, content, note_type, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             "#,
-            note_id.to_string(),
-            session_id.to_string(),
-            document_id.map(|id| id.to_string()),
+            note_id_str,
+            session_id_str,
+            document_id_str,
             note_req.title,
             note_req.content,
             note_req.note_type,

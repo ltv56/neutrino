@@ -16,6 +16,7 @@ pub struct Database {
     pool: Arc<SqlitePool>,
     sessions: SessionRepository,
     documents: DocumentRepository,
+    notes: repositories::NoteRepository,
     transactions: TransactionService,
 }
 
@@ -33,6 +34,7 @@ impl Database {
         Ok(Self {
             sessions: SessionRepository::new(pool.clone()),
             documents: DocumentRepository::new(pool.clone()),
+            notes: repositories::NoteRepository::new(pool.clone()),
             transactions: TransactionService::new(pool.clone()),
             pool,
         })
@@ -44,6 +46,10 @@ impl Database {
 
     pub fn documents(&self) -> &DocumentRepository {
         &self.documents
+    }
+
+    pub fn notes(&self) -> &repositories::NoteRepository {
+        &self.notes
     }
 
     pub fn transactions(&self) -> &TransactionService {

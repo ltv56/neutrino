@@ -1,12 +1,13 @@
-use std::sync::Arc;
-use sqlx::{SqlitePool, Transaction, Sqlite};
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use super::models::*;
 use super::errors::DatabaseError;
+use super::models::*;
+use chrono::{DateTime, Utc};
+use sqlx::SqlitePool;
+use std::sync::Arc;
+use uuid::Uuid;
 
 type DbResult<T> = Result<T, DatabaseError>;
 
+#[derive(Clone)]
 pub struct SessionRepository {
     pool: Arc<SqlitePool>,
 }
@@ -21,12 +22,14 @@ impl SessionRepository {
         let now = Utc::now();
         let now_str = now.to_rfc3339();
 
+        let session_id_str = session_id.to_string();
+
         sqlx::query!(
             r#"
             INSERT INTO research_sessions (id, title, goal, phase, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
             "#,
-            session_id.to_string(),
+            session_id_str,
             title,
             goal,
             "exploration",
@@ -48,10 +51,12 @@ impl SessionRepository {
     }
 
     pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ResearchSession>> {
-        let row = sqlx::query!(
-            "SELECT id, title, goal, phase, context_state, created_at, updated_at 
+        let id_str = id.to_string();
+        let row = sqlx::query_as!(
+            ResearchSessionRow,
+            "SELECT id, title, goal, phase, context_state, created_at, updated_at
              FROM research_sessions WHERE id = ?",
-            id.to_string()
+            id_str
         )
         .fetch_optional(&*self.pool)
         .await?;
@@ -60,22 +65,44 @@ impl SessionRepository {
             return Ok(None);
         };
 
+        // Extract values trước khi sử dụng để tránh ownership issues
+        let id_value = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+            value: "null".to_string(),
+        })?;
+        let created_at_value =
+            row.created_at
+                .as_ref()
+                .ok_or_else(|| DatabaseError::InvalidDateTime {
+                    value: "null".to_string(),
+                })?;
+        let updated_at_value =
+            row.updated_at
+                .as_ref()
+                .ok_or_else(|| DatabaseError::InvalidDateTime {
+                    value: "null".to_string(),
+                })?;
+
         let session = ResearchSession {
-            id: self.parse_uuid(&row.id.unwrap_or_default())?,
-            title: row.title,
+            id: self.parse_uuid(id_value)?,
+            title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing title".to_string(),
+            })?,
             goal: row.goal,
-            phase: row.phase,
+            phase: row.phase.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing phase".to_string(),
+            })?,
             context_state: row.context_state,
-            created_at: self.parse_datetime(&row.created_at.unwrap_or_default())?,
-            updated_at: self.parse_datetime(&row.updated_at.unwrap_or_default())?,
+            created_at: self.parse_datetime(created_at_value)?,
+            updated_at: self.parse_datetime(updated_at_value)?,
         };
 
         Ok(Some(session))
     }
 
     pub async fn find_all(&self) -> DbResult<Vec<ResearchSession>> {
-        let rows = sqlx::query!(
-            "SELECT id, title, goal, phase, context_state, created_at, updated_at 
+        let rows = sqlx::query_as!(
+            ResearchSessionRow,
+            "SELECT id, title, goal, phase, context_state, created_at, updated_at
              FROM research_sessions ORDER BY updated_at DESC"
         )
         .fetch_all(&*self.pool)
@@ -83,14 +110,35 @@ impl SessionRepository {
 
         let mut sessions = Vec::new();
         for row in rows {
+            // Extract values trước khi sử dụng để tránh ownership issues
+            let id_value = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let created_at_value =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_value =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
             let session = ResearchSession {
-                id: self.parse_uuid(&row.id.unwrap_or_default())?,
-                title: row.title,
+                id: self.parse_uuid(id_value)?,
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
                 goal: row.goal,
-                phase: row.phase,
+                phase: row.phase.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing phase".to_string(),
+                })?,
                 context_state: row.context_state,
-                created_at: self.parse_datetime(&row.created_at.unwrap_or_default())?,
-                updated_at: self.parse_datetime(&row.updated_at.unwrap_or_default())?,
+                created_at: self.parse_datetime(created_at_value)?,
+                updated_at: self.parse_datetime(updated_at_value)?,
             };
             sessions.push(session);
         }
@@ -100,43 +148,44 @@ impl SessionRepository {
 
     pub async fn update_phase(&self, id: Uuid, phase: String) -> DbResult<()> {
         let now_str = Utc::now().to_rfc3339();
-        
+        let id_str = id.to_string();
+
         let result = sqlx::query!(
             "UPDATE research_sessions SET phase = ?, updated_at = ? WHERE id = ?",
             phase,
             now_str,
-            id.to_string()
+            id_str
         )
         .execute(&*self.pool)
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(DatabaseError::SessionNotFound { id });
+            return Err(DatabaseError::SessionNotFound { id: id.to_string() });
         }
 
         Ok(())
     }
 
     pub async fn delete(&self, id: Uuid) -> DbResult<bool> {
-        let result = sqlx::query!(
-            "DELETE FROM research_sessions WHERE id = ?",
-            id.to_string()
-        )
-        .execute(&*self.pool)
-        .await?;
+        let id_str = id.to_string();
+        let result = sqlx::query!("DELETE FROM research_sessions WHERE id = ?", id_str)
+            .execute(&*self.pool)
+            .await?;
 
         Ok(result.rows_affected() > 0)
     }
 
     // Helper methods
     fn parse_uuid(&self, uuid_str: &str) -> DbResult<Uuid> {
-        Uuid::parse_str(uuid_str).map_err(|e| DatabaseError::InvalidUuid {
+        Uuid::parse_str(uuid_str).map_err(|_e| DatabaseError::InvalidUuid {
             value: uuid_str.to_string(),
-            source: e,
         })
     }
 
     fn parse_datetime(&self, datetime_str: &str) -> DbResult<DateTime<Utc>> {
+        if datetime_str.is_empty() {
+            return Ok(Utc::now());
+        }
         DateTime::parse_from_rfc3339(datetime_str)
             .map(|dt| dt.with_timezone(&Utc))
             .map_err(|_| DatabaseError::InvalidDateTime {
@@ -145,6 +194,7 @@ impl SessionRepository {
     }
 }
 
+#[derive(Clone)]
 pub struct DocumentRepository {
     pool: Arc<SqlitePool>,
 }
@@ -155,23 +205,26 @@ impl DocumentRepository {
     }
 
     pub async fn create(
-        &self, 
-        session_id: Uuid, 
-        title: String, 
-        file_path: String, 
-        content_type: String
+        &self,
+        session_id: Uuid,
+        title: String,
+        file_path: String,
+        content_type: String,
     ) -> DbResult<Document> {
         let document_id = Uuid::new_v4();
         let now = Utc::now();
         let now_str = now.to_rfc3339();
+
+        let document_id_str = document_id.to_string();
+        let session_id_str = session_id.to_string();
 
         sqlx::query!(
             r#"
             INSERT INTO documents (id, session_id, title, file_path, content_type, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
-            document_id.to_string(),
-            session_id.to_string(),
+            document_id_str,
+            session_id_str,
             title,
             file_path,
             content_type,
@@ -195,39 +248,67 @@ impl DocumentRepository {
     }
 
     pub async fn find_by_session(&self, session_id: Uuid) -> DbResult<Vec<Document>> {
-        let rows = sqlx::query!(
-            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at 
+        let session_id_str = session_id.to_string();
+        let rows = sqlx::query_as!(
+            DocumentRow,
+            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
              FROM documents WHERE session_id = ? ORDER BY created_at DESC",
-            session_id.to_string()
+            session_id_str
         )
         .fetch_all(&*self.pool)
         .await?;
 
         let mut documents = Vec::new();
         for row in rows {
+            let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let sess_id = row
+                .session_id
+                .as_ref()
+                .ok_or_else(|| DatabaseError::InvalidUuid {
+                    value: "null".to_string(),
+                })?;
+            let created_at_str =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_str =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
             let doc = Document {
-                id: Uuid::parse_str(&row.id.unwrap_or_default()).map_err(|e| DatabaseError::InvalidUuid {
-                    value: row.id.unwrap_or_default(),
-                    source: e,
+                id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: doc_id.clone(),
                 })?,
-                session_id: Uuid::parse_str(&row.session_id.unwrap_or_default()).map_err(|e| DatabaseError::InvalidUuid {
-                    value: row.session_id.unwrap_or_default(),
-                    source: e,
+                session_id: Uuid::parse_str(sess_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: sess_id.clone(),
                 })?,
-                title: row.title,
-                file_path: row.file_path,
-                content_type: row.content_type,
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                file_path: row.file_path.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing file_path".to_string(),
+                })?,
+                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content_type".to_string(),
+                })?,
                 metadata: row.metadata,
-                reading_progress: row.reading_progress.unwrap_or(0),
-                created_at: DateTime::parse_from_rfc3339(&row.created_at.unwrap_or_default())
+                reading_progress: row.reading_progress.unwrap_or(0) as i32,
+                created_at: DateTime::parse_from_rfc3339(created_at_str)
                     .map(|dt| dt.with_timezone(&Utc))
                     .map_err(|_| DatabaseError::InvalidDateTime {
-                        value: row.created_at.unwrap_or_default(),
+                        value: created_at_str.clone(),
                     })?,
-                updated_at: DateTime::parse_from_rfc3339(&row.updated_at.unwrap_or_default())
+                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
                     .map(|dt| dt.with_timezone(&Utc))
                     .map_err(|_| DatabaseError::InvalidDateTime {
-                        value: row.updated_at.unwrap_or_default(),
+                        value: updated_at_str.clone(),
                     })?,
             };
             documents.push(doc);
@@ -236,22 +317,269 @@ impl DocumentRepository {
         Ok(documents)
     }
 
+    pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<Document>> {
+        let id_str = id.to_string();
+        let row = sqlx::query_as!(
+            DocumentRow,
+            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+             FROM documents WHERE id = ?",
+            id_str
+        )
+        .fetch_optional(&*self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+            value: "null".to_string(),
+        })?;
+        let sess_id = row
+            .session_id
+            .as_ref()
+            .ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+        let created_at_str =
+            row.created_at
+                .as_ref()
+                .ok_or_else(|| DatabaseError::InvalidDateTime {
+                    value: "null".to_string(),
+                })?;
+        let updated_at_str =
+            row.updated_at
+                .as_ref()
+                .ok_or_else(|| DatabaseError::InvalidDateTime {
+                    value: "null".to_string(),
+                })?;
+
+        let doc = Document {
+            id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
+                value: doc_id.clone(),
+            })?,
+            session_id: Uuid::parse_str(sess_id).map_err(|_| DatabaseError::InvalidUuid {
+                value: sess_id.clone(),
+            })?,
+            title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing title".to_string(),
+            })?,
+            file_path: row.file_path.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing file_path".to_string(),
+            })?,
+            content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing content_type".to_string(),
+            })?,
+            metadata: row.metadata,
+            reading_progress: row.reading_progress.unwrap_or(0) as i32,
+            created_at: DateTime::parse_from_rfc3339(created_at_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .map_err(|_| DatabaseError::InvalidDateTime {
+                    value: created_at_str.clone(),
+                })?,
+            updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .map_err(|_| DatabaseError::InvalidDateTime {
+                    value: updated_at_str.clone(),
+                })?,
+        };
+
+        Ok(Some(doc))
+    }
+
     pub async fn update_reading_progress(&self, id: Uuid, progress: i32) -> DbResult<()> {
         let now_str = Utc::now().to_rfc3339();
-        
+        let id_str = id.to_string();
+
+        let progress_i64 = progress as i64;
+
         let result = sqlx::query!(
             "UPDATE documents SET reading_progress = ?, updated_at = ? WHERE id = ?",
-            progress,
+            progress_i64,
             now_str,
-            id.to_string()
+            id_str
         )
         .execute(&*self.pool)
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(DatabaseError::DocumentNotFound { id });
+            return Err(DatabaseError::DocumentNotFound { id: id.to_string() });
         }
 
         Ok(())
     }
+}
+
+#[derive(Clone)]
+pub struct NoteRepository {
+    pool: Arc<SqlitePool>,
+}
+
+impl NoteRepository {
+    pub fn new(pool: Arc<SqlitePool>) -> Self {
+        Self { pool }
+    }
+
+    pub async fn create(
+        &self,
+        session_id: Option<Uuid>,
+        document_id: Option<Uuid>,
+        title: String,
+        content: String,
+        note_type: String,
+    ) -> DbResult<Note> {
+        let note_id = Uuid::new_v4();
+        let now = Utc::now();
+        let now_str = now.to_rfc3339();
+
+        let note_id_str = note_id.to_string();
+        let session_id_str = session_id.map(|id| id.to_string());
+        let document_id_str = document_id.map(|id| id.to_string());
+
+        sqlx::query!(
+            r#"
+            INSERT INTO notes (id, session_id, document_id, title, content, note_type, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            "#,
+            note_id_str,
+            session_id_str,
+            document_id_str,
+            title,
+            content,
+            note_type,
+            now_str,
+            now_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        Ok(Note {
+            id: note_id,
+            session_id,
+            document_id,
+            title,
+            content,
+            note_type,
+            position: None,
+            tags: None,
+            created_at: now,
+            updated_at: now,
+        })
+    }
+
+    pub async fn find_by_session(&self, session_id: Uuid) -> DbResult<Vec<Note>> {
+        let session_id_str = session_id.to_string();
+        let rows = sqlx::query_as!(
+            NoteRow,
+            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+             FROM notes WHERE session_id = ? ORDER BY created_at DESC",
+            session_id_str
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut notes = Vec::new();
+        for row in rows {
+            let note_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let created_at_str =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_str =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
+            let note = Note {
+                id: Uuid::parse_str(note_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: note_id.clone(),
+                })?,
+                session_id: row
+                    .session_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.clone() })
+                    })
+                    .transpose()?,
+                document_id: row
+                    .document_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.clone() })
+                    })
+                    .transpose()?,
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                content: row.content.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content".to_string(),
+                })?,
+                note_type: row.note_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing note_type".to_string(),
+                })?,
+                position: row.position,
+                tags: row.tags,
+                created_at: DateTime::parse_from_rfc3339(created_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: created_at_str.clone(),
+                    })?,
+                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: updated_at_str.clone(),
+                    })?,
+            };
+            notes.push(note);
+        }
+
+        Ok(notes)
+    }
+}
+
+// Row structs để SQLx có thể map đúng kiểu - tất cả TEXT fields đều là Option<String>
+#[derive(Debug)]
+struct ResearchSessionRow {
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub goal: Option<String>,
+    pub phase: Option<String>,
+    pub context_state: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug)]
+struct DocumentRow {
+    pub id: Option<String>,
+    pub session_id: Option<String>,
+    pub title: Option<String>,
+    pub file_path: Option<String>,
+    pub content_type: Option<String>,
+    pub metadata: Option<String>,
+    pub reading_progress: Option<i64>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug)]
+struct NoteRow {
+    pub id: Option<String>,
+    pub session_id: Option<String>,
+    pub document_id: Option<String>,
+    pub title: Option<String>,
+    pub content: Option<String>,
+    pub note_type: Option<String>,
+    pub position: Option<String>,
+    pub tags: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
