@@ -1,58 +1,155 @@
 @import "tailwindcss";
 
 :root {
+  /* Dark Mode Colors */
+  --bg-primary: #1e1e1e; /* main background */
+  --bg-secondary: #2d2d30; /* sidebar, panels */
+  --bg-tertiary: #252526; /* hover states */
+  --bg-active: #37373d; /* active items */
 
-  --bg: #f8fafc;     /* light background (50) */
-  --fg: #0f0f0f;     /* dark text */
-  --border: #e2e8f0; /* neutral border (200) */
-  --muted: #94a3b8;  /* gray 400 */
-  --accent: #3b82f6; /* blue 500 */
-  @apply max-w-screen-xl mx-auto p-8 text-center;
+  --border: #3e3e42; /* dividers */
+  --border-light: #2b2b30; /* subtle borders */
+
+  --fg-primary: #d4d4d4; /* main text */
+  --fg-secondary: #858585; /* muted text */
+  --fg-tertiary: #6a6a6a; /* disabled text */
+  
+  --accent: #15803D;
+  --accent-hover: #166534;
+  --accent-muted: #15803D20;
+  
+  --on-accent: #d4d4d4;
+  --on-accent-muted: #d4d4d420;
+
+  --sidebar-width: 280px;
+  --ribbon-width: 48px;
 }
 
-.dark {
-  --bg: #303030;     /* dark background */
-  --fg: #f1f5f9;     /* light text */
-  --border: #212121; /* darker border */
-  --muted: #606060;  /* muted dark gray */
-  --accent: #60a5fa; /* blue 400 */
+/* Light Mode Colors */
+:root[data-theme="light"] {
+  --bg-primary: #ffffff; /* main background */
+  --bg-secondary: #f3f4f6; /* sidebar, panels */
+  --bg-tertiary: #e5e7eb; /* hover states */
+  --bg-active: #d1d5db; /* active items */
+
+  --border: #d1d5db; /* dividers */
+  --border-light: #e5e7eb; /* subtle borders */
+
+  --fg-primary: #1f2937; /* main text */
+  --fg-secondary: #6b7280; /* muted text */
+  --fg-tertiary: #9ca3af; /* disabled text */
 }
 
 /* 🌐 Base styles */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
   }
 
   body {
-    background-color: var(--bg);
-    color: var(--fg);
+    background-color: var(--bg-primary);
+    color: var(--fg-primary);
+    overflow: hidden;
   }
 
-
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold;
   }
 
   input {
-    @apply border border-[--border];
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--fg-primary);
+    @apply rounded px-2 py-1;
   }
 
-  .container{
-    @apply max-w-screen-xl mx-auto p-8 text-center;
+  input:focus {
+    outline: 1px solid var(--accent);
   }
 }
 
-/* 🧩 Components (nếu cần thêm) */
+/* 🧩 Components */
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium bg-[--accent] text-white hover:opacity-90;
+    @apply px-4 py-2 rounded font-medium;
+    background-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .btn:hover {
+    background-color: var(--accent-hover);
+  }
+
+  /* Obsidian-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--bg-active);
+  }
+
+  /* Resizable divider */
+  .resize-handle {
+    width: 4px;
+    background: transparent;
+    cursor: col-resize;
+    position: relative;
+    z-index: 10;
+  }
+
+  .resize-handle:hover {
+    background: var(--accent);
+  }
+
+  /* Command Palette animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  .command-palette-backdrop {
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  .command-palette-content {
+    animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
 /* 🛠 Utilities */
 @layer utilities {
   .text-muted {
-    color: var(--muted);
+    color: var(--fg-secondary);
   }
 }
