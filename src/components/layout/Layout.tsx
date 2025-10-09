@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TitleBar from './TitleBar';
 import TabBar from './TabBar';
 import type { Tab } from './TabBar';
 import { Sidebar } from '@/components/sidebar';
 import MainContent from './MainContent';
+import CommandPalette from '@/components/ui/CommandPalette';
 import { WELCOME_TAB, createNewChatTab } from '@/constants/tabs';
 
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(280);
-  // TODO: Implement CommandPalette state and keyboard shortcuts
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
+
+  // Command Palette keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K on Mac, Ctrl+K on Windows/Linux
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+      // ESC to close
+      if (e.key === 'Escape') {
+        setCommandPaletteOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const addNewTab = () => {
     const newTab = createNewChatTab();
@@ -58,6 +77,10 @@ const Layout: React.FC = () => {
           <MainContent activeTab={activeTab} />
         </div>
       </div>
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+      />
     </div>
   );
 };
