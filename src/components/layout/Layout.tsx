@@ -5,6 +5,7 @@ import type { Tab } from './TabBar';
 import { Sidebar } from '@/components/sidebar';
 import MainContent from './MainContent';
 import CommandPalette from '@/components/ui/CommandPalette';
+import DebugOverlay from '@/components/ui/DebugOverlay';
 import { WELCOME_TAB, createNewChatTab } from '@/constants/tabs';
 
 const Layout: React.FC = () => {
@@ -81,6 +82,7 @@ const Layout: React.FC = () => {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
       />
+      <DebugOverlay />
     </div>
   );
 };
