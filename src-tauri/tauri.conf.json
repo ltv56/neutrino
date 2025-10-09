@@ -24,7 +24,22 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "windows": ["main"],
+          "permissions": [
+            "core:window:allow-close",
+            "core:window:allow-minimize",
+            "core:window:allow-maximize",
+            "core:window:allow-toggle-maximize",
+            "core:window:allow-show",
+            "core:window:allow-hide",
+            "core:window:default"
+          ]
+        }
+      ]
     }
   },
   "bundle": {
