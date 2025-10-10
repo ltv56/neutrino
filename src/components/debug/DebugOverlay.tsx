@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DatabaseTest from '@/test/DatabaseTest';
+import DatabaseTest from './DatabaseTest';
 import { Bug } from 'lucide-react';
 
 type DebugOption = 'database' | 'api' | 'files' | null;

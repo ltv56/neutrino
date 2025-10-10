@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 
+// ==================== Type Definitions ====================
+
 export interface ResearchSession {
   id: string;
   title: string;
@@ -21,14 +23,26 @@ export interface Document {
   updated_at: string;
 }
 
-export class DatabaseTester {
+export interface DatabaseStats {
+  sessions_count: number;
+  documents_count: number;
+  notes_count: number;
+}
+
+// ==================== Database Service ====================
+
+export const databaseService = {
+  // ========== Session Operations ==========
+
   async createSession(title: string, goal?: string): Promise<ResearchSession> {
     return await invoke('create_research_session', { title, goal });
-  }
+  },
 
   async getSessions(): Promise<ResearchSession[]> {
     return await invoke('get_research_sessions');
-  }
+  },
+
+  // ========== Document Operations ==========
 
   async createDocument(
     sessionId: string,
@@ -36,20 +50,13 @@ export class DatabaseTester {
     filePath: string,
     contentType: string
   ): Promise<Document> {
-    console.log('Calling create_document with:', {
-      session_id: sessionId,
-      title,
-      file_path: filePath,
-      content_type: contentType,
-    });
-
     return await invoke('create_document', {
-      sessionId: sessionId,
+      sessionId,
       title,
-      filePath: filePath,
-      contentType: contentType,
+      filePath,
+      contentType,
     });
-  }
+  },
 
   async createSessionWithDocuments(
     title: string,
@@ -61,7 +68,19 @@ export class DatabaseTester {
       goal,
       documents,
     });
-  }
+  },
+
+  // ========== Debug/Admin Operations ==========
+
+  async clearAllData(): Promise<void> {
+    return await invoke('clear_all_data');
+  },
+
+  async getDatabaseStats(): Promise<DatabaseStats> {
+    return await invoke('get_database_stats');
+  },
+
+  // ========== Test Helper ==========
 
   async runQuickTest(): Promise<string> {
     try {
@@ -75,19 +94,12 @@ export class DatabaseTester {
       const sessions = await this.getSessions();
 
       // Test 3: Create document
-      console.log('About to call createDocument with session.id:', session.id);
-      try {
-        const document = await this.createDocument(
-          session.id,
-          'Test Document',
-          '/test/path/doc.pdf',
-          'application/pdf'
-        );
-        console.log('createDocument returned:', document);
-      } catch (error) {
-        console.error('createDocument failed:', error);
-        throw error;
-      }
+      const document = await this.createDocument(
+        session.id,
+        'Test Document',
+        '/test/path/doc.pdf',
+        'application/pdf'
+      );
 
       return (
         `✅ All tests passed!\n` +
@@ -98,5 +110,5 @@ export class DatabaseTester {
     } catch (error) {
       return `❌ Test failed: ${error}`;
     }
-  }
-}
+  },
+};

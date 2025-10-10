@@ -5,6 +5,7 @@ use tauri::Manager;
 use std::env;
 
 mod database;
+mod debug;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -20,7 +21,9 @@ pub fn run() {
             greet,
             database::create_research_session,
             database::get_research_sessions,
-            database::create_document
+            database::create_document,
+            debug::clear_all_data,
+            debug::get_database_stats
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
