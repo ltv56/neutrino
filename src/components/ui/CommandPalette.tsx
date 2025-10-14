@@ -5,9 +5,11 @@ import { DEFAULT_COMMANDS, type Command } from '@/constants/commands';
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
+  initialPrefix?: string;
 }
 
-const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, initialPrefix = '' }) => {
+  const [prefix, setPrefix] = useState('');
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,10 +29,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
+      setPrefix(initialPrefix);
       setQuery('');
       setSelectedIndex(0);
     }
-  }, [isOpen]);
+  }, [isOpen, initialPrefix]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,12 +53,16 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           filteredCommands[selectedIndex].action();
           onClose();
         }
+      } else if (e.key === 'Backspace' && query === '' && prefix) {
+        // When backspace on empty query with prefix, remove prefix
+        e.preventDefault();
+        setPrefix('');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex, filteredCommands, onClose]);
+  }, [isOpen, selectedIndex, filteredCommands, onClose, query, prefix]);
 
   if (!isOpen) return null;
 
@@ -83,20 +90,53 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <Search size={20} style={{ color: 'var(--fg-secondary)' }} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(0);
-            }}
-            placeholder="Search or type a command..."
-            className="flex-1 bg-transparent outline-none text-base"
-            style={{ color: 'var(--fg-primary)' }}
-          />
+
           <div
-            className="text-xs px-2 py-1 rounded"
+            className="flex-1 flex items-center gap-1 px-2 py-1 rounded"
+            style={{
+              backgroundColor: 'var(--bg-primary)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {/* Prefix Tag inside search bar */}
+            {prefix && (
+              <span
+                className="px-1 py-0.5 rounded text-sm font-medium shrink-0"
+                style={{
+                  color: 'var(--accent)',
+                  backgroundColor: 'var(--bg-tertiary)',
+                }}
+              >
+                {prefix}
+              </span>
+            )}
+
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => {
+                const value = e.target.value;
+                setQuery(value);
+                setSelectedIndex(0);
+
+                // Auto-detect prefix patterns
+                if (value.startsWith('/sessions') || value.startsWith('/documents') || value.startsWith('/notes')) {
+                  const match = value.match(/^(\/\w+)\s*(.*)/);
+                  if (match) {
+                    setPrefix(match[1]);
+                    setQuery(match[2]);
+                  }
+                }
+              }}
+              placeholder={prefix ? "Type to search..." : "Search or type a command..."}
+              className="flex-1 bg-transparent outline-none text-sm border-none"
+              style={{ color: 'var(--fg-primary)' }}
+            />
+          </div>
+
+          <div
+            className="text-xs p-1 rounded"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               color: 'var(--fg-secondary)',

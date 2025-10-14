@@ -146,6 +146,27 @@ impl SessionRepository {
         Ok(sessions)
     }
 
+    pub async fn update(&self, id: Uuid, title: String, goal: Option<String>) -> DbResult<()> {
+        let now_str = Utc::now().to_rfc3339();
+        let id_str = id.to_string();
+
+        let result = sqlx::query!(
+            "UPDATE research_sessions SET title = ?, goal = ?, updated_at = ? WHERE id = ?",
+            title,
+            goal,
+            now_str,
+            id_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::SessionNotFound { id: id.to_string() });
+        }
+
+        Ok(())
+    }
+
     pub async fn update_phase(&self, id: Uuid, phase: String) -> DbResult<()> {
         let now_str = Utc::now().to_rfc3339();
         let id_str = id.to_string();

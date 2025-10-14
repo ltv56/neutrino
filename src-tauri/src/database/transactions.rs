@@ -204,14 +204,14 @@ impl TransactionService {
 }
 
 // Request DTOs
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CreateDocumentRequest {
     pub title: String,
     pub file_path: String,
     pub content_type: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CreateNoteRequest {
     pub title: String,
     pub content: String,
