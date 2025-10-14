@@ -33,7 +33,7 @@ const TabBar: React.FC<TabBarProps> = ({
       className="flex items-stretch"
       style={{
         backgroundColor: 'var(--bg-secondary)',
-        height: '36px',
+        height: 'var(--tabbar-height)',
       }}
     >
       <div className="flex items-center overflow-x-auto">

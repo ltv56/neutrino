@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import TitleBar from './TitleBar';
 import TabBar from './TabBar';
 import type { Tab } from './TabBar';
-import Ribbon from './Ribbon';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import CommandPalette from '@/components/ui/CommandPalette';
@@ -14,11 +13,15 @@ import type { SidebarTab } from '@/constants/sidebar';
 
 const Layout: React.FC = () => {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Start closed
-  const [previousSidebarOpen, setPreviousSidebarOpen] = useState(false); // Remember previous state
-  const [sidebarWidth, setSidebarWidth] = useState(280);
+
+  // Floating sidebar state
+  const [sidebarMode, setSidebarMode] = useState<'floating' | 'pinned'>('floating');
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [activeRibbonTab, setActiveRibbonTab] = useState<SidebarTab | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [activeRibbonTab, setActiveRibbonTab] = useState<SidebarTab | null>(null); // Start with no tab
+
+  // Auto-hide timer for floating mode
+  const hideTimerRef = useRef<number | null>(null);
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
@@ -27,11 +30,23 @@ const Layout: React.FC = () => {
   // Check if we're on a full-page route (like /sessions)
   const isFullPageRoute = location.pathname === ROUTES.SESSIONS;
 
+  // Load saved sidebar preferences on mount
+  useEffect(() => {
+    const savedMode = localStorage.getItem('neutrino_sidebar_mode') as 'floating' | 'pinned' | null;
+    const savedTab = localStorage.getItem('neutrino_sidebar_tab') as SidebarTab | null;
+
+    if (savedMode) setSidebarMode(savedMode);
+    if (savedTab && savedMode === 'pinned') {
+      setActiveRibbonTab(savedTab);
+      setSidebarVisible(true);
+    }
+  }, []);
+
   // Clear active ribbon tab when on full page routes
   useEffect(() => {
     if (isFullPageRoute) {
       setActiveRibbonTab(null);
-      setSidebarOpen(false);
+      setSidebarVisible(false);
     }
   }, [isFullPageRoute]);
 
@@ -73,35 +88,70 @@ const Layout: React.FC = () => {
   // Get search prefix for command palette
   const searchPrefix = SEARCH_CONTEXTS[location.pathname]?.prefix || '';
 
-  // Handle ribbon tab change - open sidebar when tab is selected
-  const handleRibbonTabChange = (tab: SidebarTab | null) => {
-    if (tab === null) {
-      // Deselecting tab - close sidebar
-      setActiveRibbonTab(null);
-      setPreviousSidebarOpen(sidebarOpen);
-      setSidebarOpen(false);
-    } else if (tab === activeRibbonTab) {
-      // Clicking same tab - deselect it
-      setActiveRibbonTab(null);
-      setPreviousSidebarOpen(sidebarOpen);
-      setSidebarOpen(false);
-    } else {
-      // Selecting new tab - open sidebar
-      setActiveRibbonTab(tab);
-      setSidebarOpen(true);
-      setPreviousSidebarOpen(true);
+  // Ribbon icon hover handler (for floating mode peek)
+  const handleRibbonHover = (tab: SidebarTab) => {
+    if (sidebarMode === 'floating' && activeRibbonTab === tab) {
+      // Cancel any pending hide timer
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+      setSidebarVisible(true);
     }
   };
 
-  // Handle sidebar toggle button
-  const handleSidebarToggle = () => {
-    if (activeRibbonTab === null) {
-      // No tab selected - button should be inactive, do nothing
-      return;
+  // Ribbon icon click handler
+  const handleRibbonClick = (tab: SidebarTab) => {
+    if (activeRibbonTab === tab) {
+      // Toggle off - only deselect tab, keep Ribbon visible in floating mode
+      setActiveRibbonTab(null);
+      // In pinned mode, close sidebar. In floating mode, keep it visible
+      if (sidebarMode === 'pinned') {
+        setSidebarVisible(false);
+      }
+    } else {
+      // Switch or activate
+      setActiveRibbonTab(tab);
+      setSidebarVisible(true);
     }
-    const newState = !sidebarOpen;
-    setSidebarOpen(newState);
-    setPreviousSidebarOpen(newState);
+  };
+
+  // Sidebar mouse leave handler (floating mode only)
+  const handleSidebarLeave = (e: React.MouseEvent) => {
+    if (sidebarMode === 'floating') {
+      // Check if mouse is still in window
+      const isInWindow = e.clientX >= 0 && e.clientX <= window.innerWidth &&
+                         e.clientY >= 0 && e.clientY <= window.innerHeight;
+
+      const delay = isInWindow ? 200 : 1500; // Quick hide if in window, slow if outside
+
+      hideTimerRef.current = window.setTimeout(() => {
+        setSidebarVisible(false);
+      }, delay);
+    }
+  };
+
+  // Sidebar mouse enter handler (show sidebar and cancel auto-hide)
+  const handleSidebarEnter = () => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    // Show sidebar when hovering edge indicator or sidebar itself
+    if (sidebarMode === 'floating') {
+      setSidebarVisible(true);
+    }
+  };
+
+  // Pin/Unpin toggle
+  const handleTogglePin = () => {
+    const newMode = sidebarMode === 'pinned' ? 'floating' : 'pinned';
+    setSidebarMode(newMode);
+    localStorage.setItem('neutrino_sidebar_mode', newMode);
+
+    if (newMode === 'pinned') {
+      localStorage.setItem('neutrino_sidebar_tab', activeRibbonTab || '');
+    }
   };
 
   return (
@@ -109,22 +159,19 @@ const Layout: React.FC = () => {
       backgroundColor: 'var(--bg-primary)',
       color: 'var(--fg-primary)'
     }}>
-      <TitleBar
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        sidebarOpen={sidebarOpen}
-      />
+      <TitleBar />
       <div className="flex flex-1 overflow-hidden">
-        {/* Ribbon - Always visible */}
-        <Ribbon
-          activeTab={activeRibbonTab}
-          onTabChange={setActiveRibbonTab}
-        />
-
-        {/* Sidebar Detail - Hidden on full page routes */}
-        {!isFullPageRoute && sidebarOpen && (
+        {/* Sidebar (includes Ribbon) - Hidden on full page routes */}
+        {!isFullPageRoute && (
           <Sidebar
+            mode={sidebarMode}
+            isVisible={sidebarVisible}
             activeTab={activeRibbonTab}
-            width={sidebarWidth}
+            onTogglePin={handleTogglePin}
+            onTabClick={handleRibbonClick}
+            onTabHover={handleRibbonHover}
+            onMouseEnter={handleSidebarEnter}
+            onMouseLeave={handleSidebarLeave}
           />
         )}
 

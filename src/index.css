@@ -22,7 +22,9 @@
   --on-accent-muted: #d4d4d420;
 
   --sidebar-width: 280px;
-  --ribbon-width: 48px;
+  --ribbon-width: 40px;
+  --titlebar-height: 36px;
+  --tabbar-height: 32px;
 }
 
 /* Light Mode Colors */
@@ -144,6 +146,50 @@
 
   .command-palette-content {
     animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Sidebar animations */
+  @keyframes slideInFromLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOutToLeft {
+    0% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    80% {
+      transform: translateX(-100%);
+      opacity: 0.3;
+    }
+    100% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+  }
+
+  .sidebar-enter {
+    animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar-exit {
+    animation: slideOutToLeft 0.4s cubic-bezier(0.5, 0, 0.75, 0);
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .transition-smooth-fast {
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
