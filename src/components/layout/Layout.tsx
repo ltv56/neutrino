@@ -1,21 +1,39 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import TitleBar from './TitleBar';
 import TabBar from './TabBar';
 import type { Tab } from './TabBar';
-import { Sidebar } from '@/components/sidebar';
+import Ribbon from './Ribbon';
+import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import CommandPalette from '@/components/ui/CommandPalette';
 import DebugOverlay from '@/components/debug/DebugOverlay';
 import { WELCOME_TAB, createNewChatTab } from '@/constants/tabs';
+import { ROUTES, SEARCH_CONTEXTS } from '@/constants/routes';
+import type { SidebarTab } from '@/constants/sidebar';
 
 const Layout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Start closed
+  const [previousSidebarOpen, setPreviousSidebarOpen] = useState(false); // Remember previous state
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [activeRibbonTab, setActiveRibbonTab] = useState<SidebarTab | null>(null); // Start with no tab
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
+
+  // Check if we're on a full-page route (like /sessions)
+  const isFullPageRoute = location.pathname === ROUTES.SESSIONS;
+
+  // Clear active ribbon tab when on full page routes
+  useEffect(() => {
+    if (isFullPageRoute) {
+      setActiveRibbonTab(null);
+      setSidebarOpen(false);
+    }
+  }, [isFullPageRoute]);
 
   // Command Palette keyboard shortcut
   useEffect(() => {
@@ -52,6 +70,40 @@ const Layout: React.FC = () => {
 
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
+  // Get search prefix for command palette
+  const searchPrefix = SEARCH_CONTEXTS[location.pathname]?.prefix || '';
+
+  // Handle ribbon tab change - open sidebar when tab is selected
+  const handleRibbonTabChange = (tab: SidebarTab | null) => {
+    if (tab === null) {
+      // Deselecting tab - close sidebar
+      setActiveRibbonTab(null);
+      setPreviousSidebarOpen(sidebarOpen);
+      setSidebarOpen(false);
+    } else if (tab === activeRibbonTab) {
+      // Clicking same tab - deselect it
+      setActiveRibbonTab(null);
+      setPreviousSidebarOpen(sidebarOpen);
+      setSidebarOpen(false);
+    } else {
+      // Selecting new tab - open sidebar
+      setActiveRibbonTab(tab);
+      setSidebarOpen(true);
+      setPreviousSidebarOpen(true);
+    }
+  };
+
+  // Handle sidebar toggle button
+  const handleSidebarToggle = () => {
+    if (activeRibbonTab === null) {
+      // No tab selected - button should be inactive, do nothing
+      return;
+    }
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    setPreviousSidebarOpen(newState);
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{
       backgroundColor: 'var(--bg-primary)',
@@ -62,25 +114,37 @@ const Layout: React.FC = () => {
         sidebarOpen={sidebarOpen}
       />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          isOpen={sidebarOpen}
-          width={sidebarWidth}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
+        {/* Ribbon - Always visible */}
+        <Ribbon
+          activeTab={activeRibbonTab}
+          onTabChange={setActiveRibbonTab}
         />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <TabBar
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onTabChange={setActiveTabId}
-            onTabClose={closeTab}
-            onTabAdd={addNewTab}
+
+        {/* Sidebar Detail - Hidden on full page routes */}
+        {!isFullPageRoute && sidebarOpen && (
+          <Sidebar
+            activeTab={activeRibbonTab}
+            width={sidebarWidth}
           />
+        )}
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!isFullPageRoute && (
+            <TabBar
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onTabChange={setActiveTabId}
+              onTabClose={closeTab}
+              onTabAdd={addNewTab}
+            />
+          )}
           <MainContent activeTab={activeTab} />
         </div>
       </div>
       <CommandPalette
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
+        initialPrefix={searchPrefix}
       />
       <DebugOverlay />
     </div>

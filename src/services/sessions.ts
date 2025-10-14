@@ -1,0 +1,20 @@
+import { invoke } from '@tauri-apps/api/core';
+import type { ResearchSession } from '@/types';
+
+export const sessionService = {
+  async create(title: string, goal?: string): Promise<ResearchSession> {
+    return await invoke('create_research_session', { title, goal });
+  },
+
+  async getAll(): Promise<ResearchSession[]> {
+    return await invoke('get_research_sessions');
+  },
+
+  async delete(sessionId: string): Promise<void> {
+    return await invoke('delete_research_session', { sessionId });
+  },
+
+  async update(sessionId: string, title: string, goal?: string): Promise<void> {
+    return await invoke('update_research_session', { sessionId, title, goal });
+  },
+};

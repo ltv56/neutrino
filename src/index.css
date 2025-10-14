@@ -13,11 +13,11 @@
   --fg-primary: #d4d4d4; /* main text */
   --fg-secondary: #858585; /* muted text */
   --fg-tertiary: #6a6a6a; /* disabled text */
-  
-  --accent: #15803D;
+
+  --accent: #15803d;
   --accent-hover: #166534;
-  --accent-muted: #15803D20;
-  
+  --accent-muted: #15803d20;
+
   --on-accent: #d4d4d4;
   --on-accent-muted: #d4d4d420;
 

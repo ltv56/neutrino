@@ -1,4 +1,4 @@
-import { databaseService } from '@/services/database';
+import { sessionService, documentService, debugService } from '@/services';
 
 interface MockSession {
   title: string;
@@ -44,7 +44,7 @@ export const generateMockData = async (): Promise<MockDataResult> => {
   for (const mockSession of MOCK_SESSIONS) {
     try {
       // Create research session
-      const createdSession = await databaseService.createSession(
+      const createdSession = await sessionService.create(
         mockSession.title,
         mockSession.goal
       );
@@ -53,7 +53,7 @@ export const generateMockData = async (): Promise<MockDataResult> => {
 
       // Create mock document for each session
       try {
-        await databaseService.createDocument(
+        await documentService.create(
           createdSession.id,
           `Paper - ${mockSession.title}`,
           `/mock/papers/${createdSession.id}.pdf`,
@@ -74,7 +74,7 @@ export const generateMockData = async (): Promise<MockDataResult> => {
 
 export const clearAllMockData = async () => {
   try {
-    await databaseService.clearAllData();
+    await debugService.clearAllData();
     return { success: true };
   } catch (error) {
     return { success: false, error: String(error) };

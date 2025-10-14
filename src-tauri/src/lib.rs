@@ -6,6 +6,7 @@ use std::env;
 
 mod database;
 mod debug;
+mod commands;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -19,11 +20,22 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             greet,
-            database::create_research_session,
-            database::get_research_sessions,
-            database::create_document,
-            debug::clear_all_data,
-            debug::get_database_stats
+
+            // ========== Session Management ==========
+            commands::create_research_session,
+            commands::get_research_sessions,
+            commands::delete_research_session,
+            commands::update_research_session,
+
+            // ========== Document Management ==========
+            commands::create_document,
+
+            // ========== Transactions ==========
+            commands::create_session_with_documents,
+
+            // ========== Debug/Admin ==========
+            commands::clear_all_data,
+            commands::get_database_stats
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

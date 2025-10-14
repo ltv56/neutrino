@@ -1,7 +1,7 @@
-import { FileText, MessageSquare, Settings } from 'lucide-react';
+import { FileText, StickyNote } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type SidebarTab = 'sessions' | 'documents';
+export type SidebarTab = 'documents' | 'notes';
 
 export interface SidebarTabConfig {
   id: SidebarTab;
@@ -16,29 +16,29 @@ export interface SidebarEmptyState {
 
 export const SIDEBAR_TABS: SidebarTabConfig[] = [
   {
-    id: 'sessions',
-    icon: MessageSquare,
-    title: 'Sessions',
-  },
-  {
     id: 'documents',
     icon: FileText,
     title: 'Documents',
   },
+  {
+    id: 'notes',
+    icon: StickyNote,
+    title: 'Notes',
+  },
 ];
 
 export const SIDEBAR_HEADERS: Record<SidebarTab, string> = {
-  sessions: 'Chat Sessions',
   documents: 'Documents',
+  notes: 'Notes',
 };
 
 export const SIDEBAR_EMPTY_STATES: Record<SidebarTab, SidebarEmptyState> = {
-  sessions: {
-    title: 'New Conversation',
-    subtitle: 'Start a new chat session',
-  },
   documents: {
     title: 'No documents yet',
-    subtitle: 'Create your first document',
+    subtitle: 'Add PDFs to your session',
+  },
+  notes: {
+    title: 'No notes yet',
+    subtitle: 'Create your first note',
   },
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { databaseService } from '@/services/database';
+import { sessionService, documentService, debugService } from '@/services';
 import { generateMockData } from '@/utils/mockData';
 
 const DatabaseTest = () => {
@@ -9,7 +9,7 @@ const DatabaseTest = () => {
   const testCreateSession = async () => {
     setLoading(true);
     try {
-      const session = await databaseService.createSession('Test Session', 'Testing database connection');
+      const session = await sessionService.create('Test Session', 'Testing database connection');
       setResult(`✅ Session created: ${session.title} (ID: ${session.id})`);
     } catch (error) {
       setResult(`❌ Error: ${error}`);
@@ -20,7 +20,7 @@ const DatabaseTest = () => {
   const testGetSessions = async () => {
     setLoading(true);
     try {
-      const sessions = await databaseService.getSessions();
+      const sessions = await sessionService.getAll();
       setResult(`✅ Found ${sessions.length} sessions:\n${sessions.map(s => `- ${s.title} (${s.id})`).join('\n')}`);
     } catch (error) {
       setResult(`❌ Error: ${error}`);
@@ -31,10 +31,19 @@ const DatabaseTest = () => {
   const testQuickAll = async () => {
     setLoading(true);
     try {
-      const result = await databaseService.runQuickTest();
-      setResult(result);
+      // Quick test: create session + document
+      const session = await sessionService.create('Quick Test Session', 'Testing all functions');
+      const sessions = await sessionService.getAll();
+      const document = await documentService.create(session.id, 'Test Document', '/test/path/doc.pdf', 'application/pdf');
+
+      setResult(
+        `✅ All tests passed!\n` +
+        `- Created session: ${session.title}\n` +
+        `- Found ${sessions.length} total sessions\n` +
+        `- Created document: ${document.title}`
+      );
     } catch (error) {
-      setResult(`❌ Error: ${error}`);
+      setResult(`❌ Test failed: ${error}`);
     }
     setLoading(false);
   };
@@ -44,7 +53,7 @@ const DatabaseTest = () => {
 
     setLoading(true);
     try {
-      await databaseService.clearAllData();
+      await debugService.clearAllData();
       setResult('✅ Database cleared successfully!');
     } catch (error) {
       setResult(`❌ Error: ${error}`);
@@ -55,7 +64,7 @@ const DatabaseTest = () => {
   const testGetStats = async () => {
     setLoading(true);
     try {
-      const stats = await databaseService.getDatabaseStats();
+      const stats = await debugService.getDatabaseStats();
       setResult(
         `📊 Database Statistics:\n` +
         `- Sessions: ${stats.sessions_count}\n` +
