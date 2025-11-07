@@ -15,6 +15,7 @@ interface SidebarProps {
   onTabHover: (tab: SidebarTab) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: (e: React.MouseEvent) => void;
+  onIndicatorClick?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -25,7 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTabClick,
   onTabHover,
   onMouseEnter,
-  onMouseLeave
+  onMouseLeave,
+  onIndicatorClick
 }) => {
   const isFloating = mode === 'floating';
   const showBackdrop = isFloating && isVisible && activeTab;
@@ -46,8 +48,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Hover container + Edge indicator (floating mode only) */}
-      {isFloating && !isVisible && <EdgeIndicator onMouseEnter={onMouseEnter} />}
+      {/* Edge indicator (floating mode only) */}
+      {isFloating && !shouldRender && (
+        <EdgeIndicator onIndicatorClick={onIndicatorClick} />
+      )}
 
       {/* Backdrop (floating mode only) */}
       {showBackdrop && <SidebarBackdrop onClick={(e) => onMouseLeave?.(e)} />}
@@ -55,12 +59,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Complete Sidebar Container (Ribbon + Panel) */}
       {(isFloating ? shouldRender : true) && (
         <div
+          data-sidebar="true"
           className={`${isFloating ? 'fixed' : 'relative'} ${isFloating ? animationClass : ''}`}
           style={{
             ...(isFloating ? {
               left: '6px',
-              top: 'calc(var(--titlebar-height) + 6px)',
-              height: 'calc(100vh - var(--titlebar-height) - 12px)',
+              top: 'calc(var(--titlebar-height) + var(--tabbar-height) + 6px)',
+              height: 'calc(100vh - var(--titlebar-height) - var(--tabbar-height) - 12px)',
               zIndex: 100,
             } : {
               height: '100%',
@@ -78,6 +83,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               borderRadius: isFloating ? '8px' : '0',
               boxShadow: isFloating ? '0 4px 20px rgba(0, 0, 0, 0.25)' : 'none',
               overflow: 'hidden',
+              // Smooth transition when toggling pin/unpin
+              transition: animationClass ? 'none' : 'border 0.5s ease, border-radius 0.5s ease, box-shadow 0.5s ease',
+              // GPU acceleration to prevent flicker
+              transform: 'translateZ(0)',
+              willChange: isFloating && isVisible ? 'transform, opacity' : 'auto',
             }}
           >
             <SidebarRibbon

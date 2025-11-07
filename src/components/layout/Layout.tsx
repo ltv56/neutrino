@@ -10,6 +10,7 @@ import DebugOverlay from '@/components/debug/DebugOverlay';
 import { WELCOME_TAB, createNewChatTab } from '@/constants/tabs';
 import { ROUTES, SEARCH_CONTEXTS } from '@/constants/routes';
 import type { SidebarTab } from '@/constants/sidebar';
+import { useEdgeDetection, EDGE_CONFIG } from '@/hooks/useEdgeDetection';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -20,15 +21,21 @@ const Layout: React.FC = () => {
   const [activeRibbonTab, setActiveRibbonTab] = useState<SidebarTab | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // Auto-hide timer for floating mode
-  const hideTimerRef = useRef<number | null>(null);
-
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
 
   // Check if we're on a full-page route (like /sessions)
   const isFullPageRoute = location.pathname === ROUTES.SESSIONS;
+
+  // Advanced edge detection with centralized timer management
+  const { scheduleSidebarHide, cancelSidebarHide } = useEdgeDetection({
+    sidebarMode,
+    sidebarVisible,
+    activeRibbonTab,
+    isFullPageRoute,
+    setSidebarVisible,
+  });
 
   // Load saved sidebar preferences on mount
   useEffect(() => {
@@ -88,15 +95,10 @@ const Layout: React.FC = () => {
   // Get search prefix for command palette
   const searchPrefix = SEARCH_CONTEXTS[location.pathname]?.prefix || '';
 
-  // Ribbon icon hover handler (for floating mode peek)
+  // Ribbon icon hover handler
   const handleRibbonHover = (tab: SidebarTab) => {
     if (sidebarMode === 'floating' && activeRibbonTab === tab) {
-      // Cancel any pending hide timer
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-      setSidebarVisible(true);
+      cancelSidebarHide();
     }
   };
 
@@ -116,30 +118,15 @@ const Layout: React.FC = () => {
     }
   };
 
+  // Sidebar mouse enter handler (cancel hide timer)
+  const handleSidebarEnter = () => {
+    cancelSidebarHide();
+  };
+
   // Sidebar mouse leave handler (floating mode only)
   const handleSidebarLeave = (e: React.MouseEvent) => {
     if (sidebarMode === 'floating') {
-      // Check if mouse is still in window
-      const isInWindow = e.clientX >= 0 && e.clientX <= window.innerWidth &&
-                         e.clientY >= 0 && e.clientY <= window.innerHeight;
-
-      const delay = isInWindow ? 200 : 1500; // Quick hide if in window, slow if outside
-
-      hideTimerRef.current = window.setTimeout(() => {
-        setSidebarVisible(false);
-      }, delay);
-    }
-  };
-
-  // Sidebar mouse enter handler (show sidebar and cancel auto-hide)
-  const handleSidebarEnter = () => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-    // Show sidebar when hovering edge indicator or sidebar itself
-    if (sidebarMode === 'floating') {
-      setSidebarVisible(true);
+      scheduleSidebarHide();
     }
   };
 
@@ -150,8 +137,21 @@ const Layout: React.FC = () => {
     localStorage.setItem('neutrino_sidebar_mode', newMode);
 
     if (newMode === 'pinned') {
+      // Pinning: Always show sidebar and save active tab
+      setSidebarVisible(true);
       localStorage.setItem('neutrino_sidebar_tab', activeRibbonTab || '');
+    } else {
+      // Unpinning: Keep sidebar visible, will auto-hide when mouse leaves
+      // This makes the transition smooth and lets user see the mode changed
+      setSidebarVisible(true);
+      cancelSidebarHide(); // Cancel any pending hide timers
     }
+  };
+
+  // Edge indicator click - show sidebar instantly
+  const handleIndicatorClick = () => {
+    setSidebarVisible(true);
+    cancelSidebarHide();
   };
 
   return (
@@ -172,6 +172,7 @@ const Layout: React.FC = () => {
             onTabHover={handleRibbonHover}
             onMouseEnter={handleSidebarEnter}
             onMouseLeave={handleSidebarLeave}
+            onIndicatorClick={handleIndicatorClick}
           />
         )}
 

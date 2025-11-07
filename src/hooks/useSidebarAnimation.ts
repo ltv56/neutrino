@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { SIDEBAR_ANIMATION } from './useEdgeDetection';
 
 interface UseSidebarAnimationProps {
   isVisible: boolean;
@@ -13,6 +14,7 @@ interface UseSidebarAnimationReturn {
 /**
  * Custom hook to manage sidebar animation state
  * Handles enter/exit animations and delayed unmounting
+ * Only animates when visibility changes, not when mode toggles
  */
 export const useSidebarAnimation = ({
   isVisible,
@@ -20,21 +22,31 @@ export const useSidebarAnimation = ({
 }: UseSidebarAnimationProps): UseSidebarAnimationReturn => {
   const [animationClass, setAnimationClass] = useState('');
   const [shouldRender, setShouldRender] = useState(isVisible);
+  const prevVisibleRef = useRef(isVisible);
+  const prevFloatingRef = useRef(isFloating);
 
   useEffect(() => {
+    const visibilityChanged = prevVisibleRef.current !== isVisible;
+    const modeChanged = prevFloatingRef.current !== isFloating;
+
+    prevVisibleRef.current = isVisible;
+    prevFloatingRef.current = isFloating;
+
     if (isFloating) {
       if (isVisible) {
         setShouldRender(true);
-        // Small delay to ensure DOM is ready before starting animation
-        requestAnimationFrame(() => {
-          setAnimationClass('sidebar-enter');
-        });
+        if (visibilityChanged) {
+          requestAnimationFrame(() => {
+            setAnimationClass('sidebar-enter');
+          });
+        } else if (modeChanged) {
+          setAnimationClass('');
+        }
       } else {
         setAnimationClass('sidebar-exit');
-        // Delay unmount until exit animation completes
         const timer = setTimeout(() => {
           setShouldRender(false);
-        }, 400); // Match sidebar-exit animation duration
+        }, SIDEBAR_ANIMATION.TOTAL_EXIT_TIME); // 450ms (400ms animation + 50ms buffer)
         return () => clearTimeout(timer);
       }
     } else {

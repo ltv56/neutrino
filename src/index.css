@@ -18,13 +18,14 @@
   --accent-hover: #166534;
   --accent-muted: #15803d20;
 
-  --on-accent: #d4d4d4;
-  --on-accent-muted: #d4d4d420;
+  --on-accent: #fafafa;
+  --on-accent-muted: #fafafa20;
 
   --sidebar-width: 280px;
-  --ribbon-width: 40px;
+  --ribbon-width: 38px;
   --titlebar-height: 36px;
   --tabbar-height: 32px;
+  --edge-zone: 8px;
 }
 
 /* Light Mode Colors */
@@ -148,7 +149,11 @@
     animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Sidebar animations */
+  /* Sidebar animations
+   * ⚠️ IMPORTANT: Keep these durations in sync with SIDEBAR_ANIMATION config in useEdgeDetection.ts
+   * - ENTER_DURATION: 500ms
+   * - EXIT_DURATION: 400ms
+   */
   @keyframes slideInFromLeft {
     from {
       transform: translateX(-100%);
@@ -176,11 +181,13 @@
   }
 
   .sidebar-enter {
-    animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* SIDEBAR_ANIMATION.ENTER_DURATION */
+    animation-fill-mode: forwards;
   }
 
   .sidebar-exit {
-    animation: slideOutToLeft 0.4s cubic-bezier(0.5, 0, 0.75, 0);
+    animation: slideOutToLeft 0.4s cubic-bezier(0.5, 0, 0.75, 0); /* SIDEBAR_ANIMATION.EXIT_DURATION */
+    animation-fill-mode: forwards;
   }
 
   /* Smooth transitions */
@@ -195,7 +202,31 @@
 
 /* 🛠 Utilities */
 @layer utilities {
-  .text-muted {
-    color: var(--fg-secondary);
+  /* Text colors */
+  .text-primary { color: var(--fg-primary); }
+  .text-secondary { color: var(--fg-secondary); }
+  .text-tertiary { color: var(--fg-tertiary); }
+  .text-muted { color: var(--fg-secondary); }
+
+  /* Background colors */
+  .bg-primary { background-color: var(--bg-primary); }
+  .bg-secondary { background-color: var(--bg-secondary); }
+  .bg-tertiary { background-color: var(--bg-tertiary); }
+  .bg-active { background-color: var(--bg-active); }
+
+  /* Border colors */
+  .border-default { border-color: var(--border); }
+  .border-light { border-color: var(--border-light); }
+
+  /* Accent colors */
+  .text-accent { color: var(--accent); }
+  .bg-accent { background-color: var(--accent); }
+
+  /* Common patterns */
+  .divider-vertical {
+    width: 1px;
+    height: 28px;
+    background-color: var(--border);
+    margin: 0 8px;
   }
 }

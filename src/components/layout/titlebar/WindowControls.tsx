@@ -22,7 +22,7 @@ const WindowControls: React.FC<WindowControlsProps> = ({
           onClick={onMinimize}
           className="h-full px-4 hover:bg-[var(--bg-active)] transition-colors"
         >
-          <Minus size={16} style={{ color: 'var(--fg-primary)' }} />
+          <Minus size={16} className="text-primary" />
         </button>
       </Tooltip>
       <Tooltip content={isMaximized ? "Restore" : "Maximize"} placement="bottom" fullHeight>
@@ -31,18 +31,18 @@ const WindowControls: React.FC<WindowControlsProps> = ({
           className="h-full px-4 hover:bg-[var(--bg-active)] transition-colors"
         >
           {isMaximized ? (
-            <Copy size={14} style={{ color: 'var(--fg-primary)', transform: 'scaleX(-1)' }} />
+            <Copy size={14} className="text-primary" style={{ transform: 'scaleX(-1)' }} />
           ) : (
-            <Square size={14} style={{ color: 'var(--fg-primary)' }} />
+            <Square size={14} className="text-primary" />
           )}
         </button>
       </Tooltip>
       <Tooltip content="Close" placement="bottom-left" fullHeight>
         <button
           onClick={onClose}
-          className="h-full px-4 hover:bg-red-600 transition-colors"
+          className="group h-full px-4 hover:bg-red-600 transition-colors"
         >
-          <X size={16} style={{ color: 'var(--fg-primary)' }} />
+          <X size={16} className="text-primary group-hover:text-[#fafafa] transition-colors" />
         </button>
       </Tooltip>
     </div>

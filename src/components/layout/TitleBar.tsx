@@ -9,6 +9,7 @@ import WindowControls from './titlebar/WindowControls';
 import SearchBar from './titlebar/SearchBar';
 import NavigationButtons from './titlebar/NavigationButtons';
 import ThemeToggle from './titlebar/ThemeToggle';
+import Divider from '@/components/common/Divider';
 
 const TitleBar: React.FC = () => {
   const location = useLocation();
@@ -92,26 +93,21 @@ const TitleBar: React.FC = () => {
   return (
     <div
       id="titlebar"
-      className="flex items-center justify-between select-none"
-      style={{
-        height: 'var(--titlebar-height)',
-        backgroundColor: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border)',
-      }}
+      className="flex items-center justify-between select-none bg-secondary border-b border-default"
+      style={{ height: 'var(--titlebar-height)' }}
     >
-      {/* Left side - App name */}
-      <div className="flex items-center gap-1">
-        {/* App Title */}
-        <div
-          className="px-2 py-1 font-semibold text-md"
-          style={{ color: 'var(--fg-primary)' }}
-        >
-          Neutrino
-        </div>
+      {/* Left side - App logo */}
+      <div className="flex items-center" data-no-drag>
+        {/* App Logo */}
+        <img
+          src="/neutrino.png"
+          alt="Neutrino"
+          className="w-5 h-5 ml-2"
+        />
       </div>
 
       {/* Divider */}
-      <div style={{ width: '1px', height: '28px', backgroundColor: 'var(--border)', margin: '0 8px' }} />
+      <Divider height="28px" margin="0 8px" />
 
       {/* Session Selector - Between left and center */}
       <div className="flex items-center" data-no-drag>
@@ -140,7 +136,7 @@ const TitleBar: React.FC = () => {
       <ThemeToggle isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
 
       {/* Divider */}
-      <div style={{ width: '1px', height: '28px', backgroundColor: 'var(--border)', margin: '0 8px' }} />
+      <Divider height="28px" margin="0 8px" />
 
       {/* Right side - Window controls */}
       <WindowControls

@@ -7,10 +7,10 @@ export const WELCOME_TAB: Tab = {
   content: (
     <div className="flex items-center justify-center h-full">
       <div className="text-center max-w-md">
-        <h1 className="text-3xl font-bold mb-4" style={{ color: 'var(--accent)' }}>
+        <h1 className="text-3xl font-bold mb-4 text-accent">
           Welcome to Neutrino
         </h1>
-        <p className="mb-6" style={{ color: 'var(--fg-secondary)' }}>
+        <p className="mb-6 text-secondary">
           Context-Aware Research Intelligence Platform for Academic Workflows
         </p>
         <button className="btn">Get Started</button>
@@ -25,7 +25,7 @@ export const createNewChatTab = (): Tab => ({
   content: (
     <div className="p-6">
       <h2 className="text-xl font-semibold mb-4">New Chat Session</h2>
-      <p style={{ color: 'var(--fg-secondary)' }}>Start typing to begin...</p>
+      <p className="text-secondary">Start typing to begin...</p>
     </div>
   ),
 });

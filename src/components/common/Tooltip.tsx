@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 type TooltipPlacement =
   | 'top'
@@ -36,7 +37,7 @@ const Tooltip: React.FC<TooltipProps> = ({
 
     const rect = triggerRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
-    const gap = 8; // Gap between trigger and tooltip
+    const gap = 4;
 
     let top = 0;
     let left = 0;
@@ -128,16 +129,20 @@ const Tooltip: React.FC<TooltipProps> = ({
 
   return (
     <>
-      <div
+      <span
         ref={triggerRef}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
-        style={{ display: 'inline-flex', height: fullHeight ? '100%' : 'auto' }}
+        style={{
+          display: 'inline-flex',
+          height: fullHeight ? '100%' : 'auto',
+          verticalAlign: 'middle',
+        }}
       >
         {children}
-      </div>
+      </span>
 
-      {isVisible && (
+      {isVisible && createPortal(
         <div
           ref={tooltipRef}
           className="tooltip"
@@ -153,7 +158,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             fontWeight: 500,
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
-            zIndex: 9999,
+            zIndex: 99999, // Portal renders outside sidebar stacking context
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
             border: '1px solid var(--border)',
             animation: 'tooltipFadeIn 0.15s ease-out',
@@ -161,7 +166,8 @@ const Tooltip: React.FC<TooltipProps> = ({
           }}
         >
           {content}
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`

@@ -35,13 +35,9 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
               onClick={() => onTabClick(tab.id)}
               onMouseEnter={() => onTabHover(tab.id)}
               className={`p-1.5 rounded transition-colors ${
-                isActive
-                  ? 'bg-[var(--bg-active)] text-[var(--accent)]'
-                  : 'hover:bg-[var(--bg-secondary)]'
+                isActive ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-secondary)]'
               }`}
-              style={{
-                color: isActive ? 'var(--accent)' : 'var(--fg-secondary)',
-              }}
+              style={{ color: isActive ? 'var(--accent)' : 'var(--fg-secondary)' }}
             >
               <Icon size={18} />
             </button>
@@ -54,7 +50,7 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
       <Tooltip content="Settings" placement="right">
         <button
           onClick={onSettingsClick}
-          className="p-1.5 rounded hover:bg-[var(--bg-secondary)] transition-colors"
+          className="p-1.5 rounded hover:bg-[var(--bg-secondary)] transition-colors text-secondary"
         >
           <Settings size={18} />
         </button>
