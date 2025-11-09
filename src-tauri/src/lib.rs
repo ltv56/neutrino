@@ -7,6 +7,7 @@ use std::env;
 mod database;
 mod debug;
 mod commands;
+mod documents;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -18,6 +19,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
 
@@ -29,6 +31,17 @@ pub fn run() {
 
             // ========== Document Management ==========
             commands::create_document,
+            commands::check_duplicate_document,
+            commands::delete_all_documents,
+            commands::delete_document,
+
+            // ========== PDF Management ==========
+            commands::pdf_get_app_directories,
+            commands::pdf_save_file,
+            commands::pdf_import_from_path,
+            commands::pdf_read_file,
+            commands::pdf_delete_file,
+            commands::pdf_extract_metadata,
 
             // ========== Transactions ==========
             commands::create_session_with_documents,

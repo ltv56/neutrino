@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import DatabaseTest from './DatabaseTest';
+import PDFImportTest from './PDFImportTest';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'api' | 'files' | null;
+type DebugOption = 'database' | 'pdf' | 'api' | 'files' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ const DebugOverlay = () => {
 
   const debugOptions = [
     { id: 'database' as const, label: '🗄️ Database', description: 'Test database operations' },
+    { id: 'pdf' as const, label: '📄 PDF Import', description: 'Test PDF import & metadata' },
     { id: 'api' as const, label: '🌐 API', description: 'Test API calls (coming soon)' },
     { id: 'files' as const, label: '📁 Files', description: 'Test file operations (coming soon)' }
   ];
@@ -18,6 +20,8 @@ const DebugOverlay = () => {
     switch (activeOption) {
       case 'database':
         return <DatabaseTest />;
+      case 'pdf':
+        return <PDFImportTest />;
       case 'api':
         return (
           <div className="p-4 text-center text-gray-500">
@@ -82,7 +86,7 @@ const DebugOverlay = () => {
 
       {/* Active option UI */}
       {activeOption && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-200">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-white">

@@ -3,14 +3,52 @@ use crate::database::{Database, models};
 #[tauri::command]
 pub async fn create_document(
     database: tauri::State<'_, Database>,
-    session_id: String,
+    session_id: Option<String>,
     title: String,
     file_path: String,
-    content_type: String
+    content_type: String,
+    metadata: Option<String>,
 ) -> Result<models::Document, String> {
-    let session_uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let session_uuid = match session_id {
+        Some(id) => Some(uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?),
+        None => None,
+    };
+
     database.documents()
-        .create(session_uuid, title, file_path, content_type)
+        .create_with_metadata(session_uuid, title, file_path, content_type, metadata)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn check_duplicate_document(
+    database: tauri::State<'_, Database>,
+    title: String,
+) -> Result<Vec<models::Document>, String> {
+    database.documents()
+        .find_by_title(&title)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_all_documents(
+    database: tauri::State<'_, Database>,
+) -> Result<u64, String> {
+    database.documents()
+        .delete_all()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_document(
+    database: tauri::State<'_, Database>,
+    id: String,
+) -> Result<bool, String> {
+    let uuid = uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    database.documents()
+        .delete(uuid)
         .await
         .map_err(|e| e.to_string())
 }

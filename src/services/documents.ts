@@ -1,21 +1,34 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { Document } from '@/types';
+import type { Document, PDFMetadata } from '@/types';
+import { pdfService, type SavedFileInfo } from './pdf';
 
+/**
+ * Document Service - Database Layer
+ * Handles all document database operations.
+ */
 export const documentService = {
+  /**
+   * Create document record in database
+   */
   async create(
-    sessionId: string,
+    sessionId: string | null,
     title: string,
     filePath: string,
-    contentType: string
+    contentType: string,
+    metadata?: string
   ): Promise<Document> {
     return await invoke('create_document', {
       sessionId,
       title,
       filePath,
       contentType,
+      metadata,
     });
   },
 
+  /**
+   * Transaction: Create session with documents
+   */
   async createWithSession(
     title: string,
     goal: string | undefined,
@@ -26,5 +39,62 @@ export const documentService = {
       goal,
       documents,
     });
+  },
+
+  /**
+   * Check for duplicate documents by title
+   */
+  async checkDuplicate(title: string): Promise<Document[]> {
+    return await invoke('check_duplicate_document', { title });
+  },
+
+  /**
+   * Delete all documents from database
+   */
+  async deleteAll(): Promise<number> {
+    return await invoke('delete_all_documents');
+  },
+
+  /**
+   * Delete specific document by ID
+   */
+  async delete(id: string): Promise<boolean> {
+    return await invoke('delete_document', { id });
+  },
+
+  /**
+   * Complete PDF import workflow: file + metadata + database
+   * This orchestrates both file layer (pdfService) and database layer
+   */
+  async importPDF(
+    sourcePath: string,
+    sessionId: string | null = null
+  ): Promise<{ document: Document; metadata: PDFMetadata; savedInfo: SavedFileInfo }> {
+    // 1. Import file to storage (file layer)
+    const savedInfo = await pdfService.importFromPath(sourcePath);
+
+    // 2. Extract metadata (file layer)
+    const metadata = await pdfService.extractMetadata(savedInfo.path);
+
+    // 3. Get filename
+    const fileName = pdfService.getFileName(sourcePath);
+    const title = metadata.title || fileName;
+
+    // 4. Check for duplicates (database layer)
+    const duplicates = await this.checkDuplicate(title);
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate document: "${title}" already exists`);
+    }
+
+    // 5. Create document record (database layer)
+    const document = await this.create(
+      sessionId,
+      title,
+      savedInfo.path,
+      'pdf',
+      JSON.stringify(metadata)
+    );
+
+    return { document, metadata, savedInfo };
   },
 };
