@@ -145,7 +145,7 @@ impl TransactionService {
 
         Ok(Document {
             id: document_id,
-            session_id: *session_id,
+            session_id: Some(*session_id),
             title: doc_req.title,
             file_path: doc_req.file_path,
             content_type: doc_req.content_type,
