@@ -232,23 +232,36 @@ impl DocumentRepository {
         file_path: String,
         content_type: String,
     ) -> DbResult<Document> {
+        self.create_with_metadata(Some(session_id), title, file_path, content_type, None)
+            .await
+    }
+
+    pub async fn create_with_metadata(
+        &self,
+        session_id: Option<Uuid>,
+        title: String,
+        file_path: String,
+        content_type: String,
+        metadata: Option<String>,
+    ) -> DbResult<Document> {
         let document_id = Uuid::new_v4();
         let now = Utc::now();
         let now_str = now.to_rfc3339();
 
         let document_id_str = document_id.to_string();
-        let session_id_str = session_id.to_string();
+        let session_id_str = session_id.map(|id| id.to_string());
 
         sqlx::query!(
             r#"
-            INSERT INTO documents (id, session_id, title, file_path, content_type, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            INSERT INTO documents (id, session_id, title, file_path, content_type, metadata, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             "#,
             document_id_str,
             session_id_str,
             title,
             file_path,
             content_type,
+            metadata,
             now_str,
             now_str
         )
@@ -261,7 +274,7 @@ impl DocumentRepository {
             title,
             file_path,
             content_type,
-            metadata: None,
+            metadata,
             reading_progress: 0,
             created_at: now,
             updated_at: now,
@@ -284,12 +297,6 @@ impl DocumentRepository {
             let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
                 value: "null".to_string(),
             })?;
-            let sess_id = row
-                .session_id
-                .as_ref()
-                .ok_or_else(|| DatabaseError::InvalidUuid {
-                    value: "null".to_string(),
-                })?;
             let created_at_str =
                 row.created_at
                     .as_ref()
@@ -307,9 +314,7 @@ impl DocumentRepository {
                 id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                     value: doc_id.clone(),
                 })?,
-                session_id: Uuid::parse_str(sess_id).map_err(|_| DatabaseError::InvalidUuid {
-                    value: sess_id.clone(),
-                })?,
+                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                 title: row.title.ok_or_else(|| DatabaseError::InternalError {
                     message: "Missing title".to_string(),
                 })?,
@@ -356,12 +361,6 @@ impl DocumentRepository {
         let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
             value: "null".to_string(),
         })?;
-        let sess_id = row
-            .session_id
-            .as_ref()
-            .ok_or_else(|| DatabaseError::InvalidUuid {
-                value: "null".to_string(),
-            })?;
         let created_at_str =
             row.created_at
                 .as_ref()
@@ -379,9 +378,7 @@ impl DocumentRepository {
             id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                 value: doc_id.clone(),
             })?,
-            session_id: Uuid::parse_str(sess_id).map_err(|_| DatabaseError::InvalidUuid {
-                value: sess_id.clone(),
-            })?,
+            session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
             title: row.title.ok_or_else(|| DatabaseError::InternalError {
                 message: "Missing title".to_string(),
             })?,
@@ -428,6 +425,87 @@ impl DocumentRepository {
         }
 
         Ok(())
+    }
+
+    // Check if document with same title exists (simple duplicate detection)
+    pub async fn find_by_title(&self, title: &str) -> DbResult<Vec<Document>> {
+        let rows = sqlx::query_as!(
+            DocumentRow,
+            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+             FROM documents WHERE title = ? ORDER BY created_at DESC",
+            title
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut documents = Vec::new();
+        for row in rows {
+            let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let created_at_str =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_str =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
+            let doc = Document {
+                id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: doc_id.clone(),
+                })?,
+                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                file_path: row.file_path.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing file_path".to_string(),
+                })?,
+                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content_type".to_string(),
+                })?,
+                metadata: row.metadata,
+                reading_progress: row.reading_progress.unwrap_or(0) as i32,
+                created_at: DateTime::parse_from_rfc3339(created_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: created_at_str.clone(),
+                    })?,
+                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: updated_at_str.clone(),
+                    })?,
+            };
+            documents.push(doc);
+        }
+
+        Ok(documents)
+    }
+
+    // Delete all documents (for testing/clearing data)
+    pub async fn delete_all(&self) -> DbResult<u64> {
+        let result = sqlx::query!("DELETE FROM documents")
+            .execute(&*self.pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    // Delete specific document by ID
+    pub async fn delete(&self, id: Uuid) -> DbResult<bool> {
+        let id_str = id.to_string();
+        let result = sqlx::query!("DELETE FROM documents WHERE id = ?", id_str)
+            .execute(&*self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
     }
 }
 

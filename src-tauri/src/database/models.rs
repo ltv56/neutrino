@@ -16,7 +16,7 @@ pub struct ResearchSession {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Document {
     pub id: Uuid,
-    pub session_id: Uuid,
+    pub session_id: Option<Uuid>, // Optional: document may not belong to a session (vault-first)
     pub title: String,
     pub file_path: String,
     pub content_type: String, // pdf, md, txt, etc.
