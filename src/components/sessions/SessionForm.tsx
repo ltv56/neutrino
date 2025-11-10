@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ResearchSession } from '@/types';
 
 interface SessionFormProps {
@@ -50,10 +51,13 @@ export const SessionForm: React.FC<SessionFormProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      className="fixed inset-0 flex items-center justify-center"
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        zIndex: 1000,
+      }}
       onClick={onClose}
     >
       <div
@@ -131,4 +135,6 @@ export const SessionForm: React.FC<SessionFormProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

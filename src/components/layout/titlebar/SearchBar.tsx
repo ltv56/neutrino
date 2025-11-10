@@ -10,7 +10,7 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({ prefix, placeholder, onClick }) => {
   return (
     <div
-      className="flex items-center gap-2 px-3 py-1 rounded w-full max-w-[400px] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+      className="flex items-center gap-2 px-3 h-[28px] rounded w-full max-w-[400px] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
       style={{
         backgroundColor: 'var(--bg-primary)',
         border: '1px solid var(--border)',
