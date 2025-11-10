@@ -27,6 +27,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
         <Routes>
           <Route path={ROUTES.HOME} element={activeTab?.content} />
           <Route path={ROUTES.SESSIONS} element={<SessionsPage />} />
+          <Route path="/documents/:id" element={<div className="text-secondary">PDF Viewer - Coming in Slice 2</div>} />
         </Routes>
       </div>
     </div>

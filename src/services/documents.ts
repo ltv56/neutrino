@@ -63,6 +63,27 @@ export const documentService = {
   },
 
   /**
+   * Get all documents
+   */
+  async getAll(): Promise<Document[]> {
+    return await invoke('get_all_documents');
+  },
+
+  /**
+   * Get document by ID
+   */
+  async getById(id: string): Promise<Document> {
+    return await invoke('get_document_by_id', { id });
+  },
+
+  /**
+   * Get documents by session ID
+   */
+  async getBySession(sessionId: string): Promise<Document[]> {
+    return await invoke('get_documents_by_session', { sessionId });
+  },
+
+  /**
    * Complete PDF import workflow: file + metadata + database
    * This orchestrates both file layer (pdfService) and database layer
    */
