@@ -52,3 +52,37 @@ pub async fn delete_document(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn get_all_documents(
+    database: tauri::State<'_, Database>,
+) -> Result<Vec<models::Document>, String> {
+    database.documents()
+        .find_all()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_document_by_id(
+    database: tauri::State<'_, Database>,
+    id: String,
+) -> Result<Option<models::Document>, String> {
+    let uuid = uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    database.documents()
+        .find_by_id(uuid)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_documents_by_session(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+) -> Result<Vec<models::Document>, String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    database.documents()
+        .find_by_session(uuid)
+        .await
+        .map_err(|e| e.to_string())
+}

@@ -34,6 +34,9 @@ pub fn run() {
             commands::check_duplicate_document,
             commands::delete_all_documents,
             commands::delete_document,
+            commands::get_all_documents,
+            commands::get_document_by_id,
+            commands::get_documents_by_session,
 
             // ========== PDF Management ==========
             commands::pdf_get_app_directories,

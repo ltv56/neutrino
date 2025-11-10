@@ -427,6 +427,67 @@ impl DocumentRepository {
         Ok(())
     }
 
+    // Get all documents
+    pub async fn find_all(&self) -> DbResult<Vec<Document>> {
+        let rows = sqlx::query_as!(
+            DocumentRow,
+            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+             FROM documents ORDER BY created_at DESC"
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut documents = Vec::new();
+        for row in rows {
+            let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let created_at_str =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_str =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
+            let doc = Document {
+                id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: doc_id.clone(),
+                })?,
+                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                file_path: row.file_path.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing file_path".to_string(),
+                })?,
+                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content_type".to_string(),
+                })?,
+                metadata: row.metadata,
+                reading_progress: row.reading_progress.unwrap_or(0) as i32,
+                created_at: DateTime::parse_from_rfc3339(created_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: created_at_str.clone(),
+                    })?,
+                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: updated_at_str.clone(),
+                    })?,
+            };
+            documents.push(doc);
+        }
+
+        Ok(documents)
+    }
+
     // Check if document with same title exists (simple duplicate detection)
     pub async fn find_by_title(&self, title: &str) -> DbResult<Vec<Document>> {
         let rows = sqlx::query_as!(
