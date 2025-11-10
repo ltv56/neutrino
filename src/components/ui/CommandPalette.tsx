@@ -71,7 +71,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, initia
       {/* Backdrop */}
       <div
         className="command-palette-backdrop fixed inset-0 z-50"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
         onClick={onClose}
       />
 

@@ -159,7 +159,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
             zIndex: 99999, // Portal renders outside sidebar stacking context
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
             border: '1px solid var(--border)',
             animation: 'tooltipFadeIn 0.15s ease-out',
             transformOrigin: getTransformOrigin(),

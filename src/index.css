@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Dark Mode Colors */
-  --bg-primary: #1e1e1e; /* main background */
-  --bg-secondary: #2d2d30; /* sidebar, panels */
-  --bg-tertiary: #252526; /* hover states */
-  --bg-active: #37373d; /* active items */
+  --bg-primary: #121212;
+  --bg-background: #181818;
+  --bg-secondary: #202020;
+  --bg-tertiary: #262626;
+  --bg-active: #323232;
 
-  --border: #3e3e42; /* dividers */
-  --border-light: #2b2b30; /* subtle borders */
+  --border: #2c2c2c;
+  --border-light: #252525;
 
-  --fg-primary: #d4d4d4; /* main text */
-  --fg-secondary: #858585; /* muted text */
-  --fg-tertiary: #6a6a6a; /* disabled text */
+  --fg-primary: #ededed;
+  --fg-secondary: #a3a3a3;
+  --fg-tertiary: #737373;
 
   --accent: #15803d;
   --accent-hover: #166534;
@@ -24,27 +24,32 @@
   --sidebar-width: 280px;
   --ribbon-width: 38px;
   --titlebar-height: 36px;
-  --tabbar-height: 32px;
-  --edge-zone: 8px;
+  --tabbar-height: 36px;
+  --edge-zone: 12px;
 }
 
 /* Light Mode Colors */
 :root[data-theme="light"] {
-  --bg-primary: #ffffff; /* main background */
-  --bg-secondary: #f3f4f6; /* sidebar, panels */
-  --bg-tertiary: #e5e7eb; /* hover states */
-  --bg-active: #d1d5db; /* active items */
+  --bg-primary: #ffffff; 
+  --bg-background: #fafafa; 
+  --bg-secondary: #f0f0f0; 
+  --bg-tertiary: #e6e6e6; 
+  --bg-active: #dadada; 
 
-  --border: #d1d5db; /* dividers */
-  --border-light: #e5e7eb; /* subtle borders */
+  --border: #d4d4d4; 
+  --border-light: #dbdbdb; 
 
-  --fg-primary: #1f2937; /* main text */
-  --fg-secondary: #6b7280; /* muted text */
-  --fg-tertiary: #9ca3af; /* disabled text */
+  --fg-primary: #171717;
+  --fg-secondary: #737373;
+  --fg-tertiary: #a3a3a3;
 }
-
 /* 🌐 Base styles */
 @layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
   html {
     font-family: "Inter", system-ui, sans-serif;
   }
@@ -88,23 +93,29 @@
     background-color: var(--accent-hover);
   }
 
-  /* Obsidian-style scrollbar */
+  /* Modern minimal scrollbar */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--bg-primary);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--bg-tertiary);
-    border-radius: 5px;
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.2s;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
+  /* Show scrollbar on hover */
+  *:hover::-webkit-scrollbar-thumb {
     background: var(--bg-active);
+  }
+
+  *:hover::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
   }
 
   /* Resizable divider */
@@ -203,24 +214,48 @@
 /* 🛠 Utilities */
 @layer utilities {
   /* Text colors */
-  .text-primary { color: var(--fg-primary); }
-  .text-secondary { color: var(--fg-secondary); }
-  .text-tertiary { color: var(--fg-tertiary); }
-  .text-muted { color: var(--fg-secondary); }
+  .text-primary {
+    color: var(--fg-primary);
+  }
+  .text-secondary {
+    color: var(--fg-secondary);
+  }
+  .text-tertiary {
+    color: var(--fg-tertiary);
+  }
+  .text-muted {
+    color: var(--fg-secondary);
+  }
 
   /* Background colors */
-  .bg-primary { background-color: var(--bg-primary); }
-  .bg-secondary { background-color: var(--bg-secondary); }
-  .bg-tertiary { background-color: var(--bg-tertiary); }
-  .bg-active { background-color: var(--bg-active); }
+  .bg-primary {
+    background-color: var(--bg-primary);
+  }
+  .bg-secondary {
+    background-color: var(--bg-secondary);
+  }
+  .bg-tertiary {
+    background-color: var(--bg-tertiary);
+  }
+  .bg-active {
+    background-color: var(--bg-active);
+  }
 
   /* Border colors */
-  .border-default { border-color: var(--border); }
-  .border-light { border-color: var(--border-light); }
+  .border-default {
+    border-color: var(--border);
+  }
+  .border-light {
+    border-color: var(--border-light);
+  }
 
   /* Accent colors */
-  .text-accent { color: var(--accent); }
-  .bg-accent { background-color: var(--accent); }
+  .text-accent {
+    color: var(--accent);
+  }
+  .bg-accent {
+    background-color: var(--accent);
+  }
 
   /* Common patterns */
   .divider-vertical {
