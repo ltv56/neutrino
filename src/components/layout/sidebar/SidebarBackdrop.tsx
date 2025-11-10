@@ -10,7 +10,7 @@ const SidebarBackdrop: React.FC<SidebarBackdropProps> = ({ onClick }) => {
       className="fixed inset-0 transition-smooth-fast"
       style={{
         top: 'calc(var(--titlebar-height) + var(--tabbar-height))',
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
         backdropFilter: 'blur(2px)',
         zIndex: 99,
         animation: 'fadeIn 0.25s ease-out',

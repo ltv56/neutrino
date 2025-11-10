@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, FolderOpen } from 'lucide-react';
 import { SIDEBAR_TABS, type SidebarTab } from '@/constants/sidebar';
 import Tooltip from '@/components/common/Tooltip';
 
@@ -8,6 +8,8 @@ interface SidebarRibbonProps {
   onTabClick: (tab: SidebarTab) => void;
   onTabHover: (tab: SidebarTab) => void;
   onSettingsClick: () => void;
+  isVaultOpen?: boolean;
+  onVaultClick?: () => void;
 }
 
 const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
@@ -15,13 +17,14 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
   onTabClick,
   onTabHover,
   onSettingsClick,
+  isVaultOpen,
+  onVaultClick,
 }) => {
   return (
     <div
-      className="flex flex-col items-center py-3 gap-3"
+      className="flex flex-col items-center py-3 gap-3 "
       style={{
         width: 'var(--ribbon-width)',
-        backgroundColor: 'var(--bg-tertiary)',
         borderRight: '1px solid var(--border)',
       }}
     >
@@ -35,7 +38,7 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
               onClick={() => onTabClick(tab.id)}
               onMouseEnter={() => onTabHover(tab.id)}
               className={`p-1.5 rounded transition-colors ${
-                isActive ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-secondary)]'
+                isActive ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-tertiary)]'
               }`}
               style={{ color: isActive ? 'var(--accent)' : 'var(--fg-secondary)' }}
             >
@@ -47,10 +50,24 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
 
       <div className="flex-1" />
 
+      {/* Vault Toggle */}
+      {onVaultClick && (
+        <Tooltip content={isVaultOpen ? 'Close Vault' : 'Open Vault'} placement="right">
+          <button
+            onClick={onVaultClick}
+            className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
+            style={{ color: isVaultOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
+          >
+            <FolderOpen size={18} />
+          </button>
+        </Tooltip>
+      )}
+
+      {/* Settings */}
       <Tooltip content="Settings" placement="right">
         <button
           onClick={onSettingsClick}
-          className="p-1.5 rounded hover:bg-[var(--bg-secondary)] transition-colors text-secondary"
+          className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] transition-colors text-secondary"
         >
           <Settings size={18} />
         </button>

@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import SessionSelector from '@/components/sessions/SessionSelector';
-import { SessionForm } from '@/components/sessions/SessionForm';
-import { useSessionsContext, useTitleBarDrag } from '@/hooks';
-import type { ResearchSession } from '@/types';
+import { PanelLeft, PanelLeftClose } from 'lucide-react';
+import { useTitleBarDrag } from '@/hooks';
 import { SEARCH_CONTEXTS, DEFAULT_SEARCH_CONTEXT } from '@/constants/routes';
 import WindowControls from './titlebar/WindowControls';
 import SearchBar from './titlebar/SearchBar';
 import NavigationButtons from './titlebar/NavigationButtons';
 import ThemeToggle from './titlebar/ThemeToggle';
 import Divider from '@/components/common/Divider';
+import Tooltip from '@/components/common/Tooltip';
 
-const TitleBar: React.FC = () => {
+interface TitleBarProps {
+  sidebarMode?: 'floating' | 'pinned';
+  onToggleSidebarPin?: () => void;
+}
+
+const TitleBar: React.FC<TitleBarProps> = ({
+  sidebarMode,
+  onToggleSidebarPin,
+}) => {
   const location = useLocation();
   const [isTauri, setIsTauri] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMaximized, setIsMaximized] = useState(false);
 
-  // Session management - use shared context
-  const { sessions, createSession, updateSession, currentSession, selectSession } = useSessionsContext();
-  const [showSessionForm, setShowSessionForm] = useState(false);
-  const [editingSession, setEditingSession] = useState<ResearchSession | null>(null);
+
 
   // Get search context based on current route
   const searchContext = SEARCH_CONTEXTS[location.pathname] || DEFAULT_SEARCH_CONTEXT;
@@ -93,33 +97,42 @@ const TitleBar: React.FC = () => {
   return (
     <div
       id="titlebar"
-      className="flex items-center justify-between select-none bg-secondary border-b border-default"
-      style={{ height: 'var(--titlebar-height)' }}
+      className="flex items-center justify-between select-none bg-tertiary border-b border-default"
+      style={{
+        height: 'var(--titlebar-height)'
+      }}
     >
-      {/* Left side - App logo */}
-      <div className="flex items-center" data-no-drag>
+      {/* Left side - App logo + Sidebar toggle */}
+      <div className="flex items-center gap-2" data-no-drag>
         {/* App Logo */}
         <img
           src="/neutrino.png"
           alt="Neutrino"
-          className="w-5 h-5 ml-2"
+          className="w-6 h-6 ml-2"
         />
-      </div>
 
-      {/* Divider */}
-      <Divider height="28px" margin="0 8px" />
-
-      {/* Session Selector - Between left and center */}
-      <div className="flex items-center" data-no-drag>
-        <SessionSelector
-          sessions={sessions}
-          currentSession={currentSession}
-          onSelectSession={selectSession}
-          onCreateNew={() => {
-            setEditingSession(null);
-            setShowSessionForm(true);
-          }}
-        />
+        {/* Sidebar Pin Toggle */}
+        {onToggleSidebarPin && (
+          <>
+            <Divider height="20px" margin="0" />
+            <Tooltip
+              content={sidebarMode === 'pinned' ? 'Unpin Sidebar' : 'Pin Sidebar'}
+              placement="bottom"
+            >
+              <button
+                onClick={onToggleSidebarPin}
+                className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
+                style={{ color: 'var(--fg-secondary)' }}
+              >
+                {sidebarMode === 'pinned' ? (
+                  <PanelLeftClose size={18} />
+                ) : (
+                  <PanelLeft size={18} />
+                )}
+              </button>
+            </Tooltip>
+          </>
+        )}
       </div>
 
       {/* Center - Navigation + Search Bar */}
@@ -146,24 +159,7 @@ const TitleBar: React.FC = () => {
         onClose={handleClose}
       />
 
-      {/* Modals */}
-      <SessionForm
-        isOpen={showSessionForm}
-        onClose={() => {
-          setShowSessionForm(false);
-          setEditingSession(null);
-        }}
-        onCreate={async (title, goal) => {
-          const newSession = await createSession(title, goal);
-          // Auto-switch to newly created session - pass object directly
-          if (newSession) {
-            selectSession(newSession);
-          }
-          return newSession;
-        }}
-        onUpdate={updateSession}
-        editSession={editingSession}
-      />
+
     </div>
   );
 };

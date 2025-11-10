@@ -17,8 +17,8 @@ export const EDGE_CONFIG = {
     EDGE: LAYOUT.EDGE_ZONE,
   },
   TIMINGS: {
-    SHOW_DELAY: 800,
-    HIDE_DELAY: 400,
+    SHOW_DELAY: 500,
+    HIDE_DELAY: 600,
   },
   DIMENSIONS: {
     WIDTH: LAYOUT.SIDEBAR_WIDTH,
@@ -28,7 +28,7 @@ export const EDGE_CONFIG = {
 interface UseEdgeDetectionProps {
   sidebarMode: 'floating' | 'pinned';
   sidebarVisible: boolean;
-  activeRibbonTab: SidebarTab | null;
+  activeRibbonTab: SidebarTab;
   isFullPageRoute: boolean;
   setSidebarVisible: (visible: boolean) => void;
 }
