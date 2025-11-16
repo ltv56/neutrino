@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import CommandPalette from '@/components/ui/CommandPalette';
 import DebugOverlay from '@/components/debug/DebugOverlay';
-import { WELCOME_TAB, createNewChatTab } from '@/constants/tabs';
+import { WELCOME_TAB, createNewChatTab, createDocumentTab } from '@/constants/tabs';
 import { ROUTES, SEARCH_CONTEXTS } from '@/constants/routes';
 import type { SidebarTab } from '@/constants/sidebar';
 import { useEdgeDetection, useSidebarMode } from '@/hooks';
@@ -87,6 +87,23 @@ const Layout: React.FC = () => {
     }
   };
 
+  const openDocumentTab = (documentId: string, title: string) => {
+    const tabId = `doc-${documentId}`;
+
+    // Check if tab already exists
+    const existingTab = tabs.find(tab => tab.id === tabId);
+    if (existingTab) {
+      // Just activate the existing tab
+      setActiveTabId(tabId);
+      return;
+    }
+
+    // Create new tab
+    const newTab = createDocumentTab(documentId, title);
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
+  };
+
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   // Get search prefix for command palette
@@ -134,6 +151,7 @@ const Layout: React.FC = () => {
             onIndicatorClick={handleIndicatorClick}
             isVaultOpen={isVaultOpen}
             onToggleVault={() => setIsVaultOpen(!isVaultOpen)}
+            onOpenDocument={openDocumentTab}
           />
         )}
 

@@ -23,6 +23,7 @@ interface SidebarProps {
   onIndicatorClick?: () => void;
   isVaultOpen?: boolean;
   onToggleVault?: () => void;
+  onOpenDocument?: (documentId: string, title: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -37,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onIndicatorClick,
   isVaultOpen,
   onToggleVault,
+  onOpenDocument,
 }) => {
   const isFloating = mode === 'floating';
   const showBackdrop = isFloating && isVisible;
@@ -125,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {/* Vault Panel */}
             {isVaultOpen && (
               <div style={{ width: '280px', flexShrink: 0 }}>
-                <VaultPanel />
+                <VaultPanel onOpenDocument={onOpenDocument} />
               </div>
             )}
 

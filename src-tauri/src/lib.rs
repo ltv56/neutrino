@@ -1,17 +1,26 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(dead_code)]
 use tauri::Manager;
-use std::env;
 
 mod database;
 mod debug;
 mod commands;
 mod documents;
+mod http_server;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Neutrino!", name)
+}
+
+// Optional: Get available system memory for cache auto-adjustment
+// Currently not used, but kept for future debugging/optimization
+#[tauri::command]
+fn get_available_memory() -> u64 {
+    use sysinfo::System;
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    sys.available_memory() // Returns bytes
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            get_available_memory, // For future cache optimization
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -80,6 +90,9 @@ pub fn run() {
                     app_handle.manage(db);
                 });
             });
+
+            // Start HTTP server for PDF streaming
+            http_server::start_http_server(app.handle().clone());
 
             Ok(())
         })

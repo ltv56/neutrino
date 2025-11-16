@@ -7,7 +7,9 @@ import './TabBar.css';
 export interface Tab {
   id: string;
   title: string;
-  content: React.ReactNode;
+  content?: React.ReactNode;
+  type?: 'document' | 'chat' | 'welcome';
+  documentId?: string;
 }
 
 interface TabBarProps {

@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FolderOpen, FileText, Upload } from 'lucide-react';
 import { documentService, pdfService } from '@/services';
 import type { Document } from '@/types';
 
 interface VaultPanelProps {
-  onSelectDocument?: (docId: string) => void;
+  onOpenDocument?: (documentId: string, title: string) => void;
 }
 
-const VaultPanel: React.FC<VaultPanelProps> = ({ onSelectDocument }) => {
-  const navigate = useNavigate();
+const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,9 +27,8 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onSelectDocument }) => {
     }
   };
 
-  const handleDocumentClick = (docId: string) => {
-    navigate(`/documents/${docId}`);
-    onSelectDocument?.(docId);
+  const handleDocumentClick = (doc: Document) => {
+    onOpenDocument?.(doc.id, doc.title);
   };
 
   const handleImport = async () => {
@@ -98,7 +95,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onSelectDocument }) => {
             {documents.map((doc) => (
               <button
                 key={doc.id}
-                onClick={() => handleDocumentClick(doc.id)}
+                onClick={() => handleDocumentClick(doc)}
                 className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-active)] transition-colors text-left group"
                 title={doc.title}
               >
