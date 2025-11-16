@@ -112,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             className="flex bg-secondary"
             style={{
               height: '100%',
-              width: isVaultOpen ? 'calc(280px + var(--sidebar-width))' : 'var(--sidebar-width)',
+              width: isVaultOpen ? 'calc(240px + var(--sidebar-width))' : 'var(--sidebar-width)',
               border: isFloating ? '1px solid var(--border)' : 'none',
               borderRadius: isFloating ? '8px' : '0',
               boxShadow: isFloating ? '0 8px 32px rgba(0, 0, 0, 0.5)' : 'none',
@@ -126,7 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           >
             {/* Vault Panel */}
             {isVaultOpen && (
-              <div style={{ width: '280px', flexShrink: 0 }}>
+              <div style={{ width: '240px', flexShrink: 0 }}>
                 <VaultPanel onOpenDocument={onOpenDocument} />
               </div>
             )}

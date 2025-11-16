@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Plus, FolderOpen } from 'lucide-react';
 import type { ResearchSession } from '@/types';
@@ -22,11 +23,27 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+
+  // Calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const clickedOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target as Node);
+      const clickedOutsideButton = buttonRef.current && !buttonRef.current.contains(event.target as Node);
+
+      if (clickedOutsideDropdown && clickedOutsideButton) {
         setIsOpen(false);
       }
     };
@@ -48,10 +65,11 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
   }, [sessions]);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative">
       {/* Session Selector Button */}
       <Tooltip content={currentSession?.title || 'No Session'} placement="bottom">
         <button
+          ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[var(--bg-active)] transition-colors"
           style={{
@@ -77,16 +95,20 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
         </button>
       </Tooltip>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
+      {/* Dropdown Menu - Rendered via Portal */}
+      {isOpen && createPortal(
         <div
-          className="absolute top-full left-0 mt-1 rounded shadow-lg z-50"
+          ref={dropdownRef}
+          className="fixed rounded shadow-lg"
           style={{
             backgroundColor: 'var(--bg-secondary)',
             border: '1px solid var(--border)',
             minWidth: '280px',
             maxHeight: '400px',
             overflow: 'auto',
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            zIndex: 9999,
           }}
         >
           {/* Header */}
@@ -165,7 +187,8 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
               </span>
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { documentService } from '@/services';
 import type { Document } from '@/types';
 import { usePDFCache } from '@/contexts';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 // Configure PDF.js worker - use local worker from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -32,16 +33,20 @@ interface PDFViewerProps {
 
 const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+  const zoomDropdownRef = useRef<HTMLDivElement>(null);
 
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.2);
+  const [zoomMode, setZoomMode] = useState<'fit-page' | 'fit-width' | 'manual'>('fit-page');
+  const [manualZoom, setManualZoom] = useState(1.0);
   const [needsRender, setNeedsRender] = useState(false);
+  const [isZoomDropdownOpen, setIsZoomDropdownOpen] = useState(false);
 
   // PDF Cache
   const { getDocument: getCachedDocument, setDocument: cacheDocument, getPage: getCachedPage, setPage: cachePage } = usePDFCache();
@@ -53,9 +58,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       renderTaskRef.current = null;
     }
 
-    const t = performance.now();
-
-    // ✅ Check page cache first
     let page = getCachedPage(documentId, pageNumber);
 
     if (!page) {
@@ -66,12 +68,35 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     }
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
     const context = canvas.getContext('2d');
     if (!context) return;
+    // Calculate scale to fit page in container (Figma-style: full height, nav bar overlays)
+    const containerHeight = container.clientHeight;
+    const containerWidth = container.clientWidth;
 
-    const viewport = page.getViewport({ scale });
+    // Get page dimensions at scale 1.0
+    const baseViewport = page.getViewport({ scale: 1.0 });
+
+    // Calculate scale based on zoom mode
+    const verticalPadding = 32; // Top + bottom padding (p-4 = 16px each)
+    const availableHeight = containerHeight - verticalPadding;
+    const scaleToFitHeight = availableHeight / baseViewport.height;
+    const scaleToFitWidth = (containerWidth - 32) / baseViewport.width; // Horizontal padding
+
+    let finalScale: number;
+    if (zoomMode === 'manual') {
+      finalScale = manualZoom;
+    } else if (zoomMode === 'fit-width') {
+      finalScale = scaleToFitWidth;
+    } else {
+      // fit-page: fit both dimensions
+      finalScale = Math.min(scaleToFitHeight, scaleToFitWidth);
+    }
+
+    const viewport = page.getViewport({ scale: finalScale });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
@@ -85,8 +110,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
 
     try {
       await renderTaskRef.current.promise;
-      const totalTime = performance.now() - t;
-      console.log(`[PDF] Page ${pageNumber}: ${totalTime.toFixed(0)}ms`);
       renderTaskRef.current = null;
     } catch (err: unknown) {
       // Ignore cancellation errors
@@ -94,7 +117,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
         console.error('Render error:', err);
       }
     }
-  }, [scale, documentId, getCachedPage, cachePage]);
+  }, [zoomMode, manualZoom, documentId, getCachedPage, cachePage]);
 
   const loadDocument = useCallback(async () => {
     if (!documentId) return;
@@ -188,6 +211,105 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     }
   }, [needsRender, currentPage, renderPage]);
 
+  // Page navigation handlers
+  const goToPage = useCallback((pageNum: number) => {
+    if (pageNum >= 1 && pageNum <= totalPages && pdfDocRef.current) {
+      setCurrentPage(pageNum);
+      setNeedsRender(true);
+    }
+  }, [totalPages]);
+
+  const goToPreviousPage = useCallback(() => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  }, [currentPage, goToPage]);
+
+  const goToNextPage = useCallback(() => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  }, [currentPage, totalPages, goToPage]);
+
+  // Zoom handlers
+  const ZOOM_STEP = 0.25;
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 3.0;
+
+  const zoomIn = useCallback(() => {
+    setZoomMode('manual');
+    setManualZoom(prev => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
+    setNeedsRender(true);
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomMode('manual');
+    setManualZoom(prev => Math.max(prev - ZOOM_STEP, MIN_ZOOM));
+    setNeedsRender(true);
+  }, []);
+
+  const fitToPage = useCallback(() => {
+    setZoomMode('fit-page');
+    setNeedsRender(true);
+  }, []);
+
+  const fitToWidth = useCallback(() => {
+    setZoomMode('fit-width');
+    setNeedsRender(true);
+  }, []);
+
+  const setZoomLevel = useCallback((level: number) => {
+    setZoomMode('manual');
+    setManualZoom(level);
+    setNeedsRender(true);
+  }, []);
+
+  // Close zoom dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (zoomDropdownRef.current && !zoomDropdownRef.current.contains(event.target as Node)) {
+        setIsZoomDropdownOpen(false);
+      }
+    };
+
+    if (isZoomDropdownOpen) {
+      window.document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      window.document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isZoomDropdownOpen]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Navigation shortcuts
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        goToPreviousPage();
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
+        goToNextPage();
+      }
+
+      // Zoom shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        zoomIn();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        zoomOut();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        fitToPage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goToPreviousPage, goToNextPage, zoomIn, zoomOut, fitToPage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -204,13 +326,153 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     );
   }
 
+  // Get current zoom display text
+  const getZoomDisplayText = () => {
+    if (zoomMode === 'fit-page') return 'Fit';
+    if (zoomMode === 'fit-width') return 'Width';
+    return `${Math.round(manualZoom * 100)}%`;
+  };
+
   return (
-    <div className="flex items-center justify-center h-full overflow-auto bg-tertiary p-4">
-      <canvas
-        ref={canvasRef}
-        className="shadow-lg"
-        style={{ backgroundColor: 'white' }}
-      />
+    <div ref={containerRef} className="relative h-full overflow-auto p-4">
+      {/* Canvas wrapper - centers canvas vertically and horizontally */}
+      <div className="min-h-full flex flex-col items-center justify-center">
+        <canvas
+          ref={canvasRef}
+          className="shadow-lg mb-14"
+          style={{ backgroundColor: 'white', display: 'block' }}
+        />
+
+        {/* Floating Navigation Bar - sticky at bottom */}
+        <div className="sticky bottom-3 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 mb-3">
+        {/* Zoom Controls */}
+        <button
+          onClick={zoomOut}
+          disabled={zoomMode === 'manual' && manualZoom <= MIN_ZOOM}
+          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          title="Zoom out (Ctrl -)"
+        >
+          <ZoomOut size={16} />
+        </button>
+
+        {/* Zoom Dropdown */}
+        <div className="relative" ref={zoomDropdownRef}>
+          <button
+            onClick={() => setIsZoomDropdownOpen(!isZoomDropdownOpen)}
+            className="w-20 h-6 text-center text-[11px] border rounded bg-background text-foreground border-border hover:bg-tertiary transition-colors cursor-pointer flex items-center justify-center"
+          >
+            {getZoomDisplayText()}
+          </button>
+
+          {/* Dropdown Menu (opens upward) */}
+          {isZoomDropdownOpen && (
+            <div
+              className="absolute bottom-full left-0 mb-2 rounded shadow-lg z-50"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                minWidth: '120px',
+              }}
+            >
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setZoomMode('fit-page');
+                    setNeedsRender(true);
+                    setIsZoomDropdownOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
+                  style={{
+                    backgroundColor: zoomMode === 'fit-page' ? 'var(--bg-active)' : 'transparent',
+                  }}
+                >
+                  <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Page</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setZoomMode('fit-width');
+                    setNeedsRender(true);
+                    setIsZoomDropdownOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
+                  style={{
+                    backgroundColor: zoomMode === 'fit-width' ? 'var(--bg-active)' : 'transparent',
+                  }}
+                >
+                  <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Width</span>
+                </button>
+
+                <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '4px 0' }} />
+
+                {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setZoomLevel(level);
+                      setIsZoomDropdownOpen(false);
+                    }}
+                    className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
+                    style={{
+                      backgroundColor: zoomMode === 'manual' && manualZoom === level ? 'var(--bg-active)' : 'transparent',
+                    }}
+                  >
+                    <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>{Math.round(level * 100)}%</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={zoomIn}
+          disabled={zoomMode === 'manual' && manualZoom >= MAX_ZOOM}
+          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          title="Zoom in (Ctrl +)"
+        >
+          <ZoomIn size={16} />
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-border" />
+
+        {/* Page Navigation */}
+        <button
+          onClick={goToPreviousPage}
+          disabled={currentPage <= 1}
+          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          title="Previous page (← or PageUp)"
+        >
+          <ChevronLeft size={18} />
+        </button>
+
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={currentPage}
+            onChange={(e) => {
+              const page = parseInt(e.target.value);
+              if (!isNaN(page)) {
+                goToPage(page);
+              }
+            }}
+            className="w-10 h-6 mb-0.5 text-center text-[11px] border rounded bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <span className="text-[11px] text-muted-foreground">/ {totalPages}</span>
+        </div>
+
+        <button
+          onClick={goToNextPage}
+          disabled={currentPage >= totalPages}
+          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          title="Next page (→ or PageDown)"
+        >
+          <ChevronRight size={18} />
+        </button>
+        </div>
+      </div>
     </div>
   );
 };

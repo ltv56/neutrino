@@ -24,20 +24,20 @@
   --sidebar-width: 280px;
   --ribbon-width: 38px;
   --titlebar-height: 36px;
-  --tabbar-height: 36px;
+  --tabbar-height: 32px;
   --edge-zone: 12px;
 }
 
 /* Light Mode Colors */
 :root[data-theme="light"] {
-  --bg-primary: #ffffff; 
-  --bg-background: #fafafa; 
-  --bg-secondary: #f0f0f0; 
-  --bg-tertiary: #e6e6e6; 
-  --bg-active: #dadada; 
+  --bg-primary: #ffffff;
+  --bg-background: #fafafa;
+  --bg-secondary: #f0f0f0;
+  --bg-tertiary: #e6e6e6;
+  --bg-active: #dadada;
 
-  --border: #d4d4d4; 
-  --border-light: #dbdbdb; 
+  --border: #d4d4d4;
+  --border-light: #dbdbdb;
 
   --fg-primary: #171717;
   --fg-secondary: #737373;
@@ -78,6 +78,17 @@
 
   input:focus {
     outline: 1px solid var(--accent);
+  }
+  /* Hide number input spinner arrows */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 

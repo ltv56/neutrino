@@ -65,11 +65,7 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const getDocument = useCallback((documentId: string): PDFDocumentProxy | undefined => {
     if (!cache) return undefined;
-    const pdf = cache.get(documentId);
-    if (pdf) {
-      console.log(`[PDF Cache] ✅ Document HIT`);
-    }
-    return pdf;
+    return cache.get(documentId);
   }, [cache]);
 
   const setDocument = useCallback((documentId: string, pdf: PDFDocumentProxy) => {
@@ -77,42 +73,47 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Document metadata only (NOT all pages) - lightweight!
     const metadataSizeMB = 2; // ~2MB for document structure/metadata
-    const newTotal = totalEstimatedMB + metadataSizeMB;
-    setTotalEstimatedMB(newTotal);
+    setTotalEstimatedMB(prev => prev + metadataSizeMB);
 
-    console.log(`[PDF Cache] ➕ Cached document (${cache.size + 1}/${CACHE_CONFIG.maxFiles}) - ${pdf.numPages} pages metadata`);
     cache.set(documentId, pdf);
-  }, [cache, totalEstimatedMB]);
+  }, [cache]);
 
   const getPage = useCallback((documentId: string, pageNum: number): PDFPageProxy | undefined => {
     if (!pageCache) return undefined;
     const key = `${documentId}-p${pageNum}`;
-    const page = pageCache.get(key);
-    if (page) {
-      console.log(`[Page Cache] ✅ HIT - page ${pageNum} (${pageCache.size}/20 pages cached)`);
-    } else {
-      console.log(`[Page Cache] ❌ MISS - page ${pageNum} (will load & cache)`);
-    }
-    return page;
+    return pageCache.get(key);
   }, [pageCache]);
 
   const setPage = useCallback((documentId: string, pageNum: number, page: PDFPageProxy) => {
     if (!pageCache) return;
     const key = `${documentId}-p${pageNum}`;
 
+    // Check if page already cached (avoid duplicate counting)
+    const alreadyCached = pageCache.has(key);
+    if (alreadyCached) {
+      // Just update LRU position, no memory change
+      pageCache.set(key, page);
+      return;
+    }
+
     // Track page memory (each rendered page ~1-2MB average)
     const pageSizeMB = 1.5;
-    const newTotal = totalEstimatedMB + pageSizeMB;
-    setTotalEstimatedMB(newTotal);
-
     const willEvict = pageCache.size >= 20;
+
     if (willEvict) {
       console.log(`[Page Cache] ⚠️ FULL - evicting oldest page`);
     }
 
-    console.log(`[Page Cache] ➕ Cached page ${pageNum} (${pageCache.size + 1}/20 pages)`);
+    // Set page (LRU will evict if needed)
     pageCache.set(key, page);
-  }, [pageCache, totalEstimatedMB]);
+
+    // Log AFTER set to get accurate count
+    setTotalEstimatedMB(prev => {
+      const newTotal = prev + pageSizeMB;
+      console.log(`[Cache] Page ${pageNum} loaded → ${pageCache.size}/20 pages, ~${newTotal.toFixed(1)}MB total`);
+      return newTotal;
+    });
+  }, [pageCache]);
 
   const clearCache = useCallback(() => {
     if (!cache || !pageCache) return;
