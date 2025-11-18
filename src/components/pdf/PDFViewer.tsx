@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { documentService } from '@/services';
-import type { Document } from '@/types';
+import { documentService, highlightService } from '@/services';
+import type { Document, Highlight, HighlightPosition } from '@/types';
 import { usePDFCache } from '@/contexts';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import HighlightOverlay from './HighlightOverlay';
+import HighlightNoteEditor from './HighlightNoteEditor';
+import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_HIGHLIGHT_OPACITY, MIN_SELECTION_SIZE } from '@/constants/highlight';
 
 // Configure PDF.js worker - use local worker from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -47,6 +50,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
   const [manualZoom, setManualZoom] = useState(1.0);
   const [needsRender, setNeedsRender] = useState(false);
   const [isZoomDropdownOpen, setIsZoomDropdownOpen] = useState(false);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+  const [currentScale, setCurrentScale] = useState(1.0); // Track current viewport scale
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
+  const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
 
   // PDF Cache
   const { getDocument: getCachedDocument, setDocument: cacheDocument, getPage: getCachedPage, setPage: cachePage } = usePDFCache();
@@ -101,6 +111,10 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
+    // Store canvas dimensions and current scale for highlight overlay
+    setCanvasDimensions({ width: viewport.width, height: viewport.height });
+    setCurrentScale(finalScale);
+
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
@@ -119,6 +133,35 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     }
   }, [zoomMode, manualZoom, documentId, getCachedPage, cachePage]);
 
+  // Auto-detect HTTP server port (try ports 43572-43582)
+  const detectServerPort = useCallback(async (documentId: string): Promise<number | null> => {
+    const BASE_PORT = 43572;
+    const PORT_RANGE = 10;
+
+    for (let port = BASE_PORT; port < BASE_PORT + PORT_RANGE; port++) {
+      try {
+        // Make a lightweight HEAD request to check if server is running
+        const testUrl = `http://localhost:${port}/documents/${documentId}`;
+        const response = await fetch(testUrl, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(500) // 500ms timeout per port
+        });
+
+        if (response.ok || response.status === 404) {
+          // Server is running (404 is ok - document might not exist yet, but server is there)
+          console.log(`[PDF] Found HTTP server on port ${port}`);
+          return port;
+        }
+      } catch (err) {
+        // Port not available or timeout, try next
+        continue;
+      }
+    }
+
+    console.error('[PDF] No HTTP server found on ports 43572-43582');
+    return null;
+  }, []);
+
   const loadDocument = useCallback(async () => {
     if (!documentId) return;
 
@@ -127,19 +170,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       setLoading(true);
       setError(null);
 
-      // 1. Check cache first
-      const cachedPdf = getCachedDocument(documentId);
-      if (cachedPdf) {
-        console.log(`[PDF] Document cached: ${(performance.now() - startTime).toFixed(0)}ms`);
-        pdfDocRef.current = cachedPdf;
-        setTotalPages(cachedPdf.numPages);
-        setCurrentPage(1);
-        setLoading(false);
-        setNeedsRender(true);
-        return;
-      }
-
-      // 2. Get document from database
+      // 1. Get document from database first (to get reading_progress)
       const doc = await documentService.getById(documentId);
 
       if (!doc) {
@@ -150,8 +181,31 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
 
       setDocument(doc);
 
-      // 3. Use HTTP server for true streaming with Range support
-      const pdfUrl = `http://localhost:43572/documents/${documentId}`;
+      // 2. Check cache
+      const cachedPdf = getCachedDocument(documentId);
+      if (cachedPdf) {
+        pdfDocRef.current = cachedPdf;
+        setTotalPages(cachedPdf.numPages);
+        // Restore reading position
+        const restoredPage = doc.reading_progress > 0 && doc.reading_progress <= cachedPdf.numPages
+          ? doc.reading_progress
+          : 1;
+        setCurrentPage(restoredPage);
+        setLoading(false);
+        setNeedsRender(true);
+        return;
+      }
+
+      // 3. Auto-detect HTTP server port
+      const serverPort = await detectServerPort(documentId);
+      if (!serverPort) {
+        setError('PDF server not available. Please ensure the app is running.');
+        setLoading(false);
+        return;
+      }
+
+      // 4. Use HTTP server for true streaming with Range support
+      const pdfUrl = `http://localhost:${serverPort}/documents/${documentId}`;
 
       // Auto-adjust chunk size based on available memory
       // Default (5 PDFs): Use 64KB chunks for faster first page
@@ -170,13 +224,17 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       const pdf = await loadingTask.promise;
       console.log(`[PDF] Document loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
 
-      // 5. Cache the loaded PDF
+      // 4. Cache the loaded PDF
       cacheDocument(documentId, pdf);
 
-      // 6. Store PDF and prepare to render
+      // 5. Store PDF and prepare to render
       pdfDocRef.current = pdf;
       setTotalPages(pdf.numPages);
-      setCurrentPage(1);
+      // Restore reading position
+      const restoredPage = doc.reading_progress > 0 && doc.reading_progress <= pdf.numPages
+        ? doc.reading_progress
+        : 1;
+      setCurrentPage(restoredPage);
       setLoading(false);
       setNeedsRender(true);
     } catch (err) {
@@ -184,7 +242,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       setError(err instanceof Error ? err.message : 'Failed to load PDF');
       setLoading(false);
     }
-  }, [documentId, getCachedDocument, cacheDocument]);
+  }, [documentId, getCachedDocument, cacheDocument, detectServerPort]);
 
   useEffect(() => {
     if (!documentId) {
@@ -230,6 +288,131 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       goToPage(currentPage + 1);
     }
   }, [currentPage, totalPages, goToPage]);
+
+  // Load highlights for current page
+  const loadHighlights = useCallback(async () => {
+    if (!documentId || currentPage < 1) return;
+
+    // Clear highlights immediately when page changes
+    setHighlights([]);
+
+    try {
+      const pageHighlights = await highlightService.getByPage(documentId, currentPage);
+      setHighlights(pageHighlights);
+    } catch (err) {
+      console.error('Failed to load highlights:', err);
+    }
+  }, [documentId, currentPage]);
+
+  // Mouse drag selection handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+
+    setIsSelecting(true);
+    setSelectionStart({ x, y });
+    setSelectionEnd({ x, y });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSelecting) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+
+    setSelectionEnd({ x, y });
+  }, [isSelecting]);
+
+  const handleMouseUp = useCallback(async () => {
+    if (!isSelecting || !selectionStart || !selectionEnd || !documentId) {
+      setIsSelecting(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      return;
+    }
+
+    // Calculate selection rectangle in canvas coordinates
+    const canvasX = Math.min(selectionStart.x, selectionEnd.x);
+    const canvasY = Math.min(selectionStart.y, selectionEnd.y);
+    const canvasWidth = Math.abs(selectionEnd.x - selectionStart.x);
+    const canvasHeight = Math.abs(selectionEnd.y - selectionStart.y);
+
+    // Minimum size threshold to avoid accidental clicks
+    if (canvasWidth < MIN_SELECTION_SIZE || canvasHeight < MIN_SELECTION_SIZE) {
+      setIsSelecting(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      return;
+    }
+
+    // Convert canvas coordinates to PDF coordinates (scale 1.0)
+    // This ensures highlights work correctly when zooming
+    const pdfX = canvasX / currentScale;
+    const pdfY = canvasY / currentScale;
+    const pdfWidth = canvasWidth / currentScale;
+    const pdfHeight = canvasHeight / currentScale;
+
+    const position: HighlightPosition = {
+      x: pdfX,
+      y: pdfY,
+      width: pdfWidth,
+      height: pdfHeight,
+    };
+
+    try {
+      const newHighlight = await highlightService.create(
+        documentId,
+        currentPage,
+        position,
+        undefined, // No text content for drag selection
+        DEFAULT_HIGHLIGHT_COLOR
+      );
+
+      // Add to current highlights
+      setHighlights((prev) => [...prev, newHighlight]);
+    } catch (err) {
+      console.error('Failed to create highlight:', err);
+    }
+
+    // Reset selection state
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  }, [isSelecting, selectionStart, selectionEnd, documentId, currentPage, currentScale]);
+
+  // Handle highlight click - show note editor
+  const handleHighlightClick = useCallback((highlight: Highlight) => {
+    setEditingHighlight(highlight);
+  }, []);
+
+  // Handle note save
+  const handleNoteSave = useCallback(async (highlightId: string, note: string) => {
+    await highlightService.updateNote(highlightId, note);
+    // Update local state
+    setHighlights((prev) =>
+      prev.map((h) => (h.id === highlightId ? { ...h, note } : h))
+    );
+  }, []);
+
+  // Handle highlight delete (right-click)
+  const handleHighlightDelete = useCallback(async (highlight: Highlight) => {
+    try {
+      const deleted = await highlightService.delete(highlight.id);
+      if (deleted) {
+        setHighlights((prev) => prev.filter((h) => h.id !== highlight.id));
+      }
+    } catch (err) {
+      console.error('Failed to delete highlight:', err);
+    }
+  }, []);
 
   // Zoom handlers
   const ZOOM_STEP = 0.25;
@@ -310,6 +493,26 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToPreviousPage, goToNextPage, zoomIn, zoomOut, fitToPage]);
 
+  // Load highlights when page changes
+  useEffect(() => {
+    loadHighlights();
+  }, [loadHighlights]);
+
+  // Save reading progress (debounced 2s to avoid excessive writes)
+  useEffect(() => {
+    if (!documentId || currentPage < 1) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await documentService.updateReadingProgress(documentId, currentPage);
+      } catch (err) {
+        console.error('Failed to save reading progress:', err);
+      }
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(timer);
+  }, [documentId, currentPage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -337,11 +540,53 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
     <div ref={containerRef} className="relative h-full overflow-auto p-4">
       {/* Canvas wrapper - centers canvas vertically and horizontally */}
       <div className="min-h-full flex flex-col items-center justify-center">
-        <canvas
-          ref={canvasRef}
-          className="shadow-lg mb-14"
-          style={{ backgroundColor: 'white', display: 'block' }}
-        />
+        <div
+          style={{ position: 'relative', display: 'inline-block', cursor: 'crosshair' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        >
+          <canvas
+            ref={canvasRef}
+            className="shadow-lg mb-14"
+            style={{ backgroundColor: 'white', display: 'block' }}
+          />
+          {/* Highlight overlay */}
+          <HighlightOverlay
+            highlights={highlights}
+            canvasWidth={canvasDimensions.width}
+            canvasHeight={canvasDimensions.height}
+            currentScale={currentScale}
+            onHighlightClick={handleHighlightClick}
+            onHighlightDelete={handleHighlightDelete}
+          />
+          {/* Selection rectangle during drag */}
+          {isSelecting && selectionStart && selectionEnd && (
+            <svg
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: canvasDimensions.width,
+                height: canvasDimensions.height,
+                pointerEvents: 'none'
+              }}
+              viewBox={`0 0 ${canvasDimensions.width} ${canvasDimensions.height}`}
+            >
+              <rect
+                x={Math.min(selectionStart.x, selectionEnd.x)}
+                y={Math.min(selectionStart.y, selectionEnd.y)}
+                width={Math.abs(selectionEnd.x - selectionStart.x)}
+                height={Math.abs(selectionEnd.y - selectionStart.y)}
+                fill={DEFAULT_HIGHLIGHT_COLOR}
+                opacity={DEFAULT_HIGHLIGHT_OPACITY}
+                stroke={DEFAULT_HIGHLIGHT_COLOR}
+                strokeWidth={2}
+                style={{ mixBlendMode: 'multiply' }}
+              />
+            </svg>
+          )}
+        </div>
 
         {/* Floating Navigation Bar - sticky at bottom */}
         <div className="sticky bottom-3 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 mb-3">
@@ -473,6 +718,17 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
         </button>
         </div>
       </div>
+
+      {/* Note Editor Popover */}
+      {editingHighlight && canvasRef.current && (
+        <HighlightNoteEditor
+          highlight={editingHighlight}
+          onClose={() => setEditingHighlight(null)}
+          onSave={handleNoteSave}
+          canvasRect={canvasRef.current.getBoundingClientRect()}
+          currentScale={currentScale}
+        />
+      )}
     </div>
   );
 };

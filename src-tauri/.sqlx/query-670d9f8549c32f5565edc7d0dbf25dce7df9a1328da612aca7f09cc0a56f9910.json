@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, title, goal, phase, context_state, created_at, updated_at\n             FROM research_sessions WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "goal",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "phase",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "context_state",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "670d9f8549c32f5565edc7d0dbf25dce7df9a1328da612aca7f09cc0a56f9910"
+}

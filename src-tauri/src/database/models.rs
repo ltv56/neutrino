@@ -55,13 +55,15 @@ pub struct Note {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReadingEvent {
     pub id: Uuid,
-    pub session_id: Uuid,
     pub document_id: Uuid,
-    pub event_type: String, // highlight, note, bookmark, question
-    pub position: String, // JSON: page, section, coordinates
-    pub content: Option<String>,
-    pub metadata: Option<String>, // additional event-specific data
-    pub timestamp: DateTime<Utc>,
+    pub event_type: String, // highlight, note, bookmark
+    pub page_number: i32,
+    pub position_data: Option<String>, // JSON: coordinates, rect data
+    pub content: Option<String>, // Highlighted text or bookmark label
+    pub note: Option<String>, // User's note/comment
+    pub metadata: Option<String>, // JSON: color, etc.
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

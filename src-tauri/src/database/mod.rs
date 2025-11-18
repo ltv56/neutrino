@@ -17,6 +17,7 @@ pub struct Database {
     sessions: SessionRepository,
     documents: DocumentRepository,
     notes: repositories::NoteRepository,
+    reading_events: repositories::ReadingEventRepository,
     transactions: TransactionService,
 }
 
@@ -35,6 +36,7 @@ impl Database {
             sessions: SessionRepository::new(pool.clone()),
             documents: DocumentRepository::new(pool.clone()),
             notes: repositories::NoteRepository::new(pool.clone()),
+            reading_events: repositories::ReadingEventRepository::new(pool.clone()),
             transactions: TransactionService::new(pool.clone()),
             pool,
         })
@@ -50,6 +52,10 @@ impl Database {
 
     pub fn notes(&self) -> &repositories::NoteRepository {
         &self.notes
+    }
+
+    pub fn reading_events(&self) -> &repositories::ReadingEventRepository {
+        &self.reading_events
     }
 
     pub fn transactions(&self) -> &TransactionService {

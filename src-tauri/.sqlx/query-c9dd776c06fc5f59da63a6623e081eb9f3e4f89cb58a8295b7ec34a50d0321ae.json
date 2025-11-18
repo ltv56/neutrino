@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO research_sessions (id, title, goal, phase, created_at, updated_at)\n            VALUES (?1, ?2, ?3, ?4, ?5, ?6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "c9dd776c06fc5f59da63a6623e081eb9f3e4f89cb58a8295b7ec34a50d0321ae"
+}

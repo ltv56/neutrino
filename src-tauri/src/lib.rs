@@ -23,6 +23,23 @@ fn get_available_memory() -> u64 {
     sys.available_memory() // Returns bytes
 }
 
+#[tauri::command]
+async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    println!("[Vite] Build complete");
+    println!("[App] Showing window...");
+
+    let window = app.get_webview_window("main").ok_or("Window not found")?;
+    window.show().map_err(|e| e.to_string())?;
+
+    #[cfg(debug_assertions)]
+    {
+        window.open_devtools();
+        println!("[Setup] DevTools opened");
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -32,6 +49,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_available_memory, // For future cache optimization
+            show_main_window,
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -47,6 +65,7 @@ pub fn run() {
             commands::get_all_documents,
             commands::get_document_by_id,
             commands::get_documents_by_session,
+            commands::update_document_reading_progress,
 
             // ========== PDF Management ==========
             commands::pdf_get_app_directories,
@@ -56,6 +75,13 @@ pub fn run() {
             commands::pdf_delete_file,
             commands::pdf_extract_metadata,
 
+            // ========== Reading Events (Highlights) ==========
+            commands::create_highlight,
+            commands::get_highlights_by_page,
+            commands::get_highlights_by_document,
+            commands::update_highlight_note,
+            commands::delete_highlight,
+
             // ========== Transactions ==========
             commands::create_session_with_documents,
 
@@ -64,11 +90,10 @@ pub fn run() {
             commands::get_database_stats
         ])
         .setup(|app| {
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
-            }
+            let setup_start = std::time::Instant::now();
+            println!("[Setup] Starting...");
+
+            println!("[Vite] Building UI...");
 
             // Initialize database sync
             let app_data_dir = app.path().app_data_dir()
@@ -83,17 +108,21 @@ pub fn run() {
             // Initialize database in background
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
+                let db_start = std::time::Instant::now();
                 tauri::async_runtime::block_on(async move {
                     let db = database::Database::new(&database_url).await
                         .expect("Failed to initialize database");
 
                     app_handle.manage(db);
+                    println!("[Setup] Database initialized in {}ms", db_start.elapsed().as_millis());
                 });
             });
 
             // Start HTTP server for PDF streaming
             http_server::start_http_server(app.handle().clone());
+            println!("[Setup] HTTP server started");
 
+            println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -86,3 +86,16 @@ pub async fn get_documents_by_session(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn update_document_reading_progress(
+    database: tauri::State<'_, Database>,
+    id: String,
+    progress: i32,
+) -> Result<(), String> {
+    let uuid = uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    database.documents()
+        .update_reading_progress(uuid, progress)
+        .await
+        .map_err(|e| e.to_string())
+}

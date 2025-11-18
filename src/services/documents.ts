@@ -118,4 +118,14 @@ export const documentService = {
 
     return { document, metadata, savedInfo };
   },
+
+  /**
+   * Update reading progress (page number) for a document
+   */
+  async updateReadingProgress(id: string, pageNum: number): Promise<void> {
+    return await invoke('update_document_reading_progress', {
+      id,
+      progress: pageNum,
+    });
+  },
 };

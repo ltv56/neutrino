@@ -8,8 +8,37 @@ pub const SERVER_PORT: u16 = 43572;
 
 pub fn start_http_server(app: AppHandle) {
     std::thread::spawn(move || {
-        let addr = format!("127.0.0.1:{}", SERVER_PORT);
-        let server = Server::http(&addr).expect("Failed to start HTTP server");
+        // Try to find an available port in range 43572-43582
+        let mut server = None;
+        let mut actual_port = SERVER_PORT;
+
+        for port in SERVER_PORT..(SERVER_PORT + 10) {
+            let addr = format!("127.0.0.1:{}", port);
+            match Server::http(&addr) {
+                Ok(s) => {
+                    server = Some(s);
+                    actual_port = port;
+                    break;
+                }
+                Err(e) => {
+                    if port == SERVER_PORT {
+                        eprintln!("[HTTP Server] Port {} busy, trying next port... ({})", port, e);
+                    }
+                    continue;
+                }
+            }
+        }
+
+        let server = match server {
+            Some(s) => s,
+            None => {
+                eprintln!("[HTTP Server] Failed to start: All ports {} to {} are busy", SERVER_PORT, SERVER_PORT + 9);
+                eprintln!("[HTTP Server] PDF streaming will not work. Please close other instances.");
+                return;
+            }
+        };
+
+        let addr = format!("127.0.0.1:{}", actual_port);
         println!("[HTTP Server] Started on http://{}", addr);
         println!("[HTTP Server] Security: Origin-based (tauri:// + localhost dev)");
 

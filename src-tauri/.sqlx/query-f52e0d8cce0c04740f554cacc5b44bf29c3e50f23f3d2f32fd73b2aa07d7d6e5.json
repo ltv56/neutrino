@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM research_sessions WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f52e0d8cce0c04740f554cacc5b44bf29c3e50f23f3d2f32fd73b2aa07d7d6e5"
+}

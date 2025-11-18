@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE research_sessions SET title = ?, goal = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "b30c8538b453289e37c860bfde2a6d13e1dad3ee2ccd147542d91c9faa6b48a1"
+}

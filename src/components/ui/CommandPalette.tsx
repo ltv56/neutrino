@@ -16,7 +16,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, initia
 
   const commands: Command[] = DEFAULT_COMMANDS.map(cmd => ({
     ...cmd,
-    action: () => console.log(`Action: ${cmd.title}`),
+    action: () => {}, // Placeholder - implement actual actions later
   }));
 
   const filteredCommands = query

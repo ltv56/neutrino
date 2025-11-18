@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM documents",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "b450ac7ad91ca7e9fe0f9b81884d3f4a26581b516886ab4377285af6c3e17236"
+}

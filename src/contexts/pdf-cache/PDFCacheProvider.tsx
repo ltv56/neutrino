@@ -7,19 +7,7 @@ type PDFDocumentProxy = pdfjsLib.PDFDocumentProxy;
 type PDFPageProxy = pdfjsLib.PDFPageProxy;
 
 // Cache config: 5 documents, 20 pages
-// TODO: Can enable auto-adjust based on available memory later if needed
 const CACHE_CONFIG: CacheConfig = { maxFiles: 5, maxMemoryMB: 50 };
-
-// Optional: Auto-adjust cache size based on system memory
-// async function calculateCacheConfig(): Promise<CacheConfig> {
-//   try {
-//     const availableMemory = await invoke<number>('get_available_memory');
-//     if (availableMemory > 4_000_000_000) {
-//       return { maxFiles: 10, maxMemoryMB: 100 };
-//     }
-//   } catch (error) {}
-//   return { maxFiles: 5, maxMemoryMB: 50 };
-// }
 
 export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cache, setCache] = useState<LRUCache<string, PDFDocumentProxy> | null>(null);
@@ -35,7 +23,6 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         dispose: (pdf, key) => {
           const metadataSizeMB = 2;
           setTotalEstimatedMB(prev => Math.max(0, prev - metadataSizeMB));
-          console.log(`[PDF Cache] ➖ Evicted document (~${metadataSizeMB}MB freed)`);
         },
       });
 
@@ -47,7 +34,6 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         dispose: async (page, key) => {
           const pageSizeMB = 1.5;
           setTotalEstimatedMB(prev => Math.max(0, prev - pageSizeMB));
-          console.log(`[Page Cache] ➖ Evicted ${key.split('-p')[1]} (~${pageSizeMB}MB freed)`);
           try {
             await page.cleanup();
           } catch (err) {
@@ -57,7 +43,6 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
       setPageCache(pageLruCache);
-      console.log(`[PDF Cache] Initialized: ${CACHE_CONFIG.maxFiles} documents, 20 pages max`);
     };
 
     initCache();
@@ -98,21 +83,11 @@ export const PDFCacheProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Track page memory (each rendered page ~1-2MB average)
     const pageSizeMB = 1.5;
-    const willEvict = pageCache.size >= 20;
-
-    if (willEvict) {
-      console.log(`[Page Cache] ⚠️ FULL - evicting oldest page`);
-    }
 
     // Set page (LRU will evict if needed)
     pageCache.set(key, page);
 
-    // Log AFTER set to get accurate count
-    setTotalEstimatedMB(prev => {
-      const newTotal = prev + pageSizeMB;
-      console.log(`[Cache] Page ${pageNum} loaded → ${pageCache.size}/20 pages, ~${newTotal.toFixed(1)}MB total`);
-      return newTotal;
-    });
+    setTotalEstimatedMB(prev => prev + pageSizeMB);
   }, [pageCache]);
 
   const clearCache = useCallback(() => {
