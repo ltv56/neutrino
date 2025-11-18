@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Highlight } from '@/types';
+import { useToast } from '@/contexts/ToastContext';
 import styles from './HighlightNoteEditor.module.css';
 
 interface HighlightNoteEditorProps {
@@ -21,6 +22,7 @@ const HighlightNoteEditor: React.FC<HighlightNoteEditorProps> = ({
   canvasRect,
   currentScale,
 }) => {
+  const toast = useToast();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [placement, setPlacement] = useState<'right' | 'left' | 'top' | 'bottom'>('right');
@@ -98,7 +100,8 @@ const HighlightNoteEditor: React.FC<HighlightNoteEditorProps> = ({
       onClose();
     } catch (err) {
       console.error('Failed to save note:', err);
-      alert('Failed to save note. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to save note: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }

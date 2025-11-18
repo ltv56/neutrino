@@ -7,13 +7,17 @@ import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import CommandPalette from '@/components/ui/CommandPalette';
 import DebugOverlay from '@/components/debug/DebugOverlay';
-import { WELCOME_TAB, createNewChatTab, createDocumentTab } from '@/constants/tabs';
+import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { ROUTES, SEARCH_CONTEXTS } from '@/constants/routes';
 import type { SidebarTab } from '@/constants/sidebar';
-import { useEdgeDetection, useSidebarMode } from '@/hooks';
+import { useEdgeDetection, useSidebarMode, useSessionsContext } from '@/hooks';
+import { noteService, sessionService } from '@/services';
+import { useToast } from '@/contexts/ToastContext';
 
 const Layout: React.FC = () => {
   const location = useLocation();
+  const { refetch: refetchSessions, selectSession } = useSessionsContext();
+  const toast = useToast();
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
@@ -72,6 +76,53 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Listen for note title changes
+  useEffect(() => {
+    const handleNoteTitleChange = (e: CustomEvent) => {
+      const { noteId, title } = e.detail;
+      setTabs(prevTabs =>
+        prevTabs.map(tab =>
+          tab.noteId === noteId
+            ? { ...tab, title: title.length > 30 ? `${title.substring(0, 30)}...` : title }
+            : tab
+        )
+      );
+    };
+
+    window.addEventListener('note-title-changed', handleNoteTitleChange as EventListener);
+    return () => window.removeEventListener('note-title-changed', handleNoteTitleChange as EventListener);
+  }, []);
+
+  // Listen for note deletion
+  useEffect(() => {
+    const handleNoteDeleted = (e: CustomEvent) => {
+      const { noteId } = e.detail;
+
+      // Use functional update to avoid stale closure
+      setTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.noteId === noteId);
+
+        if (!tabToClose) return prevTabs;
+
+        // If only one tab, don't close
+        if (prevTabs.length === 1) return prevTabs;
+
+        // Close the tab
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+
+        // Update active tab if needed
+        setActiveTabId(prevActiveId =>
+          prevActiveId === tabToClose.id ? newTabs[0].id : prevActiveId
+        );
+
+        return newTabs;
+      });
+    };
+
+    window.addEventListener('note-deleted', handleNoteDeleted as EventListener);
+    return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
+  }, []);
+
   const addNewTab = () => {
     const newTab = createNewChatTab();
     setTabs([...tabs, newTab]);
@@ -102,6 +153,85 @@ const Layout: React.FC = () => {
     const newTab = createDocumentTab(documentId, title);
     setTabs([...tabs, newTab]);
     setActiveTabId(newTab.id);
+  };
+
+  const openNoteTab = (noteId: string, title?: string) => {
+    const tabId = `note-${noteId}`;
+
+    // Check if tab already exists
+    const existingTab = tabs.find(tab => tab.id === tabId);
+    if (existingTab) {
+      // Just activate the existing tab
+      setActiveTabId(tabId);
+      return;
+    }
+
+    // Create new tab
+    const newTab = createNoteTab(noteId, title || 'Untitled');
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
+  };
+
+  const createNewNote = async () => {
+    try {
+      // Get or create the default "Quick Notes" session
+      const quickNotesSession = await sessionService.getOrCreateQuickNotesSession();
+
+      // Refresh sessions list to show Quick Notes in sidebar if it was just created
+      await refetchSessions();
+
+      // Auto-select Quick Notes session
+      selectSession(quickNotesSession);
+
+      // Get all notes in Quick Notes session to check for Untitled duplicates
+      const allNotes = await noteService.getAll();
+      const quickNotes = allNotes.filter(n => n.session_id === quickNotesSession.id);
+      const untitledPattern = /^Untitled( \d+)?$/;
+      const untitledNotes = quickNotes.filter(n => untitledPattern.test(n.title));
+
+      // Generate unique Untitled title for Quick Notes session
+      let newTitle = 'Untitled';
+      if (untitledNotes.length > 0) {
+        const numbers = untitledNotes
+          .map(n => {
+            const match = n.title.match(/^Untitled(?: (\d+))?$/);
+            return match ? (match[1] ? parseInt(match[1]) : 0) : -1;
+          })
+          .filter(n => n >= 0);
+
+        const maxNum = Math.max(...numbers);
+        newTitle = `Untitled ${maxNum + 1}`;
+      }
+
+      // Create note in Quick Notes session
+      const newNote = await noteService.create(
+        quickNotesSession.id, // Use Quick Notes session instead of null
+        null, // documentId
+        newTitle,
+        '', // empty content
+        'concept'
+      );
+
+      // Create and open tab
+      const newTab = createNoteTab(newNote.id, newTitle);
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+
+      // Notify sidebar to select the new note and reload list
+      window.dispatchEvent(new CustomEvent('note-created', {
+        detail: { noteId: newNote.id }
+      }));
+    } catch (err) {
+      console.error('Failed to create new note:', err);
+
+      // Handle unique constraint error
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('UNIQUE constraint failed') || errorMessage.includes('duplicate')) {
+        toast.error('A note with this title already exists in this session');
+      } else {
+        toast.error(`Failed to create note: ${errorMessage}`);
+      }
+    }
   };
 
   const activeTab = tabs.find(tab => tab.id === activeTabId);
@@ -152,6 +282,8 @@ const Layout: React.FC = () => {
             isVaultOpen={isVaultOpen}
             onToggleVault={() => setIsVaultOpen(!isVaultOpen)}
             onOpenDocument={openDocumentTab}
+            onNoteSelect={openNoteTab}
+            onCreateNote={createNewNote}
           />
         )}
 

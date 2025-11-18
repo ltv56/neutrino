@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
-use std::str::FromStr;
 use anyhow::Result;
+use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+use std::str::FromStr;
+use std::sync::Arc;
 
-pub mod models;
 pub mod errors;
+pub mod models;
 pub mod repositories;
 pub mod transactions;
 
@@ -23,15 +23,23 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
-        let options = SqliteConnectOptions::from_str(database_url)?
-            .create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
         let pool = SqlitePool::connect_with(options).await?;
-        
+
         // Run migrations
         sqlx::migrate!("./migrations").run(&pool).await?;
-        
+
+        // Log applied migrations for debugging
+        let migrations: Vec<String> =
+            sqlx::query_scalar("SELECT version FROM _sqlx_migrations ORDER BY version")
+                .fetch_all(&pool)
+                .await
+                .unwrap_or_default();
+        if !migrations.is_empty() {
+            println!("[Database] Applied migrations: {:?}", migrations);
+        }
         let pool = Arc::new(pool);
-        
+
         Ok(Self {
             sessions: SessionRepository::new(pool.clone()),
             documents: DocumentRepository::new(pool.clone()),

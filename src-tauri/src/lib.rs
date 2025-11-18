@@ -82,12 +82,18 @@ pub fn run() {
             commands::update_highlight_note,
             commands::delete_highlight,
 
+            // ========== Note Management ==========
+            commands::create_note,
+            commands::get_note,
+            commands::get_notes,
+            commands::update_note,
+            commands::delete_note,
+
             // ========== Transactions ==========
             commands::create_session_with_documents,
 
             // ========== Debug/Admin ==========
             commands::clear_all_data,
-            commands::get_database_stats
         ])
         .setup(|app| {
             let setup_start = std::time::Instant::now();

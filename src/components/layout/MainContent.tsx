@@ -3,6 +3,8 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import type { Tab } from './TabBar';
 import SessionsPage from '@/pages/SessionsPage';
 import { ROUTES } from '@/constants/routes';
+import { NoteEditor } from '@/components/notes/NoteEditor';
+import { useSessionsContext } from '@/hooks';
 
 // Lazy load PDF viewer - only loads when needed
 const PDFViewer = lazy(() => import('@/components/pdf/PDFViewer'));
@@ -13,6 +15,7 @@ interface MainContentProps {
 
 const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
   const location = useLocation();
+  const { currentSession } = useSessionsContext();
 
   const renderTabContent = () => {
     if (!activeTab) return null;
@@ -27,6 +30,21 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
         }>
           <PDFViewer documentId={activeTab.documentId} />
         </Suspense>
+      );
+    }
+
+    // For note tabs, render NoteEditor
+    if (activeTab.type === 'note') {
+      return (
+        <NoteEditor
+          noteId={activeTab.noteId}
+          sessionId={currentSession?.id}
+          onClose={() => {}} // User can close via TabBar X button
+          onSave={(noteId) => {
+            // Note saved successfully
+            console.log('Note saved:', noteId);
+          }}
+        />
       );
     }
 

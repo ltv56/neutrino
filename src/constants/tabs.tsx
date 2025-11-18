@@ -38,3 +38,13 @@ export const createDocumentTab = (documentId: string, title: string): Tab => ({
   type: 'document',
   documentId,
 });
+
+export const createNoteTab = (noteId: string | null, title?: string): Tab => {
+  const displayTitle = title || 'Untitled';
+  return {
+    id: noteId ? `note-${noteId}` : `note-new-${Date.now()}`,
+    title: displayTitle.length > 30 ? `${displayTitle.substring(0, 30)}...` : displayTitle,
+    type: 'note',
+    noteId: noteId || undefined,
+  };
+};

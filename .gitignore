@@ -54,3 +54,5 @@ docs
 
 # Test databases
 test.db
+
+*.local.md

@@ -24,6 +24,8 @@ interface SidebarProps {
   isVaultOpen?: boolean;
   onToggleVault?: () => void;
   onOpenDocument?: (documentId: string, title: string) => void;
+  onNoteSelect?: (noteId: string, title: string) => void;
+  onCreateNote?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -39,6 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isVaultOpen,
   onToggleVault,
   onOpenDocument,
+  onNoteSelect,
+  onCreateNote,
 }) => {
   const isFloating = mode === 'floating';
   const showBackdrop = isFloating && isVisible;
@@ -55,7 +59,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   const handleNewClick = () => {
-    // TODO: Implement create new item
+    if (activeTab === 'notes' && onCreateNote) {
+      onCreateNote();
+    }
+    // TODO: Handle other tab types (documents, etc.)
   };
 
   const handleSettingsClick = () => {
@@ -166,6 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   activeTab={activeTab}
                   mode={mode}
                   onNewClick={handleNewClick}
+                  onNoteSelect={onNoteSelect}
                 />
               </div>
             </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FolderOpen, FileText, Upload } from 'lucide-react';
 import { documentService, pdfService } from '@/services';
+import { useToast } from '@/contexts/ToastContext';
 import type { Document } from '@/types';
 
 interface VaultPanelProps {
@@ -8,6 +9,7 @@ interface VaultPanelProps {
 }
 
 const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
+  const toast = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,9 +46,11 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
 
       // Reload documents to show the new import
       await loadDocuments();
+      toast.success('PDF imported successfully');
     } catch (error) {
       console.error('Failed to import PDF:', error);
-      alert(`Failed to import PDF: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to import PDF: ${errorMessage}`);
     }
   };
 

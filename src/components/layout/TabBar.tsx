@@ -8,8 +8,9 @@ export interface Tab {
   id: string;
   title: string;
   content?: React.ReactNode;
-  type?: 'document' | 'chat' | 'welcome';
+  type?: 'document' | 'chat' | 'welcome' | 'note';
   documentId?: string;
+  noteId?: string;
 }
 
 interface TabBarProps {
@@ -137,9 +138,13 @@ const TabBar: React.FC<TabBarProps> = ({
                 </>
               )}
 
-              <span className="text-xs font-medium whitespace-nowrap truncate flex-1">
-                {tab.title}
-              </span>
+              <Tooltip content={tab.type === 'note' ? `${tab.title}.md` : tab.title} placement="bottom">
+                <div style={{ maxWidth: '150px', minWidth: 0 }}>
+                  <span className="text-xs font-medium truncate block">
+                    {tab.type === 'note' ? `${tab.title}.md` : tab.title}
+                  </span>
+                </div>
+              </Tooltip>
 
               {tabs.length > 1 && (
                 <button

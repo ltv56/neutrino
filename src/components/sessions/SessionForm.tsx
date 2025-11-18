@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useToast } from '@/contexts/ToastContext';
 import type { ResearchSession } from '@/types';
 
 interface SessionFormProps {
@@ -17,6 +18,7 @@ export const SessionForm: React.FC<SessionFormProps> = ({
   onUpdate,
   editSession
 }) => {
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [goal, setGoal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,12 +40,16 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     try {
       if (editSession) {
         await onUpdate(editSession.id, title, goal || undefined);
+        toast.success('Session updated successfully');
       } else {
         await onCreate(title, goal || undefined);
+        toast.success('Session created successfully');
       }
       onClose();
     } catch (err) {
-      alert(`Error saving session: ${err}`);
+      console.error('Error saving session:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Error saving session: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

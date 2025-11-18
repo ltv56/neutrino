@@ -703,6 +703,184 @@ impl NoteRepository {
 
         Ok(notes)
     }
+
+    pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<Note>> {
+        let id_str = id.to_string();
+        let row = sqlx::query_as!(
+            NoteRow,
+            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+             FROM notes WHERE id = ?",
+            id_str
+        )
+        .fetch_optional(&*self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let note_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+            value: "null".to_string(),
+        })?;
+        let created_at_str = row.created_at.as_ref().ok_or_else(|| DatabaseError::InvalidDateTime {
+            value: "null".to_string(),
+        })?;
+        let updated_at_str = row.updated_at.as_ref().ok_or_else(|| DatabaseError::InvalidDateTime {
+            value: "null".to_string(),
+        })?;
+
+        let note = Note {
+            id: Uuid::parse_str(note_id).map_err(|_| DatabaseError::InvalidUuid {
+                value: note_id.clone(),
+            })?,
+            session_id: row
+                .session_id
+                .as_ref()
+                .map(|s| {
+                    Uuid::parse_str(s)
+                        .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                })
+                .transpose()?,
+            document_id: row
+                .document_id
+                .as_ref()
+                .map(|s| {
+                    Uuid::parse_str(s)
+                        .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                })
+                .transpose()?,
+            title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing title".to_string(),
+            })?,
+            content: row.content.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing content".to_string(),
+            })?,
+            note_type: row.note_type.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing note_type".to_string(),
+            })?,
+            position: row.position,
+            tags: row.tags,
+            created_at: DateTime::parse_from_rfc3339(created_at_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .map_err(|_| DatabaseError::InvalidDateTime {
+                    value: created_at_str.clone(),
+                })?,
+            updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .map_err(|_| DatabaseError::InvalidDateTime {
+                    value: updated_at_str.clone(),
+                })?,
+        };
+
+        Ok(Some(note))
+    }
+
+    pub async fn find_all(&self) -> DbResult<Vec<Note>> {
+        let rows = sqlx::query_as!(
+            NoteRow,
+            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+             FROM notes ORDER BY updated_at DESC"
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut notes = Vec::new();
+        for row in rows {
+            let note_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
+                value: "null".to_string(),
+            })?;
+            let created_at_str =
+                row.created_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+            let updated_at_str =
+                row.updated_at
+                    .as_ref()
+                    .ok_or_else(|| DatabaseError::InvalidDateTime {
+                        value: "null".to_string(),
+                    })?;
+
+            let note = Note {
+                id: Uuid::parse_str(note_id).map_err(|_| DatabaseError::InvalidUuid {
+                    value: note_id.clone(),
+                })?,
+                session_id: row
+                    .session_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                    })
+                    .transpose()?,
+                document_id: row
+                    .document_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                    })
+                    .transpose()?,
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                content: row.content.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content".to_string(),
+                })?,
+                note_type: row.note_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing note_type".to_string(),
+                })?,
+                position: row.position,
+                tags: row.tags,
+                created_at: DateTime::parse_from_rfc3339(created_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: created_at_str.clone(),
+                    })?,
+                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: updated_at_str.clone(),
+                    })?,
+            };
+            notes.push(note);
+        }
+
+        Ok(notes)
+    }
+
+    pub async fn update(&self, id: Uuid, title: String, content: String) -> DbResult<()> {
+        let now_str = Utc::now().to_rfc3339();
+        let id_str = id.to_string();
+
+        let result = sqlx::query!(
+            "UPDATE notes SET title = ?, content = ?, updated_at = ? WHERE id = ?",
+            title,
+            content,
+            now_str,
+            id_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::InternalError {
+                message: format!("Note not found: {}", id),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, id: Uuid) -> DbResult<bool> {
+        let id_str = id.to_string();
+        let result = sqlx::query!("DELETE FROM notes WHERE id = ?", id_str)
+            .execute(&*self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
 }
 
 #[derive(Clone)]

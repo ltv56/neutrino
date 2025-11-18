@@ -17,9 +17,18 @@
   --accent: #15803d;
   --accent-hover: #166534;
   --accent-muted: #15803d20;
+  --accent-bg: rgba(21, 128, 61, 0.1);
 
   --on-accent: #fafafa;
   --on-accent-muted: #fafafa20;
+
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger-ring: rgba(220, 38, 38, 0.2);
+
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-ring: rgba(245, 158, 11, 0.2);
 
   --sidebar-width: 280px;
   --ribbon-width: 38px;

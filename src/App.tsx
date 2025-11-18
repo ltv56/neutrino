@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import Layout from "@/components/layout/Layout";
 import { SessionsProvider, PDFCacheProvider } from "@/contexts";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 function App() {
   useEffect(() => {
@@ -11,13 +12,15 @@ function App() {
   }, []);
 
   return (
-    <SessionsProvider>
-      <PDFCacheProvider>
-        <Routes>
-          <Route path="/*" element={<Layout />} />
-        </Routes>
-      </PDFCacheProvider>
-    </SessionsProvider>
+    <ToastProvider>
+      <SessionsProvider>
+        <PDFCacheProvider>
+          <Routes>
+            <Route path="/*" element={<Layout />} />
+          </Routes>
+        </PDFCacheProvider>
+      </SessionsProvider>
+    </ToastProvider>
   );
 }
 
