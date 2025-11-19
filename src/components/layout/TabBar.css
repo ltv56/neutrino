@@ -11,15 +11,15 @@
 }
 
 .tab:not(.tab-active) {
-  height: calc(100% - 10px);
+  height: calc(100% - 8px);
 }
 
 .tab-active {
-  height: 90%;
-  background: var(--bg-primary);
+  height: 100%;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-bottom: none;
-  margin-bottom: -1px;
+  border-bottom: 2px solid var(--bg-secondary);
+  margin-bottom: -2px;
   z-index: 3;
 }
 
@@ -36,7 +36,7 @@
   bottom: 0;
   width: var(--curve-size);
   height: var(--curve-size);
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   z-index: -1;
 }
 
@@ -56,7 +56,7 @@
   bottom: -1px;
   width: var(--curve-size);
   height: calc(var(--curve-size) + 1px);
-  background: var(--bg-secondary);
+  background: var(--bg-background);
   z-index: 1;
   pointer-events: none;
 }
@@ -67,7 +67,7 @@
   border-bottom-right-radius: var(--curve-size);
   border-right: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
-  box-shadow: calc(var(--curve-size) / 2) 0 0 0 var(--bg-primary);
+  box-shadow: calc(var(--curve-size) / 2) 0 0 0 var(--bg-secondary);
 }
 
 .tab-active .tab-curve-right {
@@ -76,7 +76,7 @@
   border-bottom-left-radius: var(--curve-size);
   border-left: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
-  box-shadow: calc(-1 * var(--curve-size) / 2) 0 0 0 var(--bg-primary);
+  box-shadow: calc(-1 * var(--curve-size) / 2) 0 0 0 var(--bg-secondary);
 }
 
 /* Close button */
@@ -92,4 +92,28 @@
 
 .close-btn:hover {
   background-color: var(--bg-tertiary);
+}
+
+/* MainContent corner borders - chỉ vẽ border cho 2 góc bo */
+.main-content-with-corner-borders::before,
+.main-content-with-corner-borders::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid var(--border-light);
+  pointer-events: none;
+}
+
+.main-content-with-corner-borders::before {
+  left: 0px;
+  border-left: 1px solid var(--border-light);
+  border-top-left-radius: 8px;
+}
+
+.main-content-with-corner-borders::after {
+  right: 0px;
+  border-right: 1px solid var(--border-light);
+  border-top-right-radius: 8px;
 }

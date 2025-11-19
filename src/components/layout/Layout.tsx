@@ -259,12 +259,16 @@ const Layout: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{
-      backgroundColor: 'var(--bg-primary)',
+      backgroundColor: 'var(--bg-background)',
       color: 'var(--fg-primary)'
     }}>
       <TitleBar
         sidebarMode={sidebarMode}
         onToggleSidebarPin={handleTogglePin}
+        onCreateSession={() => {
+          // TODO: Open session form modal
+          console.log('Create new session');
+        }}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar (includes Vault + Session panels) */}
@@ -287,7 +291,13 @@ const Layout: React.FC = () => {
           />
         )}
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Content Area */}
+        <div
+          className="flex-1 flex flex-col overflow-hidden"
+          style={{
+            margin: '8px 20px 8px 20px',
+          }}
+        >
           {!isFullPageRoute && (
             <TabBar
               tabs={tabs}
@@ -297,7 +307,9 @@ const Layout: React.FC = () => {
               onTabAdd={addNewTab}
             />
           )}
-          <MainContent activeTab={activeTab} />
+          <div className="flex-1 main-content-with-corner-borders" style={{ position: 'relative' }}>
+            <MainContent activeTab={activeTab} />
+          </div>
         </div>
       </div>
       <CommandPalette

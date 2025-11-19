@@ -5,6 +5,7 @@ import SessionsPage from '@/pages/SessionsPage';
 import { ROUTES } from '@/constants/routes';
 import { NoteEditor } from '@/components/notes/NoteEditor';
 import { useSessionsContext } from '@/hooks';
+import './TabBar.css';
 
 // Lazy load PDF viewer - only loads when needed
 const PDFViewer = lazy(() => import('@/components/pdf/PDFViewer'));
@@ -55,12 +56,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
   // For sessions route, use Routes
   if (location.pathname === ROUTES.SESSIONS) {
     return (
-      <div
-        className="flex-1 overflow-hidden"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-        }}
-      >
+      <div className="flex-1 overflow-hidden">
         <Routes>
           <Route
             path={ROUTES.SESSIONS}
@@ -77,12 +73,16 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
 
   return (
     <div
-      className="flex-1 overflow-hidden"
+      className="h-full flex flex-col overflow-hidden"
       style={{
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--bg-secondary)',
+        borderRadius: '8px',
+        borderWidth: '0 1px 1px 1px',
+        borderStyle: 'solid',
+        borderColor: 'var(--border-light)',
       }}
     >
-      <div className="h-full">
+      <div className="flex-1 min-h-0">
         {renderTabContent()}
       </div>
     </div>

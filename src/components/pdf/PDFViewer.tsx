@@ -537,59 +537,63 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
   };
 
   return (
-    <div ref={containerRef} className="relative h-full overflow-auto p-4">
-      {/* Canvas wrapper - centers canvas vertically and horizontally */}
-      <div className="min-h-full flex flex-col items-center justify-center">
-        <div
-          style={{ position: 'relative', display: 'inline-block', cursor: 'crosshair' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-        >
-          <canvas
-            ref={canvasRef}
-            className="shadow-lg mb-14"
-            style={{ backgroundColor: 'white', display: 'block' }}
-          />
-          {/* Highlight overlay */}
-          <HighlightOverlay
-            highlights={highlights}
-            canvasWidth={canvasDimensions.width}
-            canvasHeight={canvasDimensions.height}
-            currentScale={currentScale}
-            onHighlightClick={handleHighlightClick}
-            onHighlightDelete={handleHighlightDelete}
-          />
-          {/* Selection rectangle during drag */}
-          {isSelecting && selectionStart && selectionEnd && (
-            <svg
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: canvasDimensions.width,
-                height: canvasDimensions.height,
-                pointerEvents: 'none'
-              }}
-              viewBox={`0 0 ${canvasDimensions.width} ${canvasDimensions.height}`}
-            >
-              <rect
-                x={Math.min(selectionStart.x, selectionEnd.x)}
-                y={Math.min(selectionStart.y, selectionEnd.y)}
-                width={Math.abs(selectionEnd.x - selectionStart.x)}
-                height={Math.abs(selectionEnd.y - selectionStart.y)}
-                fill={DEFAULT_HIGHLIGHT_COLOR}
-                opacity={DEFAULT_HIGHLIGHT_OPACITY}
-                stroke={DEFAULT_HIGHLIGHT_COLOR}
-                strokeWidth={2}
-                style={{ mixBlendMode: 'multiply' }}
-              />
-            </svg>
-          )}
+    <div className="relative h-full">
+      {/* Scrollable canvas area */}
+      <div ref={containerRef} className="h-full overflow-auto p-4 pb-20">
+        <div className="min-h-full flex items-center">
+          <div
+            style={{ position: 'relative', display: 'inline-block', cursor: 'crosshair', padding: '0 16px', margin: '0 auto' }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+          >
+            <canvas
+              ref={canvasRef}
+              className="shadow-lg"
+              style={{ backgroundColor: 'white', display: 'block' }}
+            />
+            {/* Highlight overlay */}
+            <HighlightOverlay
+              highlights={highlights}
+              canvasWidth={canvasDimensions.width}
+              canvasHeight={canvasDimensions.height}
+              currentScale={currentScale}
+              onHighlightClick={handleHighlightClick}
+              onHighlightDelete={handleHighlightDelete}
+            />
+            {/* Selection rectangle during drag */}
+            {isSelecting && selectionStart && selectionEnd && (
+              <svg
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: canvasDimensions.width,
+                  height: canvasDimensions.height,
+                  pointerEvents: 'none'
+                }}
+                viewBox={`0 0 ${canvasDimensions.width} ${canvasDimensions.height}`}
+              >
+                <rect
+                  x={Math.min(selectionStart.x, selectionEnd.x)}
+                  y={Math.min(selectionStart.y, selectionEnd.y)}
+                  width={Math.abs(selectionEnd.x - selectionStart.x)}
+                  height={Math.abs(selectionEnd.y - selectionStart.y)}
+                  fill={DEFAULT_HIGHLIGHT_COLOR}
+                  opacity={DEFAULT_HIGHLIGHT_OPACITY}
+                  stroke={DEFAULT_HIGHLIGHT_COLOR}
+                  strokeWidth={2}
+                  style={{ mixBlendMode: 'multiply' }}
+                />
+              </svg>
+            )}
+          </div>
         </div>
+      </div>
 
-        {/* Floating Navigation Bar - sticky at bottom */}
-        <div className="sticky bottom-3 flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 mb-3">
+      {/* Fixed Navigation Bar - absolute positioned at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 flex justify-center p-3 pointer-events-none">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 pointer-events-auto">
         {/* Zoom Controls */}
         <button
           onClick={zoomOut}
