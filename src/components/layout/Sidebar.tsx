@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { type SidebarTab } from '@/constants/sidebar';
+import React, { useState, useEffect } from 'react';
+import { FolderOpen, Settings } from 'lucide-react';
+import { type SidebarTab, SIDEBAR_TABS } from '@/constants/sidebar';
 import EdgeIndicator from './sidebar/EdgeIndicator';
 import SidebarBackdrop from './sidebar/SidebarBackdrop';
-import SidebarRibbon from './sidebar/SidebarRibbon';
 import SidebarPanel from './sidebar/SidebarPanel';
 import VaultPanel from '@/components/vault/VaultPanel';
+import ThemeToggle from './titlebar/ThemeToggle';
+import Tooltip from '@/components/common/Tooltip';
 import { useSidebarAnimation } from '@/hooks';
 import { useSessionsContext } from '@/hooks';
 import SessionSelector from '@/components/sessions/SessionSelector';
@@ -52,6 +54,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ResearchSession | null>(null);
 
+  // Theme management
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    // Check initial theme from document
+    const isDark = !document.documentElement.hasAttribute('data-theme');
+    setIsDarkMode(isDark);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+
+    // Apply theme to document root
+    if (newTheme) {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  };
+
   // Handle sidebar animation state
   const { animationClass, shouldRender } = useSidebarAnimation({
     isVisible,
@@ -59,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   const handleNewClick = () => {
-    if (activeTab === 'notes' && onCreateNote) {
+    if (activeTab === 'papers' && onCreateNote) {
       onCreateNote();
     }
     // TODO: Handle other tab types (documents, etc.)
@@ -97,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         editSession={editingSession}
       />
 
-      {/* Complete Sidebar Container (Dual Panel: Vault + Session) */}
+      {/* Sidebar Container */}
       {(isFloating ? shouldRender : true) && (
         <div
           data-sidebar="true"
@@ -105,8 +128,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           style={{
             ...(isFloating ? {
               left: '6px',
-              top: 'calc(var(--titlebar-height) + var(--tabbar-height) + 6px)',
-              height: 'calc(100vh - var(--titlebar-height) - var(--tabbar-height) - 12px)',
+              top: 'calc(var(--titlebar-height) + 6px)',
+              height: 'calc(100vh - var(--titlebar-height) - 12px)',
               zIndex: 100,
             } : {
               height: '100%',
@@ -116,68 +139,103 @@ const Sidebar: React.FC<SidebarProps> = ({
           onMouseLeave={onMouseLeave}
         >
           <div
-            className="flex bg-secondary"
+            className="flex"
             style={{
               height: '100%',
               width: isVaultOpen ? 'calc(240px + var(--sidebar-width))' : 'var(--sidebar-width)',
+              backgroundColor: 'var(--bg-background)',
               border: isFloating ? '1px solid var(--border)' : 'none',
               borderRadius: isFloating ? '8px' : '0',
               boxShadow: isFloating ? '0 8px 32px rgba(0, 0, 0, 0.5)' : 'none',
               overflow: 'hidden',
-              // Smooth transition when toggling vault or pin/unpin
-              transition: animationClass ? 'none' : 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1), border 0.5s ease, border-radius 0.5s ease, box-shadow 0.5s ease',
+              // Smooth transition for pin/unpin and vault toggle
+              transition: animationClass ? 'none' : 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1), border 0.5s ease, border-radius 0.5s ease, box-shadow 0.5s ease',
               // GPU acceleration to prevent flicker
               transform: 'translateZ(0)',
               willChange: isFloating && isVisible ? 'transform, opacity' : 'auto',
             }}
           >
-            {/* Vault Panel */}
-            {isVaultOpen && (
-              <div style={{ width: '240px', flexShrink: 0 }}>
-                <VaultPanel onOpenDocument={onOpenDocument} />
-              </div>
-            )}
-
-            {/* Session Panel */}
-            <div className="flex-col flex"
+            {/* Unified Card: Vault + Tabs + Content + Footer */}
+            <div
+              className='flex flex-1 min-h-0'
               style={{
-                flex: 1,
+                margin: isFloating ? '0' : '8px 0 8px 8px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border-light)',
+                overflow: 'hidden',
                 minWidth: 0,
-                borderRight: '1px solid var(--border)'
-              }}>
-              {/* Session Selector */}
-              <div className="shrink-0 px-2 py-1 border-b border-default" style={{ overflow: 'visible' }}>
-                <SessionSelector
-                  sessions={sessions}
-                  currentSession={currentSession}
-                  onSelectSession={selectSession}
-                  onCreateNew={() => {
-                    setEditingSession(null);
-                    setShowSessionForm(true);
-                  }}
-                />
-              </div>
+              }}
+            >
+              {/* Vault Panel */}
+              {isVaultOpen && (
+                <div style={{ width: '240px', flexShrink: 0, borderRight: '2px solid var(--border-light)' }}>
+                  <VaultPanel onOpenDocument={onOpenDocument} />
+                </div>
+              )}
 
-              {/* Ribbon + Panel */}
-              <div className='flex flex-1 min-h-0'>
-                <SidebarRibbon
-                  activeTab={activeTab}
-                  onTabClick={onTabClick}
-                  onTabHover={onTabHover}
-                  onSettingsClick={handleSettingsClick}
-                  isVaultOpen={isVaultOpen}
-                  onVaultClick={onToggleVault}
-                />
+              {/* Right Side: Tabs + Content + Footer */}
+              <div className="flex flex-col flex-1 min-h-0">
+                {/* Horizontal Tabs */}
+                <div className="flex items-center gap-2 px-1 py-2">
+                  {SIDEBAR_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
 
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => onTabClick(tab.id)}
+                        onMouseEnter={() => onTabHover(tab.id)}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg transition-colors ${isActive ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-tertiary)]'
+                          }`}
+                        style={{ color: isActive ? 'var(--accent)' : 'var(--fg-secondary)' }}
+                      >
+                        <Icon size={16} />
+                        <span className="text-sm font-medium">{tab.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Content Panel */}
                 <SidebarPanel
                   activeTab={activeTab}
                   mode={mode}
                   onNewClick={handleNewClick}
                   onNoteSelect={onNoteSelect}
                 />
+
+                {/* Footer: Vault + Theme + Settings */}
+                <div
+                  className="shrink-0 flex items-center justify-between px-2 py-1"
+                  style={{
+                    borderTop: '1px solid var(--border-light)',
+                  }}
+                >
+                  <button
+                    onClick={onToggleVault}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                    style={{ color: isVaultOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
+                  >
+                    <FolderOpen size={16} />
+                    <span className="text-sm">Vault</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <ThemeToggle isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
+                    <Tooltip content="Settings" placement="top">
+                      <button
+                        className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        style={{ color: 'var(--fg-secondary)' }}
+                      >
+                        <Settings size={18} />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
       )}

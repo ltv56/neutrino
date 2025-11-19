@@ -67,7 +67,7 @@ const SessionSelector: React.FC<SessionSelectorProps> = ({
   return (
     <div className="relative">
       {/* Session Selector Button */}
-      <Tooltip content={currentSession?.title || 'No Session'} placement="bottom">
+      <Tooltip content={currentSession?.title || 'No Session'} placement="right">
         <button
           ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}

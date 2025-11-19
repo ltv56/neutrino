@@ -72,12 +72,17 @@ const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <nav
-      className="flex items-center bg-secondary relative"
-      style={{ height: 'var(--tabbar-height)' }}
+      className="flex items-center relative"
+      style={{
+        height: 'var(--tabbar-height)',
+        paddingLeft: '8px',
+        paddingRight: '8px',
+        position: 'relative'
+      }}
       aria-label="Tab navigation"
     >
       {/* Border bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-[var(--border-light)]" style={{ zIndex: 0 }} />
+      <div className="absolute bottom-0 left-2 right-2 h-px" style={{ backgroundColor: 'var(--border-light)', zIndex: 0 }} />
 
       {/* Left scroll button */}
       {canScrollLeft && (
@@ -98,7 +103,7 @@ const TabBar: React.FC<TabBarProps> = ({
         className="flex items-end overflow-x-auto h-full flex-1 relative"
         style={{
           gap: '2px',
-          zIndex: 1,
+          zIndex: 10,
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           paddingLeft: canScrollLeft ? '0' : '10px', // Must be >= curve-size for proper clipping
@@ -121,7 +126,7 @@ const TabBar: React.FC<TabBarProps> = ({
               className={`
         tab flex items-center gap-2 px-3 cursor-pointer transition-smooth-fast
         ${isActive
-                  ? 'tab-active bg-primary text-primary'
+                  ? 'tab-active bg-secondary text-primary'
                   : 'bg-transparent text-secondary hover:bg-tertiary hover:text-primary'
                 }
       `}
@@ -174,13 +179,13 @@ const TabBar: React.FC<TabBarProps> = ({
       )}
 
       {/* Add tab button */}
-      <Tooltip content="Menu" placement='bottom-right'>
+      <Tooltip content="New Tab" placement='bottom-right'>
         <button
           onClick={onTabAdd}
-          className="p-1 mr-1.5 rounded hover:bg-[var(--bg-active)] transition-colors"
+          className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
           aria-label="Add new tab"
         >
-          <Plus size={20} style={{ color: 'var(--fg-secondary)' }} />
+          <Plus size={18} style={{ color: 'var(--fg-secondary)' }} />
         </button>
       </Tooltip>
     </nav>

@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
-import { useTitleBarDrag } from '@/hooks';
+import { useTitleBarDrag, useSessionsContext } from '@/hooks';
 import { SEARCH_CONTEXTS, DEFAULT_SEARCH_CONTEXT } from '@/constants/routes';
 import WindowControls from './titlebar/WindowControls';
 import SearchBar from './titlebar/SearchBar';
 import NavigationButtons from './titlebar/NavigationButtons';
-import ThemeToggle from './titlebar/ThemeToggle';
 import Divider from '@/components/common/Divider';
 import Tooltip from '@/components/common/Tooltip';
-
+import SessionSelector from '@/components/sessions/SessionSelector';
+import { Menu } from 'lucide-react';
 interface TitleBarProps {
   sidebarMode?: 'floating' | 'pinned';
   onToggleSidebarPin?: () => void;
+  onCreateSession?: () => void;
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({
   sidebarMode,
   onToggleSidebarPin,
+  onCreateSession,
 }) => {
   const location = useLocation();
+  const { sessions, currentSession, selectSession } = useSessionsContext();
   const [isTauri, setIsTauri] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMaximized, setIsMaximized] = useState(false);
 
 
@@ -55,18 +57,6 @@ const TitleBar: React.FC<TitleBarProps> = ({
     }
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-
-    // Apply theme to document root
-    if (newTheme) {
-      document.documentElement.removeAttribute('data-theme');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-  };
-
   const handleSearchClick = () => {
     const event = new KeyboardEvent('keydown', {
       key: 'k',
@@ -97,12 +87,13 @@ const TitleBar: React.FC<TitleBarProps> = ({
   return (
     <div
       id="titlebar"
-      className="flex items-center justify-between select-none bg-tertiary border-b border-default"
+      className="flex items-center justify-between select-none"
       style={{
-        height: 'var(--titlebar-height)'
+        height: 'var(--titlebar-height)',
+        backgroundColor: 'var(--bg-background)',
       }}
     >
-      {/* Left side - App logo + Sidebar toggle */}
+      {/* Left side - App logo + Sidebar toggle + Session Selector */}
       <div className="flex items-center gap-2" data-no-drag>
         {/* App Logo */}
         <img
@@ -133,6 +124,16 @@ const TitleBar: React.FC<TitleBarProps> = ({
             </Tooltip>
           </>
         )}
+
+        {/* Session Selector */}
+        <div style={{ minWidth: '180px' }}>
+          <SessionSelector
+            sessions={sessions}
+            currentSession={currentSession}
+            onSelectSession={selectSession}
+            onCreateNew={onCreateSession || (() => { })}
+          />
+        </div>
       </div>
 
       {/* Center - Navigation + Search Bar */}
@@ -145,12 +146,15 @@ const TitleBar: React.FC<TitleBarProps> = ({
         />
       </div>
 
-      {/* Right side - Theme Toggle & Menu */}
-      <ThemeToggle isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
-
-      {/* Divider */}
-      <Divider height="28px" margin="0 8px" />
-
+      <Tooltip content="Menu" placement='bottom-left'>
+        <button
+          className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+          data-no-drag
+        >
+          <Menu size={20} style={{ color: 'var(--fg-secondary)' }} />
+        </button>
+      </Tooltip>
+      
       {/* Right side - Window controls */}
       <WindowControls
         isMaximized={isMaximized}

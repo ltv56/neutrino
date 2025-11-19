@@ -22,10 +22,11 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
 }) => {
   return (
     <div
-      className="flex flex-col items-center py-3 gap-3 "
+      className="flex flex-col items-center py-3 gap-2"
       style={{
         width: 'var(--ribbon-width)',
-        borderRight: '1px solid var(--border)',
+        backgroundColor: 'var(--bg-background)',
+        borderRight: '1px solid var(--border-light)',
       }}
     >
       {SIDEBAR_TABS.map((tab) => {
@@ -37,7 +38,7 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
             <button
               onClick={() => onTabClick(tab.id)}
               onMouseEnter={() => onTabHover(tab.id)}
-              className={`p-1.5 rounded transition-colors ${
+              className={`p-1.5 rounded-md transition-colors ${
                 isActive ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-tertiary)]'
               }`}
               style={{ color: isActive ? 'var(--accent)' : 'var(--fg-secondary)' }}
@@ -55,7 +56,7 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
         <Tooltip content={isVaultOpen ? 'Close Vault' : 'Open Vault'} placement="right">
           <button
             onClick={onVaultClick}
-            className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
+            className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
             style={{ color: isVaultOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
           >
             <FolderOpen size={18} />
@@ -67,7 +68,7 @@ const SidebarRibbon: React.FC<SidebarRibbonProps> = ({
       <Tooltip content="Settings" placement="right">
         <button
           onClick={onSettingsClick}
-          className="p-1.5 rounded hover:bg-[var(--bg-tertiary)] transition-colors text-secondary"
+          className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors text-secondary"
         >
           <Settings size={18} />
         </button>

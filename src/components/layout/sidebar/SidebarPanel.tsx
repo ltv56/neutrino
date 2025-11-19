@@ -20,7 +20,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'notes':
+      case 'papers':
         return (
           <NotesList
             sessionId={currentSession?.id}
@@ -33,7 +33,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
         return (
           <div className="px-2 py-2">
             <div className="space-y-1">
-              <div className="p-2 rounded text-sm cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors text-secondary">
+              <div className="p-2 rounded text-sm cursor-pointer transition-colors text-secondary">
                 <div className="font-medium text-primary">
                   {SIDEBAR_EMPTY_STATES[activeTab].title}
                 </div>
@@ -51,7 +51,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
     <div
       className="flex flex-col flex-1"
       style={{
-        backgroundColor: 'var(--bg-secondary)',
+        minWidth: 0,
       }}
     >
       {/* Content List */}

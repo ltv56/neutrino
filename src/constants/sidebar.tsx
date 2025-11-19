@@ -1,7 +1,7 @@
-import { FileText, StickyNote } from 'lucide-react';
+import { FileText, BookOpen } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type SidebarTab = 'documents' | 'notes';
+export type SidebarTab = 'documents' | 'papers';
 
 export interface SidebarTabConfig {
   id: SidebarTab;
@@ -21,15 +21,15 @@ export const SIDEBAR_TABS: SidebarTabConfig[] = [
     title: 'Documents',
   },
   {
-    id: 'notes',
-    icon: StickyNote,
-    title: 'Notes',
+    id: 'papers',
+    icon: BookOpen,
+    title: 'Papers',
   },
 ];
 
 export const SIDEBAR_HEADERS: Record<SidebarTab, string> = {
   documents: 'Documents',
-  notes: 'Notes',
+  papers: 'Papers',
 };
 
 export const SIDEBAR_EMPTY_STATES: Record<SidebarTab, SidebarEmptyState> = {
@@ -37,8 +37,8 @@ export const SIDEBAR_EMPTY_STATES: Record<SidebarTab, SidebarEmptyState> = {
     title: 'No documents yet',
     subtitle: 'Add PDFs to your session',
   },
-  notes: {
-    title: 'No notes yet',
-    subtitle: 'Create your first note',
+  papers: {
+    title: 'No papers yet',
+    subtitle: 'Create your first paper note',
   },
 };
