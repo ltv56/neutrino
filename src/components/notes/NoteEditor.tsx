@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Book, AlertCircle, X } from 'lucide-react';
+import { Book, Edit, AlertCircle, X } from 'lucide-react';
 import { noteService, type Note } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
+import Tooltip from '@/components/common/Tooltip';
 import './markdown.css';
 
 interface NoteEditorProps {
@@ -241,7 +242,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div
         className="flex items-center justify-end gap-2 px-3 py-1.5 border-b"
@@ -249,22 +250,23 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       >
         <span className="text-xs" style={{ color: 'var(--fg-tertiary)' }}>Auto-saved</span>
 
-        <button
-          onClick={() => setMode(mode === 'edit' ? 'reading' : 'edit')}
-          className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
-          title="Reading Mode"
-          style={{ color: 'var(--fg-secondary)' }}
-        >
-          <Book size={14} />
-        </button>
+        <Tooltip content={mode === 'edit' ? 'Reading Mode' : 'Edit Mode'} placement="bottom-right">
+          <button
+            onClick={() => setMode(mode === 'edit' ? 'reading' : 'edit')}
+            className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            style={{ color: 'var(--fg-secondary)' }}
+          >
+            {mode === 'edit' ? <Book size={14} /> : <Edit size={14} />}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex justify-center px-4">
         {mode === 'edit' ? (
-          <div className="h-full flex flex-col w-full" style={{ maxWidth: '800px' }}>
+          <div className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
             {/* Title input */}
-            <div className="px-6 pt-6 pb-4 relative">
+            <div className="px-8 pt-12 pb-4 relative">
               <input
                 ref={titleInputRef}
                 type="text"
@@ -363,9 +365,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               value={content}
               onChange={handleContentChange}
               placeholder="Start writing..."
-              className="flex-1 px-6 pb-4 resize-none outline-none border-none text-sm"
+              className="flex-1 px-8 pb-8 resize-none outline-none border-none text-sm"
               style={{
-                backgroundColor: 'var(--bg-primary)',
                 color: 'var(--fg-primary)',
                 lineHeight: '1.7',
               }}
@@ -374,7 +375,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         ) : (
           <div className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
             {/* Title preview */}
-            <div className="px-6 pt-6 pb-4">
+            <div className="px-8 pt-12 pb-4">
               <h1
                 className="text-xl font-semibold"
                 style={{
@@ -391,7 +392,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             </div>
 
             {/* Content preview */}
-            <div className="flex-1 px-6 pb-4">
+            <div className="flex-1 px-8 pb-8">
               {content ? (
                 <div className="markdown-preview prose prose-sm max-w-none">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>

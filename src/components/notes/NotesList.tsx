@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FileText, Plus, Trash2, FolderPlus, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { noteService, type Note } from '@/services';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/contexts/ToastContext';
@@ -21,6 +21,7 @@ export const NotesList: React.FC<NotesListProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     noteId: string;
@@ -129,73 +130,119 @@ export const NotesList: React.FC<NotesListProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-2 py-2 flex items-center justify-between"
-        style={{
-          backgroundColor: 'var(--bg-secondary)'
-        }}>
-        <button
-          onClick={onCreateNote}
-          className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
-          title="New Note"
-        >
-          <Plus size={14} style={{ color: 'var(--fg-secondary)' }} />
-        </button>
+      <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-1">
+          <Tooltip content={isCollapsed ? "Expand" : "Collapse"} placement="right">
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            >
+              {isCollapsed ? (
+                <ChevronDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+              ) : (
+                <ChevronUp size={14} style={{ color: 'var(--fg-secondary)' }} />
+              )}
+            </button>
+          </Tooltip>
+          <span className="text-xs font-medium" style={{ color: 'var(--fg-primary)' }}>Notes</span>
+        </div>
+
+        <div className="flex items-center gap-0.5">
+          <Tooltip content="New Note" placement="bottom">
+            <button
+              onClick={onCreateNote}
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            >
+              <Plus size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="New Folder" placement="bottom">
+            <button
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              disabled
+            >
+              <FolderPlus size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Sort" placement="bottom">
+            <button
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              disabled
+            >
+              <ArrowUpDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Notes list */}
-      <div className="flex-1 overflow-y-auto">
-        {notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-24 text-center px-2">
-            <FileText size={20} style={{ color: 'var(--fg-tertiary)', marginBottom: '4px' }} />
-            <p className="text-xs" style={{ color: 'var(--fg-tertiary)' }}>
-              No notes yet
-            </p>
-          </div>
-        ) : (
-          <div className="px-1.5 py-1">
-            {notes.map((note) => (
-              <div
-                key={note.id}
-                onClick={() => handleNoteClick(note.id, note.title)}
-                className={`group px-2 py-1 mx-1 cursor-pointer rounded flex items-center justify-between gap-1.5 hover:bg-[var(--bg-active)] ${!isInitialLoad ? 'transition-all' : ''}`}
-                style={{
-                  backgroundColor: selectedNoteId === note.id ? 'var(--bg-active)' : 'transparent',
-                }}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileText
-                    size={14}
-                    style={{
-                      color: selectedNoteId === note.id ? 'var(--accent)' : 'var(--fg-tertiary)',
-                      flexShrink: 0
-                    }}
-                  />
-                  <Tooltip content={`${note.title || 'Untitled'}.md`} placement="right">
-                    <div style={{ maxWidth: '150px', minWidth: 0, flex: 1 }}>
-                      <span
-                        className="text-sm truncate block"
-                        style={{
-                          color: selectedNoteId === note.id ? 'var(--accent)' : 'var(--fg-primary)',
-                        }}
-                      >
-                        {note.title || 'Untitled'}.md
-                      </span>
-                    </div>
-                  </Tooltip>
-                </div>
-
-                <button
-                  onClick={(e) => handleDeleteNote(e, note.id, note.title)}
-                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-tertiary)] transition-opacity"
-                  title="Delete note"
+      {!isCollapsed && (
+        <div className="flex-1 overflow-y-auto">
+          {notes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-24 text-center px-2">
+              <FileText size={20} style={{ color: 'var(--fg-tertiary)', marginBottom: '4px' }} />
+              <p className="text-xs" style={{ color: 'var(--fg-tertiary)' }}>
+                No notes yet
+              </p>
+            </div>
+          ) : (
+            <div className="px-1.5 py-1">
+              {notes.map((note) => (
+                <div
+                  key={note.id}
+                  onClick={() => handleNoteClick(note.id, note.title)}
+                  className={`group px-2 py-1.5 mx-1 cursor-pointer rounded flex items-center justify-between gap-1.5 ${!isInitialLoad ? 'transition-colors' : ''}`}
+                  style={{
+                    backgroundColor: selectedNoteId === note.id ? 'var(--bg-active)' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedNoteId !== note.id) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedNoteId !== note.id) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
                 >
-                  <Trash2 size={14} style={{ color: 'var(--fg-tertiary)' }} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <FileText
+                      size={14}
+                      style={{
+                        color: selectedNoteId === note.id ? 'var(--accent)' : 'var(--fg-tertiary)',
+                        flexShrink: 0
+                      }}
+                    />
+                    <NoteTooltip title={`${note.title || 'Untitled'}.md`}>
+                      <div style={{ maxWidth: '180px', minWidth: 0, flex: 1 }}>
+                        <span
+                          className="text-xs truncate block"
+                          style={{
+                            color: selectedNoteId === note.id ? 'var(--accent)' : 'var(--fg-primary)',
+                          }}
+                        >
+                          {note.title || 'Untitled'}.md
+                        </span>
+                      </div>
+                    </NoteTooltip>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleDeleteNote(e, note.id, note.title)}
+                    className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-tertiary)] transition-opacity"
+                    title="Delete note"
+                  >
+                    <Trash2 size={14} style={{ color: 'var(--fg-tertiary)' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
@@ -210,6 +257,35 @@ export const NotesList: React.FC<NotesListProps> = ({
       />
     </div>
   );
+};
+
+// Tooltip component that only shows when text is truncated
+const NoteTooltip: React.FC<{ title: string; children: React.ReactElement; }> = ({ title, children }) => {
+  const [isTruncated, setIsTruncated] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkTruncation = () => {
+      if (containerRef.current) {
+        const span = containerRef.current.querySelector('span');
+        if (span) {
+          setIsTruncated(span.scrollWidth > span.clientWidth);
+        }
+      }
+    };
+
+    checkTruncation();
+    window.addEventListener('resize', checkTruncation);
+    return () => window.removeEventListener('resize', checkTruncation);
+  }, [title]);
+
+  const wrapper = <div ref={containerRef} style={{ display: 'contents' }}>{children}</div>;
+
+  if (isTruncated) {
+    return <Tooltip content={title} placement="right">{wrapper}</Tooltip>;
+  }
+
+  return wrapper;
 };
 
 export default NotesList;

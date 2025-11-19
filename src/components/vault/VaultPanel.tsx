@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { FolderOpen, FileText, Upload } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { FolderOpen, FileText, Upload, FolderPlus, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { documentService, pdfService } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
+import Tooltip from '@/components/common/Tooltip';
 import type { Document } from '@/types';
 
 interface VaultPanelProps {
@@ -12,6 +13,8 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
   const toast = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     loadDocuments();
@@ -30,6 +33,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
   };
 
   const handleDocumentClick = (doc: Document) => {
+    setSelectedDocId(doc.id);
     onOpenDocument?.(doc.id, doc.title);
   };
 
@@ -59,27 +63,59 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
       className="flex flex-col h-full"
       style={{
         backgroundColor: 'var(--bg-secondary)',
-        borderRight: '1px solid var(--border)',
       }}
     >
       {/* Header */}
-      <div
-        className="shrink-0 px-4 py-2 border-b"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <div className="flex items-center gap-2">
-          <FolderOpen size={16} style={{ color: 'var(--fg-primary)', flexShrink: 0 }} />
-          <h2
-            className="text-sm font-medium"
-            style={{ color: 'var(--fg-primary)' }}
-          >
-            Document Vault
-          </h2>
+      <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-1">
+          <Tooltip content={isCollapsed ? "Expand" : "Collapse"} placement="right">
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            >
+              {isCollapsed ? (
+                <ChevronDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+              ) : (
+                <ChevronUp size={14} style={{ color: 'var(--fg-secondary)' }} />
+              )}
+            </button>
+          </Tooltip>
+          <span className="text-xs font-medium" style={{ color: 'var(--fg-primary)' }}>Documents</span>
+        </div>
+
+        <div className="flex items-center gap-0.5">
+          <Tooltip content="Import PDF" placement="bottom">
+            <button
+              onClick={handleImport}
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            >
+              <Upload size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="New Folder" placement="bottom">
+            <button
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              disabled
+            >
+              <FolderPlus size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Sort" placement="bottom">
+            <button
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              disabled
+            >
+              <ArrowUpDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
       {/* Document List */}
-      <div className="flex-1 overflow-y-auto">
+      {!isCollapsed && (
+        <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-full px-4 text-sm" style={{ color: 'var(--fg-secondary)' }}>
             Loading...
@@ -95,43 +131,89 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument }) => {
             </p>
           </div>
         ) : (
-          <div className="py-1">
+          <div className="px-1.5 py-1">
             {documents.map((doc) => (
-              <button
+              <div
                 key={doc.id}
                 onClick={() => handleDocumentClick(doc)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-active)] transition-colors text-left group"
-                title={doc.title}
+                className="group px-2 py-1.5 mx-1 cursor-pointer rounded flex items-center justify-between gap-2 transition-colors"
+                style={{
+                  backgroundColor: selectedDocId === doc.id ? 'var(--bg-active)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedDocId !== doc.id) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedDocId !== doc.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
-                <FileText size={14} style={{ color: 'var(--fg-secondary)', flexShrink: 0 }} />
-                <span className="text-xs truncate" style={{ color: 'var(--fg-primary)' }}>
-                  {doc.title}
-                </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <FileText
+                    size={14}
+                    style={{
+                      color: selectedDocId === doc.id ? 'var(--accent)' : 'var(--fg-tertiary)',
+                      flexShrink: 0
+                    }}
+                  />
+                  <DocTooltip title={doc.title}>
+                    <div style={{ maxWidth: '160px', minWidth: 0, flex: 1 }}>
+                      <span
+                        className="text-xs truncate block"
+                        style={{
+                          color: selectedDocId === doc.id ? 'var(--accent)' : 'var(--fg-primary)',
+                        }}
+                      >
+                        {doc.title}
+                      </span>
+                    </div>
+                  </DocTooltip>
+                </div>
                 {doc.reading_progress > 0 && (
-                  <span className="ml-auto text-xs shrink-0" style={{ color: 'var(--fg-tertiary)' }}>
+                  <span className="text-[11px] shrink-0" style={{ color: 'var(--fg-tertiary)' }}>
                     p.{doc.reading_progress}
                   </span>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Footer Actions */}
-      <div className="shrink-0 p-2 border-t" style={{ borderColor: 'var(--border)' }}>
-        <button
-          onClick={handleImport}
-          className="w-full flex items-center justify-center gap-2 py-1.5 rounded hover:bg-[var(--bg-active)] transition-colors"
-          style={{ color: 'var(--fg-secondary)' }}
-          title="Import PDF"
-        >
-          <Upload size={14} />
-          <span className="text-xs">Import PDF</span>
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
+};
+
+// Tooltip component that only shows when text is truncated
+const DocTooltip: React.FC<{ title: string; children: React.ReactElement }> = ({ title, children }) => {
+  const [isTruncated, setIsTruncated] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkTruncation = () => {
+      if (containerRef.current) {
+        const span = containerRef.current.querySelector('span');
+        if (span) {
+          setIsTruncated(span.scrollWidth > span.clientWidth);
+        }
+      }
+    };
+
+    checkTruncation();
+    window.addEventListener('resize', checkTruncation);
+    return () => window.removeEventListener('resize', checkTruncation);
+  }, [title]);
+
+  const wrapper = <div ref={containerRef} style={{ display: 'contents' }}>{children}</div>;
+
+  if (isTruncated) {
+    return <Tooltip content={title} placement="right">{wrapper}</Tooltip>;
+  }
+
+  return wrapper;
 };
 
 export default VaultPanel;
