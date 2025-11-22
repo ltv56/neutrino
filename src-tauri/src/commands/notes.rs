@@ -84,3 +84,14 @@ pub async fn delete_note(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn search_notes(
+    database: tauri::State<'_, Database>,
+    query: String,
+) -> Result<Vec<models::Note>, String> {
+    database.notes()
+        .search(&query)
+        .await
+        .map_err(|e| e.to_string())
+}

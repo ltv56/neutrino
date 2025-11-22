@@ -66,6 +66,7 @@ pub fn run() {
             commands::get_document_by_id,
             commands::get_documents_by_session,
             commands::update_document_reading_progress,
+            commands::search_documents,
 
             // ========== PDF Management ==========
             commands::pdf_get_app_directories,
@@ -88,6 +89,7 @@ pub fn run() {
             commands::get_notes,
             commands::update_note,
             commands::delete_note,
+            commands::search_notes,
 
             // ========== Transactions ==========
             commands::create_session_with_documents,
@@ -101,7 +103,7 @@ pub fn run() {
 
             println!("[Vite] Building UI...");
 
-            // Initialize database sync
+            // Initialize database SYNCHRONOUSLY before anything else
             let app_data_dir = app.path().app_data_dir()
                 .expect("Failed to resolve app data directory");
 
@@ -111,18 +113,14 @@ pub fn run() {
             let database_path = app_data_dir.join("neutrino.db");
             let database_url = format!("sqlite://{}", database_path.display());
 
-            // Initialize database in background
-            let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let db_start = std::time::Instant::now();
-                tauri::async_runtime::block_on(async move {
-                    let db = database::Database::new(&database_url).await
-                        .expect("Failed to initialize database");
-
-                    app_handle.manage(db);
-                    println!("[Setup] Database initialized in {}ms", db_start.elapsed().as_millis());
-                });
+            // Block and wait for database to be ready
+            let db_start = std::time::Instant::now();
+            let db = tauri::async_runtime::block_on(async {
+                database::Database::new(&database_url).await
+                    .expect("Failed to initialize database")
             });
+            app.manage(db);
+            println!("[Setup] Database initialized in {}ms", db_start.elapsed().as_millis());
 
             // Start HTTP server for PDF streaming
             http_server::start_http_server(app.handle().clone());

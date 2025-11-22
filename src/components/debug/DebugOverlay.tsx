@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import DatabaseTest from './DatabaseTest';
 import PDFImportTest from './PDFImportTest';
+import NoteTest from './NoteTest';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'api' | 'files' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'api' | 'files' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ const DebugOverlay = () => {
   const debugOptions = [
     { id: 'database' as const, label: '🗄️ Database', description: 'Test database operations' },
     { id: 'pdf' as const, label: '📄 PDF Import', description: 'Test PDF import & metadata' },
+    { id: 'notes' as const, label: '📝 Notes', description: 'Test note creation & markdown' },
     { id: 'api' as const, label: '🌐 API', description: 'Test API calls (coming soon)' },
     { id: 'files' as const, label: '📁 Files', description: 'Test file operations (coming soon)' }
   ];
@@ -22,6 +24,8 @@ const DebugOverlay = () => {
         return <DatabaseTest />;
       case 'pdf':
         return <PDFImportTest />;
+      case 'notes':
+        return <NoteTest />;
       case 'api':
         return (
           <div className="p-4 text-center text-gray-500">
