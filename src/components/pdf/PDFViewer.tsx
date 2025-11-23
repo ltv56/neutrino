@@ -32,9 +32,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 interface PDFViewerProps {
   documentId: string;
+  initialPage?: number; // Optional - which page to open (from wiki links)
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
+const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -149,7 +150,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
 
         if (response.ok || response.status === 404) {
           // Server is running (404 is ok - document might not exist yet, but server is there)
-          console.log(`[PDF] Found HTTP server on port ${port}`);
           return port;
         }
       } catch (err) {
@@ -186,11 +186,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       if (cachedPdf) {
         pdfDocRef.current = cachedPdf;
         setTotalPages(cachedPdf.numPages);
-        // Restore reading position
-        const restoredPage = doc.reading_progress > 0 && doc.reading_progress <= cachedPdf.numPages
-          ? doc.reading_progress
-          : 1;
-        setCurrentPage(restoredPage);
+        // Determine starting page: prioritize initialPage, then reading_progress, then default to 1
+        let startPage = 1;
+        if (initialPage && initialPage >= 1 && initialPage <= cachedPdf.numPages) {
+          startPage = initialPage;
+        } else if (doc.reading_progress > 0 && doc.reading_progress <= cachedPdf.numPages) {
+          startPage = doc.reading_progress;
+        }
+        setCurrentPage(startPage);
         setLoading(false);
         setNeedsRender(true);
         return;
@@ -222,7 +225,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       });
 
       const pdf = await loadingTask.promise;
-      console.log(`[PDF] Document loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
 
       // 4. Cache the loaded PDF
       cacheDocument(documentId, pdf);
@@ -230,11 +232,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId }) => {
       // 5. Store PDF and prepare to render
       pdfDocRef.current = pdf;
       setTotalPages(pdf.numPages);
-      // Restore reading position
-      const restoredPage = doc.reading_progress > 0 && doc.reading_progress <= pdf.numPages
-        ? doc.reading_progress
-        : 1;
-      setCurrentPage(restoredPage);
+      // Determine starting page: prioritize initialPage, then reading_progress, then default to 1
+      let startPage = 1;
+      if (initialPage && initialPage >= 1 && initialPage <= pdf.numPages) {
+        startPage = initialPage;
+      } else if (doc.reading_progress > 0 && doc.reading_progress <= pdf.numPages) {
+        startPage = doc.reading_progress;
+      }
+      setCurrentPage(startPage);
       setLoading(false);
       setNeedsRender(true);
     } catch (err) {

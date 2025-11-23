@@ -96,6 +96,9 @@ pub fn run() {
 
             // ========== Debug/Admin ==========
             commands::clear_all_data,
+            commands::get_database_stats,
+            commands::check_database_integrity,
+            commands::vacuum_database,
         ])
         .setup(|app| {
             let setup_start = std::time::Instant::now();

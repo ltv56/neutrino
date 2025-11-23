@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import TitleBar from './TitleBar';
-import TabBar from './TabBar';
 import type { Tab } from './TabBar';
 import Sidebar from './Sidebar';
-import MainContent from './MainContent';
+import ContentPanel from './ContentPanel';
+import SplitView from './SplitView';
 import CommandPalette from '@/components/ui/CommandPalette';
 import DebugOverlay from '@/components/debug/DebugOverlay';
 import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
@@ -23,6 +23,10 @@ const Layout: React.FC = () => {
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Split view state
+  const [splitViewOpen, setSplitViewOpen] = useState(false);
+  const [secondaryTab, setSecondaryTab] = useState<Tab | null>(null);
 
   // Vault panel state
   const [isVaultOpen, setIsVaultOpen] = useState(false);
@@ -58,23 +62,39 @@ const Layout: React.FC = () => {
     }
   };
 
-  // Command Palette keyboard shortcut
+  // Split view management
+  const openInSplitView = useCallback((tab: Tab) => {
+    setSecondaryTab(tab);
+    setSplitViewOpen(true);
+  }, []);
+
+  const closeSplitView = useCallback(() => {
+    setSplitViewOpen(false);
+    setSecondaryTab(null);
+  }, []);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K on Mac, Ctrl+K on Windows/Linux
+      // Cmd+K on Mac, Ctrl+K on Windows/Linux - Command Palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(prev => !prev);
       }
-      // ESC to close
+
+      // ESC key - close what's open (priority order)
       if (e.key === 'Escape') {
-        setCommandPaletteOpen(false);
+        if (splitViewOpen) {
+          closeSplitView();
+        } else if (commandPaletteOpen) {
+          setCommandPaletteOpen(false);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [splitViewOpen, commandPaletteOpen, closeSplitView]);
 
   // Listen for note title changes
   useEffect(() => {
@@ -122,6 +142,42 @@ const Layout: React.FC = () => {
     window.addEventListener('note-deleted', handleNoteDeleted as EventListener);
     return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
   }, []);
+
+  // Listen for split view requests from note links
+  useEffect(() => {
+    const handleOpenNoteSplitView = (e: CustomEvent) => {
+      const { noteId, title } = e.detail;
+
+      // Create a tab for the note
+      const noteTab = createNoteTab(noteId, title);
+
+      // Open in split view
+      openInSplitView(noteTab);
+    };
+
+    window.addEventListener('open-note-split-view', handleOpenNoteSplitView as EventListener);
+    return () => window.removeEventListener('open-note-split-view', handleOpenNoteSplitView as EventListener);
+  }, [openInSplitView]);
+
+  // Listen for split view requests from document links
+  useEffect(() => {
+    const handleOpenDocumentSplitView = (e: CustomEvent) => {
+      const { documentId, title, page } = e.detail;
+
+      // Create a tab for the document (with page info)
+      const documentTab = createDocumentTab(documentId, title);
+
+      // TODO: Store page number in tab metadata for PDF viewer to use
+      // For now, PDF viewer will default to page 1
+      // Future: Add `page` to Tab interface and pass to PDF viewer
+
+      // Open in split view
+      openInSplitView(documentTab);
+    };
+
+    window.addEventListener('open-document-split-view', handleOpenDocumentSplitView as EventListener);
+    return () => window.removeEventListener('open-document-split-view', handleOpenDocumentSplitView as EventListener);
+  }, [openInSplitView]);
 
   const addNewTab = () => {
     const newTab = createNewChatTab();
@@ -267,7 +323,6 @@ const Layout: React.FC = () => {
         onToggleSidebarPin={handleTogglePin}
         onCreateSession={() => {
           // TODO: Open session form modal
-          console.log('Create new session');
         }}
       />
       <div className="flex flex-1 overflow-hidden">
@@ -293,23 +348,44 @@ const Layout: React.FC = () => {
 
         {/* Main Content Area */}
         <div
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col min-h-0"
           style={{
             margin: '8px 20px 8px 20px',
+            minWidth: 0,
+            overflow: 'hidden',
           }}
         >
           {!isFullPageRoute && (
-            <TabBar
-              tabs={tabs}
-              activeTabId={activeTabId}
-              onTabChange={setActiveTabId}
-              onTabClose={closeTab}
-              onTabAdd={addNewTab}
-            />
+            <div className="flex-1 min-h-0" style={{ position: 'relative', minWidth: 0, overflow: 'hidden' }}>
+              {splitViewOpen && secondaryTab ? (
+                <SplitView
+                  primaryContent={
+                    <ContentPanel
+                      tabs={tabs}
+                      activeTabId={activeTabId}
+                      onTabChange={setActiveTabId}
+                      onTabClose={closeTab}
+                      onTabAdd={addNewTab}
+                    />
+                  }
+                  secondaryContent={
+                    <ContentPanel
+                      singleTab={secondaryTab}
+                      onCloseSingleTab={closeSplitView}
+                    />
+                  }
+                />
+              ) : (
+                <ContentPanel
+                  tabs={tabs}
+                  activeTabId={activeTabId}
+                  onTabChange={setActiveTabId}
+                  onTabClose={closeTab}
+                  onTabAdd={addNewTab}
+                />
+              )}
+            </div>
           )}
-          <div className="flex-1 main-content-with-corner-borders" style={{ position: 'relative' }}>
-            <MainContent activeTab={activeTab} />
-          </div>
         </div>
       </div>
       <CommandPalette

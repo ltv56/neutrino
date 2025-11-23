@@ -23,8 +23,28 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
-        let options = SqliteConnectOptions::from_str(database_url)?.create_if_missing(true);
+        use sqlx::sqlite::{SqliteJournalMode, SqliteSynchronous};
+        use std::time::Duration;
+
+        let options = SqliteConnectOptions::from_str(database_url)?
+            .create_if_missing(true)
+            // Enable WAL mode for better concurrency
+            .journal_mode(SqliteJournalMode::Wal)
+            // Set busy timeout to 30 seconds (prevent "database is locked" errors)
+            .busy_timeout(Duration::from_secs(30))
+            // Use NORMAL synchronous mode (balance between safety and performance)
+            .synchronous(SqliteSynchronous::Normal)
+            // Optimize for better performance
+            .pragma("cache_size", "-64000") // 64MB cache
+            .pragma("temp_store", "memory");
+
         let pool = SqlitePool::connect_with(options).await?;
+
+        println!("[Database] SQLite configured:");
+        println!("  - Journal mode: WAL");
+        println!("  - Busy timeout: 30s");
+        println!("  - Synchronous: NORMAL");
+        println!("  - Cache size: 64MB");
 
         // Get migrations before running
         let migrations_before: Vec<i64> =

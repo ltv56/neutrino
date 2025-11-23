@@ -11,6 +11,12 @@ export interface Note {
   updated_at: string;
 }
 
+export interface DatabaseIntegrityCheck {
+  is_ok: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
 export const noteService = {
   /**
    * Create a new note
@@ -49,7 +55,22 @@ export const noteService = {
    * Update note
    */
   async update(noteId: string, title: string, content: string): Promise<void> {
-    return await invoke('update_note', { noteId, title, content });
+    try {
+      return await invoke('update_note', { noteId, title, content });
+    } catch (err) {
+      // If database error, check integrity
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('malformed') || errorMessage.includes('corrupt')) {
+        console.error('[noteService] Database corruption detected, running integrity check...');
+        try {
+          const integrityCheck = await this.checkIntegrity();
+          console.error('[noteService] Integrity check result:', integrityCheck);
+        } catch (integrityErr) {
+          console.error('[noteService] Failed to run integrity check:', integrityErr);
+        }
+      }
+      throw err;
+    }
   },
 
   /**
@@ -57,5 +78,12 @@ export const noteService = {
    */
   async delete(noteId: string): Promise<boolean> {
     return await invoke('delete_note', { noteId });
+  },
+
+  /**
+   * Check database integrity
+   */
+  async checkIntegrity(): Promise<DatabaseIntegrityCheck> {
+    return await invoke('check_database_integrity');
   },
 };

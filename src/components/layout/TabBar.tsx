@@ -11,6 +11,7 @@ export interface Tab {
   type?: 'document' | 'chat' | 'welcome' | 'note';
   documentId?: string;
   noteId?: string;
+  page?: number; // For document tabs - which page to open
 }
 
 interface TabBarProps {
@@ -18,7 +19,8 @@ interface TabBarProps {
   activeTabId: string;
   onTabChange: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
-  onTabAdd: () => void;
+  onTabAdd?: () => void; // Optional - hide add button if not provided
+  showCloseOnSingleTab?: boolean; // Optional - show close button even with single tab (for split view)
 }
 
 const TabBar: React.FC<TabBarProps> = ({
@@ -27,6 +29,7 @@ const TabBar: React.FC<TabBarProps> = ({
   onTabChange,
   onTabClose,
   onTabAdd,
+  showCloseOnSingleTab = false,
 }) => {
   const scrollContainerRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -34,7 +37,7 @@ const TabBar: React.FC<TabBarProps> = ({
 
   const handleCloseTab = (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (tabs.length === 1) return;
+    if (tabs.length === 1 && !showCloseOnSingleTab) return;
     onTabClose(tabId);
   };
 
@@ -130,6 +133,11 @@ const TabBar: React.FC<TabBarProps> = ({
                   : 'bg-transparent text-secondary hover:bg-tertiary hover:text-primary'
                 }
       `}
+              style={{
+                maxWidth: '200px',
+                minWidth: 0,
+                flexShrink: 0,
+              }}
               role="tab"
               aria-selected={isActive}
               aria-controls={`tabpanel-${tab.id}`}
@@ -144,14 +152,14 @@ const TabBar: React.FC<TabBarProps> = ({
               )}
 
               <Tooltip content={tab.type === 'note' ? `${tab.title}.md` : tab.title} placement="bottom">
-                <div style={{ maxWidth: '150px', minWidth: 0 }}>
+                <div style={{ maxWidth: '150px', minWidth: 0, overflow: 'hidden' }}>
                   <span className="text-xs font-medium truncate block">
                     {tab.type === 'note' ? `${tab.title}.md` : tab.title}
                   </span>
                 </div>
               </Tooltip>
 
-              {tabs.length > 1 && (
+              {(tabs.length > 1 || showCloseOnSingleTab) && (
                 <button
                   onClick={(e) => handleCloseTab(tab.id, e)}
                   className="close-btn flex-shrink-0 p-0.5 rounded text-secondary hover:bg-active"
@@ -178,16 +186,18 @@ const TabBar: React.FC<TabBarProps> = ({
         </button>
       )}
 
-      {/* Add tab button */}
-      <Tooltip content="New Tab" placement='bottom-right'>
-        <button
-          onClick={onTabAdd}
-          className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
-          aria-label="Add new tab"
-        >
-          <Plus size={18} style={{ color: 'var(--fg-secondary)' }} />
-        </button>
-      </Tooltip>
+      {/* Add tab button - only show if onTabAdd is provided */}
+      {onTabAdd && (
+        <Tooltip content="New Tab" placement='bottom-right'>
+          <button
+            onClick={onTabAdd}
+            className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
+            aria-label="Add new tab"
+          >
+            <Plus size={18} style={{ color: 'var(--fg-secondary)' }} />
+          </button>
+        </Tooltip>
+      )}
     </nav>
   );
 };

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkWikiLink from '@/utils/remarkWikiLink';
 import { Book, Edit, AlertCircle, X } from 'lucide-react';
-import { noteService, type Note } from '@/services';
+import { noteService, documentService, type Note } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
 import Tooltip from '@/components/common/Tooltip';
+import NoteAutocomplete from './NoteAutocomplete';
 import './markdown.css';
 
 interface NoteEditorProps {
@@ -33,8 +35,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [errorTitleRef, setErrorTitleRef] = useState<string | null>(null);
   const [invalidCharWarning, setInvalidCharWarning] = useState<string | null>(null);
 
+  // Autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
+  const [autocompleteQuery, setAutocompleteQuery] = useState('');
+  const [autocompletePrefix, setAutocompletePrefix] = useState<'' | 'doc:' | 'note:'>(''); // Track prefix type
+  const [selectedAutocompleteIndex, setSelectedAutocompleteIndex] = useState(0);
+  const [allNotes, setAllNotes] = useState<Note[]>([]);
+  const [allDocuments, setAllDocuments] = useState<Array<{ id: string; title: string }>>([]);
+
   // Refs
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hasAutoFocusedRef = useRef(false);
 
@@ -70,6 +82,24 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [noteId, loadNote]);
 
+  // Load all notes and documents for autocomplete
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [notes, docs] = await Promise.all([
+          noteService.getAll(),
+          documentService.getAll()
+        ]);
+        setAllNotes(notes);
+        setAllDocuments(docs);
+      } catch (err) {
+        console.error('Failed to load notes/documents for autocomplete:', err);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
   // Auto-focus and select title after loading (only once)
   useEffect(() => {
     if (!isLoading && title && title.startsWith('Untitled') && !hasAutoFocusedRef.current) {
@@ -91,7 +121,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     // Don't save if there's a title error or invalid characters
     if ((titleError || hasInvalidChars) && titleChanged) {
-      console.log('[AutoSave] Skipped due to title error or invalid characters');
       return;
     }
 
@@ -107,7 +136,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         if (currentNoteId) {
           // Update existing note
           await noteService.update(currentNoteId, newTitle, newContent);
-          console.log('[AutoSave] Note updated');
 
           // Clear error on successful save
           if (titleError) {
@@ -143,7 +171,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           setCurrentNoteId(newNote.id);
           setLastSavedTitle(newTitle);
           onSave?.(newNote.id);
-          console.log('[AutoSave] Note created:', newNote.id);
 
           // Clear error on successful save
           if (titleError) {
@@ -163,13 +190,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       } catch (err) {
         console.error('[AutoSave] Failed:', err);
 
-        // Check if it's a unique constraint error
+        // Detailed error logging
         const errorMessage = err instanceof Error ? err.message : String(err);
+        const errorStack = err instanceof Error ? err.stack : undefined;
+
+        console.error('[AutoSave] Error details:', {
+          error: errorMessage,
+          stack: errorStack,
+          noteId: currentNoteId,
+          titleLength: newTitle.length,
+          contentLength: newContent.length,
+          titlePreview: newTitle.substring(0, 50),
+          contentPreview: newContent.substring(0, 100),
+          errorType: err?.constructor?.name,
+          fullError: err,
+        });
+
+        // Check error types
         if (errorMessage.includes('UNIQUE constraint') || errorMessage.includes('duplicate')) {
           setTitleError(`A note with the title "${newTitle}" already exists in this session`);
           setErrorTitleRef(newTitle);
+        } else if (errorMessage.includes('malformed') || errorMessage.includes('corrupt')) {
+          console.error('[AutoSave] DATABASE CORRUPTION DETECTED!');
+          console.error('[AutoSave] Content that caused error:', {
+            title: newTitle,
+            content: newContent,
+            titleHex: Array.from(newTitle).map(c => c.charCodeAt(0).toString(16)).join(' '),
+            contentHex: Array.from(newContent.substring(0, 100)).map(c => c.charCodeAt(0).toString(16)).join(' '),
+          });
+          toast.error('Database error - please check console for details');
         } else {
-          toast.error('Failed to save note');
+          toast.error(`Failed to save note: ${errorMessage}`);
         }
       }
     }, debounceTime);
@@ -220,9 +271,349 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
+    const cursorPosition = e.target.selectionStart;
+
     setContent(newContent);
     autoSave(title, newContent, false); // Content changed, title same
+
+    // Check for [[ trigger
+    const textBeforeCursor = newContent.substring(0, cursorPosition);
+    const lastDoubleBracket = textBeforeCursor.lastIndexOf('[[');
+
+    if (lastDoubleBracket !== -1) {
+      // Check if there's a closing ]] after the [[
+      const textAfterBracket = textBeforeCursor.substring(lastDoubleBracket);
+      const hasClosingBracket = textAfterBracket.includes(']]');
+
+      if (!hasClosingBracket) {
+        // Extract text after [[
+        const textAfterBrackets = textBeforeCursor.substring(lastDoubleBracket + 2);
+
+        // Detect prefix (doc: or note:)
+        let prefix: '' | 'doc:' | 'note:' = '';
+        let query = textAfterBrackets;
+
+        if (textAfterBrackets.startsWith('doc:')) {
+          prefix = 'doc:';
+          query = textAfterBrackets.substring(4);
+        } else if (textAfterBrackets.startsWith('note:')) {
+          prefix = 'note:';
+          query = textAfterBrackets.substring(5);
+        }
+
+        // Calculate dropdown position near [[
+        if (contentTextareaRef.current) {
+          const textarea = contentTextareaRef.current;
+          const textareaRect = textarea.getBoundingClientRect();
+          const style = getComputedStyle(textarea);
+
+          // Get computed styles
+          const lineHeight = parseFloat(style.lineHeight) || 24;
+          const fontSize = parseFloat(style.fontSize) || 14;
+          const paddingLeft = parseFloat(style.paddingLeft) || 0;
+
+          // Calculate line number
+          const lines = textBeforeCursor.split('\n');
+          const currentLineIndex = lines.length - 1;
+          const currentLineText = lines[currentLineIndex];
+
+          // Find position of [[ in current line
+          const bracketPos = currentLineText.indexOf('[[');
+          const textUpToBracket = currentLineText.substring(0, bracketPos + 2); // Include [[
+
+          // Create invisible element to measure text width accurately
+          const measureDiv = document.createElement('div');
+          measureDiv.style.position = 'absolute';
+          measureDiv.style.visibility = 'hidden';
+          measureDiv.style.whiteSpace = 'pre';
+          measureDiv.style.font = style.font;
+          measureDiv.style.fontSize = style.fontSize;
+          measureDiv.style.fontFamily = style.fontFamily;
+          measureDiv.textContent = textUpToBracket;
+          document.body.appendChild(measureDiv);
+          const textWidth = measureDiv.offsetWidth;
+          document.body.removeChild(measureDiv);
+
+          // Position dropdown below current line, after [[
+          // Note: Using position:fixed in NoteAutocomplete, so no need for window.scrollY/X
+          const top = textareaRect.top + (currentLineIndex * lineHeight) - textarea.scrollTop + lineHeight + 4;
+          const left = textareaRect.left + paddingLeft + textWidth;
+
+          setAutocompletePosition({
+            top,
+            left,
+          });
+          setAutocompleteQuery(query);
+          setAutocompletePrefix(prefix);
+          setSelectedAutocompleteIndex(0);
+          setShowAutocomplete(true);
+        }
+      } else {
+        setShowAutocomplete(false);
+      }
+    } else {
+      setShowAutocomplete(false);
+    }
   };
+
+  // Custom link component for handling wiki links
+  const NoteLinkComponent = ({ href, children, ...props }: React.ComponentProps<'a'>) => {
+    // ReactMarkdown v10+ passes href in node.properties
+    const node = (props as { node?: { properties?: { href?: string } } }).node;
+    const actualHref = href || node?.properties?.href || '';
+
+    // For wikilinks in auto mode, check if it resolves to a note and add .md
+    // (allNotes and allDocuments are available from parent scope)
+    let displayText: React.ReactNode = children;
+    if (href?.startsWith('wikilink://')) {
+      const urlParts = href.replace('wikilink://', '').split('?');
+      const targetTitle = decodeURIComponent(urlParts[0]);
+
+      // Check if target is a note (synchronously, using already-loaded data)
+      const isNote = allNotes.some(n => n.title === targetTitle);
+      if (isNote) {
+        displayText = `${targetTitle}.md`;
+      }
+      // If it's a document, title already includes .pdf from database
+    }
+
+    const handleClick = async (e: React.MouseEvent) => {
+      // ALWAYS prevent default first to avoid page reload
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!href) {
+        return;
+      }
+
+      // Check protocol
+      const isWikiLink = href.startsWith('wikilink://');
+      const isDocLink = href.startsWith('document://');
+      const isNoteLink = href.startsWith('note://');
+
+      if (!isWikiLink && !isDocLink && !isNoteLink) {
+        return;
+      }
+
+      try {
+        let targetTitle = '';
+        let pageNumber = 1;
+
+        if (isWikiLink) {
+          // Auto search: notes first, then documents
+          // Parse URL: wikilink://Title?page=5
+          const urlParts = href.replace('wikilink://', '').split('?');
+          targetTitle = decodeURIComponent(urlParts[0]);
+
+          // Parse page number
+          if (urlParts[1]) {
+            const pageMatch = urlParts[1].match(/page=(\d+)/);
+            if (pageMatch) {
+              pageNumber = parseInt(pageMatch[1]);
+            }
+          }
+
+          // Try to find note first
+          const allNotes = await noteService.getAll();
+          const targetNote = allNotes.find(n => n.title === targetTitle);
+
+          if (targetNote) {
+            window.dispatchEvent(new CustomEvent('open-note-split-view', {
+              detail: { noteId: targetNote.id, title: targetNote.title }
+            }));
+            return;
+          }
+
+          // If note not found, try document
+          const allDocs = await documentService.getAll();
+          const targetDoc = allDocs.find(d => d.title === targetTitle);
+
+          if (targetDoc) {
+            window.dispatchEvent(new CustomEvent('open-document-split-view', {
+              detail: { documentId: targetDoc.id, title: targetDoc.title, page: pageNumber }
+            }));
+            return;
+          }
+
+          toast.error(`"${targetTitle}" not found in notes or documents`);
+
+        } else if (isDocLink) {
+          // Document only
+          // Parse URL: document://Title?page=3
+          const urlParts = href.replace('document://', '').split('?');
+          targetTitle = decodeURIComponent(urlParts[0]);
+
+          // Parse page number
+          if (urlParts[1]) {
+            const pageMatch = urlParts[1].match(/page=(\d+)/);
+            if (pageMatch) {
+              pageNumber = parseInt(pageMatch[1]);
+            }
+          }
+
+          const allDocs = await documentService.getAll();
+          const targetDoc = allDocs.find(d => d.title === targetTitle);
+
+          if (targetDoc) {
+            window.dispatchEvent(new CustomEvent('open-document-split-view', {
+              detail: { documentId: targetDoc.id, title: targetDoc.title, page: pageNumber }
+            }));
+          } else {
+            toast.error(`Document "${targetTitle}" not found`);
+          }
+
+        } else if (isNoteLink) {
+          // Note only
+          targetTitle = decodeURIComponent(href.replace('note://', ''));
+
+          const allNotes = await noteService.getAll();
+          const targetNote = allNotes.find(n => n.title === targetTitle);
+
+          if (targetNote) {
+            window.dispatchEvent(new CustomEvent('open-note-split-view', {
+              detail: { noteId: targetNote.id, title: targetNote.title }
+            }));
+          } else {
+            toast.error(`Note "${targetTitle}" not found`);
+          }
+        }
+      } catch (err) {
+        console.error('[NoteLinkComponent] Error:', err);
+        toast.error('Failed to open link');
+      }
+    };
+
+    // Style wiki links differently
+    const isWikiLink = href?.startsWith('wikilink://') || href?.startsWith('document://') || href?.startsWith('note://');
+
+    return (
+      <a
+        {...props}
+        href={href}
+        onClick={handleClick}
+        className={isWikiLink ? 'wiki-link' : props.className}
+        style={isWikiLink ? {
+          color: 'var(--accent)',
+          textDecoration: 'none',
+          cursor: 'pointer',
+          fontWeight: 500,
+        } : props.style}
+      >
+        {displayText}
+      </a>
+    );
+  };
+
+  // Handle autocomplete item selection
+  const handleAutocompleteSelect = useCallback((item: Note | { id: string; title: string }, itemType: 'note' | 'document') => {
+    if (!contentTextareaRef.current) return;
+
+    const textarea = contentTextareaRef.current;
+    const cursorPosition = textarea.selectionStart;
+    const textBeforeCursor = content.substring(0, cursorPosition);
+    const lastDoubleBracket = textBeforeCursor.lastIndexOf('[[');
+
+    if (lastDoubleBracket !== -1) {
+      // Build the link text based on prefix
+      let linkText = '';
+      if (autocompletePrefix === 'doc:') {
+        linkText = `doc:${item.title}`;
+      } else if (autocompletePrefix === 'note:') {
+        linkText = `note:${item.title}`;
+      } else {
+        // Auto mode: add .md for notes (will be stripped by remarkWikiLink when parsing)
+        if (itemType === 'note') {
+          linkText = `${item.title}.md`;
+        } else {
+          linkText = item.title; // PDF already has .pdf
+        }
+      }
+
+      // Replace [[prefix:query with [[prefix:Title (no auto-close ]] to allow adding #page)
+      const before = content.substring(0, lastDoubleBracket);
+      const after = content.substring(cursorPosition);
+      const newContent = `${before}[[${linkText}${after}`;
+
+      setContent(newContent);
+      setShowAutocomplete(false);
+      autoSave(title, newContent, false);
+
+      // Set cursor after the inserted title (before any remaining text)
+      setTimeout(() => {
+        const newCursorPos = lastDoubleBracket + 2 + linkText.length; // +2 for [[
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+      }, 0);
+    }
+  }, [content, title, autoSave, autocompletePrefix]);
+
+  // Get filtered items based on prefix and query
+  const getFilteredItems = useCallback(() => {
+    let items: Array<{ item: Note | { id: string; title: string }; type: 'note' | 'document' }> = [];
+
+    if (autocompletePrefix === 'doc:') {
+      // Only documents (exclude current document if exists)
+      items = allDocuments
+        .filter(doc =>
+          doc.title.toLowerCase().includes(autocompleteQuery.toLowerCase()) &&
+          doc.id !== documentId // Exclude current document
+        )
+        .map(doc => ({ item: doc, type: 'document' as const }));
+    } else if (autocompletePrefix === 'note:') {
+      // Only notes (exclude current note)
+      items = allNotes
+        .filter(note =>
+          note.title.toLowerCase().includes(autocompleteQuery.toLowerCase()) &&
+          note.id !== currentNoteId // Exclude current note
+        )
+        .map(note => ({ item: note, type: 'note' as const }));
+    } else {
+      // Auto mode: notes first, then documents (exclude current)
+      const filteredNotes = allNotes
+        .filter(note =>
+          note.title.toLowerCase().includes(autocompleteQuery.toLowerCase()) &&
+          note.id !== currentNoteId // Exclude current note
+        )
+        .map(note => ({ item: note, type: 'note' as const }));
+
+      const filteredDocs = allDocuments
+        .filter(doc =>
+          doc.title.toLowerCase().includes(autocompleteQuery.toLowerCase()) &&
+          doc.id !== documentId // Exclude current document
+        )
+        .map(doc => ({ item: doc, type: 'document' as const }));
+
+      items = [...filteredNotes, ...filteredDocs];
+    }
+
+    return items.slice(0, 10); // Limit to 10 items
+  }, [allNotes, allDocuments, autocompleteQuery, autocompletePrefix, currentNoteId, documentId]);
+
+  // Handle keyboard navigation in autocomplete
+  const handleContentKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!showAutocomplete) return;
+
+    const filteredItems = getFilteredItems();
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedAutocompleteIndex(prev =>
+        prev < filteredItems.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedAutocompleteIndex(prev => prev > 0 ? prev - 1 : 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredItems[selectedAutocompleteIndex]) {
+        const { item, type } = filteredItems[selectedAutocompleteIndex];
+        handleAutocompleteSelect(item, type);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowAutocomplete(false);
+    }
+  }, [showAutocomplete, selectedAutocompleteIndex, handleAutocompleteSelect, getFilteredItems]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -362,8 +753,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
             {/* Content textarea */}
             <textarea
+              ref={contentTextareaRef}
               value={content}
               onChange={handleContentChange}
+              onKeyDown={handleContentKeyDown}
               placeholder="Start writing..."
               className="flex-1 px-8 pb-8 resize-none outline-none border-none text-sm"
               style={{
@@ -371,6 +764,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 lineHeight: '1.7',
               }}
             />
+
+            {/* Autocomplete dropdown */}
+            {showAutocomplete && (
+              <NoteAutocomplete
+                items={getFilteredItems()}
+                position={autocompletePosition}
+                selectedIndex={selectedAutocompleteIndex}
+                onSelect={handleAutocompleteSelect}
+                onClose={() => setShowAutocomplete(false)}
+              />
+            )}
           </div>
         ) : (
           <div className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
@@ -395,7 +799,20 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             <div className="flex-1 px-8 pb-8">
               {content ? (
                 <div className="markdown-preview prose prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkWikiLink]}
+                    urlTransform={(url) => {
+                      // Allow custom protocols: wikilink://, document://, note://
+                      if (url.startsWith('wikilink://') || url.startsWith('document://') || url.startsWith('note://')) {
+                        return url; // Keep custom protocols as-is
+                      }
+                      // For all other URLs, use default behavior (allows http, https, mailto, etc.)
+                      return url;
+                    }}
+                    components={{
+                      a: NoteLinkComponent,
+                    }}
+                  >
                     {content}
                   </ReactMarkdown>
                 </div>
