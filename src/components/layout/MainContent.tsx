@@ -29,7 +29,10 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
             <div className="text-secondary">Loading PDF viewer...</div>
           </div>
         }>
-          <PDFViewer documentId={activeTab.documentId} />
+          <PDFViewer
+            documentId={activeTab.documentId}
+            initialPage={activeTab.page || 1}
+          />
         </Suspense>
       );
     }
@@ -73,7 +76,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
 
   return (
     <div
-      className="h-full flex flex-col overflow-hidden"
+      className="h-full flex flex-col overflow-hidden main-content-with-corner-borders"
       style={{
         backgroundColor: 'var(--bg-secondary)',
         borderRadius: '8px',

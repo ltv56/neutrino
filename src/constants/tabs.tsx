@@ -32,11 +32,12 @@ export const createNewChatTab = (): Tab => ({
   ),
 });
 
-export const createDocumentTab = (documentId: string, title: string): Tab => ({
+export const createDocumentTab = (documentId: string, title: string, page?: number): Tab => ({
   id: `doc-${documentId}`,
   title: title.length > 30 ? `${title.substring(0, 30)}...` : title,
   type: 'document',
   documentId,
+  page: page || 1, // Default to page 1
 });
 
 export const createNoteTab = (noteId: string | null, title?: string): Tab => {

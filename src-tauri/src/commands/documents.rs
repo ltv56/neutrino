@@ -99,3 +99,14 @@ pub async fn update_document_reading_progress(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn search_documents(
+    database: tauri::State<'_, Database>,
+    query: String,
+) -> Result<Vec<models::Document>, String> {
+    database.documents()
+        .search(&query)
+        .await
+        .map_err(|e| e.to_string())
+}

@@ -130,22 +130,10 @@ export const NotesList: React.FC<NotesListProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-1">
-          <Tooltip content={isCollapsed ? "Expand" : "Collapse"} placement="right">
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
-            >
-              {isCollapsed ? (
-                <ChevronDown size={14} style={{ color: 'var(--fg-secondary)' }} />
-              ) : (
-                <ChevronUp size={14} style={{ color: 'var(--fg-secondary)' }} />
-              )}
-            </button>
-          </Tooltip>
-          <span className="text-xs font-medium" style={{ color: 'var(--fg-primary)' }}>Notes</span>
-        </div>
+      <div className="flex items-center justify-start px-2 py-1">
+        {/* <div className="flex items-center">          
+          <span className="text-xs font-medium" style={{ color: 'var(--fg-primary)' }}>Papers</span>
+        </div> */}
 
         <div className="flex items-center gap-0.5">
           <Tooltip content="New Note" placement="bottom">
@@ -172,6 +160,18 @@ export const NotesList: React.FC<NotesListProps> = ({
               disabled
             >
               <ArrowUpDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+          <Tooltip content={isCollapsed ? "Expand" : "Collapse"} placement="right">
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            >
+              {isCollapsed ? (
+                <ChevronDown size={14} style={{ color: 'var(--fg-secondary)' }} />
+              ) : (
+                <ChevronUp size={14} style={{ color: 'var(--fg-secondary)' }} />
+              )}
             </button>
           </Tooltip>
         </div>

@@ -190,6 +190,7 @@
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -198,4 +199,20 @@
 textarea::placeholder {
   color: var(--fg-tertiary);
   opacity: 1;
+}
+
+/* Wiki-style links */
+.markdown-preview .wiki-link {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 1px 3px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.markdown-preview .wiki-link:hover {
+  background-color: var(--bg-tertiary);
+  text-decoration: none;
 }

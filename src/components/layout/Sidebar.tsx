@@ -177,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               {/* Right Side: Tabs + Content + Footer */}
               <div className="flex flex-col flex-1 min-h-0">
                 {/* Horizontal Tabs */}
-                <div className="flex items-center gap-2 px-1 py-2">
+                <div className="flex items-center gap-2 p-1">
                   {SIDEBAR_TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
