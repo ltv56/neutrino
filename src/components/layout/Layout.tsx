@@ -13,16 +13,21 @@ import type { SidebarTab } from '@/constants/sidebar';
 import { useEdgeDetection, useSidebarMode, useSessionsContext } from '@/hooks';
 import { noteService, sessionService } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
+import { SessionForm } from '@/components/sessions/SessionForm';
+import { SessionsList } from '@/components/sessions/SessionsList';
 
 const Layout: React.FC = () => {
   const location = useLocation();
-  const { refetch: refetchSessions, selectSession } = useSessionsContext();
+  const { refetch: refetchSessions, selectSession, createSession, updateSession, sessions } = useSessionsContext();
   const toast = useToast();
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Session form management
+  const [showSessionForm, setShowSessionForm] = useState(false);
 
   // Split view state
   const [splitViewOpen, setSplitViewOpen] = useState(false);
@@ -321,9 +326,7 @@ const Layout: React.FC = () => {
       <TitleBar
         sidebarMode={sidebarMode}
         onToggleSidebarPin={handleTogglePin}
-        onCreateSession={() => {
-          // TODO: Open session form modal
-        }}
+        onCreateSession={() => setShowSessionForm(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar (includes Vault + Session panels) */}
@@ -355,7 +358,40 @@ const Layout: React.FC = () => {
             overflow: 'hidden',
           }}
         >
-          {!isFullPageRoute && (
+          {isFullPageRoute && location.pathname === ROUTES.SESSIONS ? (
+            // Sessions Page
+            <div
+              className="flex-1 rounded-lg p-6 overflow-auto"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--fg-primary)' }}>
+                    Research Sessions
+                  </h1>
+                  <p className="text-sm" style={{ color: 'var(--fg-secondary)' }}>
+                    Manage your research sessions and organize your work
+                  </p>
+                </div>
+
+                <SessionsList
+                  onSelectSession={(session) => {
+                    selectSession(session);
+                    window.history.back(); // Go back to previous page
+                  }}
+                  onEditSession={(session) => {
+                    // Open edit modal
+                    setShowSessionForm(true);
+                  }}
+                  showActions={true}
+                />
+              </div>
+            </div>
+          ) : !isFullPageRoute ? (
+            // Tab Content (normal mode)
             <div className="flex-1 min-h-0" style={{ position: 'relative', minWidth: 0, overflow: 'hidden' }}>
               {splitViewOpen && secondaryTab ? (
                 <SplitView
@@ -385,7 +421,7 @@ const Layout: React.FC = () => {
                 />
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
       <CommandPalette
@@ -393,6 +429,22 @@ const Layout: React.FC = () => {
         onClose={() => setCommandPaletteOpen(false)}
         initialPrefix={searchPrefix}
       />
+
+      {/* Session Form Modal */}
+      <SessionForm
+        isOpen={showSessionForm}
+        onClose={() => setShowSessionForm(false)}
+        onCreate={async (title, goal) => {
+          const newSession = await createSession(title, goal);
+          if (newSession) {
+            selectSession(newSession);
+            toast.success(`Session "${title}" created successfully`);
+          }
+          return newSession;
+        }}
+        onUpdate={updateSession}
+      />
+
       <DebugOverlay />
     </div>
   );
