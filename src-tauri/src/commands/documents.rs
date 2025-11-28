@@ -3,19 +3,13 @@ use crate::database::{Database, models};
 #[tauri::command]
 pub async fn create_document(
     database: tauri::State<'_, Database>,
-    session_id: Option<String>,
     title: String,
     file_path: String,
     content_type: String,
     metadata: Option<String>,
 ) -> Result<models::Document, String> {
-    let session_uuid = match session_id {
-        Some(id) => Some(uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?),
-        None => None,
-    };
-
     database.documents()
-        .create_with_metadata(session_uuid, title, file_path, content_type, metadata)
+        .create_with_metadata(title, file_path, content_type, metadata)
         .await
         .map_err(|e| e.to_string())
 }
@@ -81,8 +75,8 @@ pub async fn get_documents_by_session(
     session_id: String,
 ) -> Result<Vec<models::Document>, String> {
     let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
-    database.documents()
-        .find_by_session(uuid)
+    database.session_documents()
+        .find_documents_by_session(uuid)
         .await
         .map_err(|e| e.to_string())
 }
@@ -107,6 +101,54 @@ pub async fn search_documents(
 ) -> Result<Vec<models::Document>, String> {
     database.documents()
         .search(&query)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// Session-Document relationship commands
+#[tauri::command]
+pub async fn add_document_to_session(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    document_id: String,
+    notes: Option<String>,
+) -> Result<models::SessionDocument, String> {
+    let session_uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let document_uuid = uuid::Uuid::parse_str(&document_id).map_err(|e| e.to_string())?;
+
+    database.session_documents()
+        .add_to_session(session_uuid, document_uuid, notes)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remove_document_from_session(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    document_id: String,
+) -> Result<bool, String> {
+    let session_uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let document_uuid = uuid::Uuid::parse_str(&document_id).map_err(|e| e.to_string())?;
+
+    database.session_documents()
+        .remove_from_session(session_uuid, document_uuid)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_session_document_notes(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    document_id: String,
+    notes: Option<String>,
+) -> Result<bool, String> {
+    let session_uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    let document_uuid = uuid::Uuid::parse_str(&document_id).map_err(|e| e.to_string())?;
+
+    database.session_documents()
+        .update_notes(session_uuid, document_uuid, notes)
         .await
         .map_err(|e| e.to_string())
 }

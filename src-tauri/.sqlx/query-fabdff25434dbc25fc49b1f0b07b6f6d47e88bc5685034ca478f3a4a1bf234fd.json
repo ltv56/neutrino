@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at\n             FROM documents WHERE id = ?",
+  "query": "\n            SELECT n.id, n.session_id, n.document_id, n.title, n.content,\n                   n.note_type, n.position, n.tags, n.created_at, n.updated_at\n            FROM notes n\n            INNER JOIN notes_fts fts ON n.id = fts.id\n            WHERE notes_fts MATCH ?\n            ORDER BY rank\n            ",
   "describe": {
     "columns": [
       {
@@ -14,38 +14,43 @@
         "type_info": "Text"
       },
       {
-        "name": "title",
+        "name": "document_id",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "file_path",
+        "name": "title",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "content_type",
+        "name": "content",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "metadata",
+        "name": "note_type",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "reading_progress",
+        "name": "position",
         "ordinal": 6,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "tags",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
@@ -53,6 +58,7 @@
       "Right": 1
     },
     "nullable": [
+      true,
       true,
       true,
       false,
@@ -64,5 +70,5 @@
       false
     ]
   },
-  "hash": "42e3c432dcf2c6fa85671cb90ae5b81d72806515ab96278a9d5c214d4ce73527"
+  "hash": "fabdff25434dbc25fc49b1f0b07b6f6d47e88bc5685034ca478f3a4a1bf234fd"
 }

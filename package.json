@@ -13,7 +13,12 @@
     "tauri:build:debug": "tauri build --debug",
     "lint": "tsc --noEmit",
     "format": "prettier --write src/",
-    "clean": "rm -rf dist target"
+    "clean": "rm -rf dist target",
+    "db:create": "cd src-tauri && sqlx database create",
+    "db:migrate": "cd src-tauri && sqlx migrate run",
+    "db:prepare": "cd src-tauri && cargo sqlx prepare",
+    "db:reset": "cd src-tauri && sqlx database drop -y && sqlx database create && sqlx migrate run",
+    "db:update": "npm run db:migrate && npm run db:prepare"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.1",

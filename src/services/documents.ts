@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { Document, PDFMetadata } from '@/types';
+import type { Document, PDFMetadata, SessionDocument } from '@/types';
 import { pdfService, type SavedFileInfo } from './pdf';
 
 /**
@@ -9,16 +9,15 @@ import { pdfService, type SavedFileInfo } from './pdf';
 export const documentService = {
   /**
    * Create document record in database
+   * NOTE: Documents are now independent entities. Use addToSession() to link to a session.
    */
   async create(
-    sessionId: string | null,
     title: string,
     filePath: string,
     contentType: string,
     metadata?: string
   ): Promise<Document> {
     return await invoke('create_document', {
-      sessionId,
       title,
       filePath,
       contentType,
@@ -86,10 +85,11 @@ export const documentService = {
   /**
    * Complete PDF import workflow: file + metadata + database
    * This orchestrates both file layer (pdfService) and database layer
+   * NOTE: Documents are created independently. Use addToSession() to link them after creation.
    */
   async importPDF(
     sourcePath: string,
-    sessionId: string | null = null
+    sessionId?: string
   ): Promise<{ document: Document; metadata: PDFMetadata; savedInfo: SavedFileInfo }> {
     // 1. Import file to storage (file layer)
     const savedInfo = await pdfService.importFromPath(sourcePath);
@@ -109,12 +109,16 @@ export const documentService = {
 
     // 5. Create document record (database layer)
     const document = await this.create(
-      sessionId,
       title,
       savedInfo.path,
       'pdf',
       JSON.stringify(metadata)
     );
+
+    // 6. Link to session if provided
+    if (sessionId) {
+      await this.addToSession(sessionId, document.id);
+    }
 
     return { document, metadata, savedInfo };
   },
@@ -126,6 +130,48 @@ export const documentService = {
     return await invoke('update_document_reading_progress', {
       id,
       progress: pageNum,
+    });
+  },
+
+  // ========== Session-Document Relationship Methods ==========
+
+  /**
+   * Add a document to a session
+   */
+  async addToSession(
+    sessionId: string,
+    documentId: string,
+    notes?: string
+  ): Promise<SessionDocument> {
+    return await invoke('add_document_to_session', {
+      sessionId,
+      documentId,
+      notes,
+    });
+  },
+
+  /**
+   * Remove a document from a session
+   */
+  async removeFromSession(sessionId: string, documentId: string): Promise<boolean> {
+    return await invoke('remove_document_from_session', {
+      sessionId,
+      documentId,
+    });
+  },
+
+  /**
+   * Update notes for a document in a session
+   */
+  async updateSessionNotes(
+    sessionId: string,
+    documentId: string,
+    notes: string | null
+  ): Promise<boolean> {
+    return await invoke('update_session_document_notes', {
+      sessionId,
+      documentId,
+      notes,
     });
   },
 };
