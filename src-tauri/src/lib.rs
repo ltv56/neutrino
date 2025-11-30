@@ -67,6 +67,7 @@ pub fn run() {
             commands::get_documents_by_session,
             commands::update_document_reading_progress,
             commands::search_documents,
+            commands::search_documents_with_context,
 
             // ========== Session-Document Relationships ==========
             commands::add_document_to_session,
@@ -104,6 +105,8 @@ pub fn run() {
             commands::get_database_stats,
             commands::check_database_integrity,
             commands::vacuum_database,
+            commands::get_fts_debug_info,
+            commands::rebuild_fts_index,
         ])
         .setup(|app| {
             let setup_start = std::time::Instant::now();

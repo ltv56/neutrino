@@ -33,6 +33,17 @@ pub struct SessionDocument {
     pub notes: Option<String>,
 }
 
+/// Document search result with session context
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DocumentSearchResult {
+    pub id: Uuid,
+    pub title: String,
+    pub content_type: String,
+    pub session_id: Option<Uuid>,      
+    pub session_name: Option<String>, 
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DocumentLink {
     pub id: Uuid,
@@ -57,6 +68,47 @@ pub struct Note {
     pub tags: Option<String>, // JSON array of tags
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// Note search result with content preview
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoteSearchResult {
+    pub id: Uuid,
+    pub session_id: Option<Uuid>,
+    pub document_id: Option<Uuid>,
+    pub title: String,
+    pub content_preview: String, 
+    pub note_type: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Note {
+    pub fn to_search_result(&self) -> NoteSearchResult {
+        let preview: String = self.content
+            .trim()
+            .replace("\n", " ")
+            .chars()
+            .take(60)
+            .collect();
+
+        let content_preview = if self.content.len() > 60 {
+            format!("{}...", preview)
+        } else {
+            preview
+        };
+
+        NoteSearchResult {
+            id: self.id,
+            session_id: self.session_id,
+            document_id: self.document_id,
+            title: self.title.clone(),
+            content_preview,
+            note_type: self.note_type.clone(),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

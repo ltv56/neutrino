@@ -2,6 +2,15 @@ import { invoke } from '@tauri-apps/api/core';
 import type { Document, PDFMetadata, SessionDocument } from '@/types';
 import { pdfService, type SavedFileInfo } from './pdf';
 
+export interface DocumentSearchResult {
+  id: string;
+  title: string;
+  content_type: string;
+  session_id?: string;
+  session_name?: string;
+  created_at: string;
+}
+
 /**
  * Document Service - Database Layer
  * Handles all document database operations.
@@ -131,6 +140,22 @@ export const documentService = {
       id,
       progress: pageNum,
     });
+  },
+
+  /**
+   * Search documents using Full-Text Search (FTS5)
+   * Query syntax supports: "word", "phrase in quotes", word*, -exclude, column:word
+   */
+  async search(query: string): Promise<Document[]> {
+    return await invoke('search_documents', { query });
+  },
+
+  /**
+   * Search documents with session context (for command palette)
+   * Returns documents with session information for grouping
+   */
+  async searchWithContext(query: string): Promise<DocumentSearchResult[]> {
+    return await invoke('search_documents_with_context', { query });
   },
 
   // ========== Session-Document Relationship Methods ==========

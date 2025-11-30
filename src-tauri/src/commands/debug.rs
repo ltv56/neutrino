@@ -9,6 +9,15 @@ pub struct DatabaseStats {
 }
 
 #[derive(Serialize)]
+pub struct FTSDebugInfo {
+    pub documents_count: i64,
+    pub documents_fts_count: i64,
+    pub notes_count: i64,
+    pub notes_fts_count: i64,
+    pub sample_documents: Vec<String>,
+}
+
+#[derive(Serialize)]
 pub struct DatabaseIntegrityCheck {
     pub is_ok: bool,
     pub errors: Vec<String>,
@@ -196,4 +205,92 @@ pub async fn check_database_integrity(
         errors,
         warnings,
     })
+}
+
+#[tauri::command]
+pub async fn get_fts_debug_info(
+    database: tauri::State<'_, Database>,
+) -> Result<FTSDebugInfo, String> {
+    use sqlx::Row;
+
+    let pool = database.pool();
+
+    // Count documents
+    let documents_count: i64 = sqlx::query("SELECT COUNT(*) as count FROM documents")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .get("count");
+
+    // Count documents_fts
+    let documents_fts_count: i64 = sqlx::query("SELECT COUNT(*) as count FROM documents_fts")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .get("count");
+
+    // Count notes
+    let notes_count: i64 = sqlx::query("SELECT COUNT(*) as count FROM notes")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .get("count");
+
+    // Count notes_fts
+    let notes_fts_count: i64 = sqlx::query("SELECT COUNT(*) as count FROM notes_fts")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .get("count");
+
+    // Get sample documents
+    let sample_rows = sqlx::query("SELECT title FROM documents LIMIT 5")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let sample_documents: Vec<String> = sample_rows
+        .iter()
+        .filter_map(|row| row.try_get::<String, _>("title").ok())
+        .collect();
+
+    println!("[FTSDebug] Documents: {}, FTS: {}", documents_count, documents_fts_count);
+    println!("[FTSDebug] Notes: {}, FTS: {}", notes_count, notes_fts_count);
+    println!("[FTSDebug] Sample documents: {:?}", sample_documents);
+
+    Ok(FTSDebugInfo {
+        documents_count,
+        documents_fts_count,
+        notes_count,
+        notes_fts_count,
+        sample_documents,
+    })
+}
+
+#[tauri::command]
+pub async fn rebuild_fts_index(
+    database: tauri::State<'_, Database>,
+) -> Result<String, String> {
+    use sqlx::Executor;
+
+    let pool = database.pool();
+
+    println!("[FTSRebuild] Starting FTS rebuild...");
+
+    // Rebuild documents_fts
+    pool.execute("DELETE FROM documents_fts").await.map_err(|e| e.to_string())?;
+    pool.execute(
+        "INSERT INTO documents_fts(id, title, metadata)
+         SELECT id, title, metadata FROM documents"
+    ).await.map_err(|e| e.to_string())?;
+
+    // Rebuild notes_fts
+    pool.execute("DELETE FROM notes_fts").await.map_err(|e| e.to_string())?;
+    pool.execute(
+        "INSERT INTO notes_fts(id, title, content, tags)
+         SELECT id, title, content, tags FROM notes"
+    ).await.map_err(|e| e.to_string())?;
+
+    println!("[FTSRebuild] FTS rebuild completed");
+    Ok("FTS index rebuilt successfully".to_string())
 }

@@ -291,12 +291,84 @@ impl DocumentRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Search documents with session context for command palette
+    /// Returns documents grouped by session association
+    pub async fn search_with_session_context(&self, query: &str) -> DbResult<Vec<DocumentSearchResult>> {
+        if query.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let fts_query = transform_to_fts5_query(query);
+
+        #[derive(Debug)]
+        struct Row {
+            id: Option<String>,
+            title: Option<String>,
+            content_type: Option<String>,
+            session_id: Option<String>,
+            session_name: Option<String>,
+            created_at: Option<String>,
+        }
+
+        let rows = sqlx::query_as!(
+            Row,
+            r#"
+            SELECT DISTINCT d.id, d.title, d.content_type,
+                   sd.session_id, s.title as session_name,
+                   d.created_at
+            FROM documents d
+            INNER JOIN documents_fts fts ON d.id = fts.id
+            LEFT JOIN session_documents sd ON d.id = sd.document_id
+            LEFT JOIN research_sessions s ON sd.session_id = s.id
+            WHERE documents_fts MATCH ?
+            ORDER BY d.created_at DESC
+            "#,
+            fts_query
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            let id_str = row.id.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing id".to_string(),
+            })?;
+            let created_at_str = row.created_at.ok_or_else(|| DatabaseError::InternalError {
+                message: "Missing created_at".to_string(),
+            })?;
+
+            results.push(DocumentSearchResult {
+                id: Uuid::parse_str(&id_str).map_err(|_| DatabaseError::InvalidUuid {
+                    value: id_str.clone(),
+                })?,
+                title: row.title.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing title".to_string(),
+                })?,
+                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
+                    message: "Missing content_type".to_string(),
+                })?,
+                session_id: row.session_id.as_deref().and_then(|s| Uuid::parse_str(s).ok()),
+                session_name: row.session_name,
+                created_at: DateTime::parse_from_rfc3339(&created_at_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| DatabaseError::InvalidDateTime {
+                        value: created_at_str.clone(),
+                    })?,
+            });
+        }
+
+        Ok(results)
+    }
+
     /// Search documents using Full-Text Search (FTS5)
-    /// Query syntax supports: "word", "phrase in quotes", word*, -exclude, column:word
+    /// Query is automatically transformed for prefix matching (e.g., "hello" → "hello*")
     pub async fn search(&self, query: &str) -> DbResult<Vec<Document>> {
         if query.trim().is_empty() {
             return Ok(Vec::new());
         }
+
+        // Transform user query to FTS5 prefix search
+        let fts_query = transform_to_fts5_query(query);
 
         let rows = sqlx::query_as!(
             DocumentRow,
@@ -308,7 +380,7 @@ impl DocumentRepository {
             WHERE documents_fts MATCH ?
             ORDER BY rank
             "#,
-            query
+            fts_query
         )
         .fetch_all(&*self.pool)
         .await?;
@@ -375,4 +447,29 @@ struct DocumentRow {
     pub reading_progress: Option<i64>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+}
+
+/// Transform user query to FTS5 prefix search query
+/// Example: "hello world" → "hello* world*"
+/// Sanitizes special FTS5 characters to prevent syntax errors
+fn transform_to_fts5_query(query: &str) -> String {
+    query
+        .trim()
+        .split_whitespace()
+        .filter_map(|word| {
+            // Remove special FTS5 characters: . - " * ( ) and keep only alphanumeric + underscore
+            let cleaned: String = word
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+
+            // Only include non-empty tokens
+            if cleaned.is_empty() {
+                None
+            } else {
+                Some(format!("{}*", cleaned))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }

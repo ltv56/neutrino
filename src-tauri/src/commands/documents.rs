@@ -105,6 +105,17 @@ pub async fn search_documents(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn search_documents_with_context(
+    database: tauri::State<'_, Database>,
+    query: String,
+) -> Result<Vec<models::DocumentSearchResult>, String> {
+    database.documents()
+        .search_with_session_context(&query)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // Session-Document relationship commands
 #[tauri::command]
 pub async fn add_document_to_session(

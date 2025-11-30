@@ -89,7 +89,7 @@ pub async fn delete_note(
 pub async fn search_notes(
     database: tauri::State<'_, Database>,
     query: String,
-) -> Result<Vec<models::Note>, String> {
+) -> Result<Vec<models::NoteSearchResult>, String> {
     database.notes()
         .search(&query)
         .await

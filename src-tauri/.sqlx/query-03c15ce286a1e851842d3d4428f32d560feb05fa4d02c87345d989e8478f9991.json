@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT DISTINCT d.id, d.title, d.content_type,\n                   sd.session_id, s.title as session_name,\n                   d.created_at\n            FROM documents d\n            INNER JOIN documents_fts fts ON d.id = fts.id\n            LEFT JOIN session_documents sd ON d.id = sd.document_id\n            LEFT JOIN research_sessions s ON sd.session_id = s.id\n            WHERE documents_fts MATCH ?\n            ORDER BY d.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "session_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "session_name",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "03c15ce286a1e851842d3d4428f32d560feb05fa4d02c87345d989e8478f9991"
+}

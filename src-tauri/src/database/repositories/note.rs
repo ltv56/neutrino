@@ -318,11 +318,15 @@ impl NoteRepository {
     }
 
     /// Search notes using Full-Text Search (FTS5)
-    /// Query syntax supports: "word", "phrase in quotes", word*, -exclude, column:word
-    pub async fn search(&self, query: &str) -> DbResult<Vec<Note>> {
+    /// Query is automatically transformed for prefix matching (e.g., "hello" → "hello*")
+    /// Returns NoteSearchResult with content_preview for optimized UI rendering
+    pub async fn search(&self, query: &str) -> DbResult<Vec<NoteSearchResult>> {
         if query.trim().is_empty() {
             return Ok(Vec::new());
         }
+
+        // Transform user query to FTS5 prefix search
+        let fts_query = transform_to_fts5_query(query);
 
         let rows = sqlx::query_as!(
             NoteRow,
@@ -334,7 +338,7 @@ impl NoteRepository {
             WHERE notes_fts MATCH ?
             ORDER BY rank
             "#,
-            query
+            fts_query
         )
         .fetch_all(&*self.pool)
         .await?;
@@ -399,11 +403,37 @@ impl NoteRepository {
                         value: updated_at_str.clone(),
                     })?,
             };
-            notes.push(note);
+
+            // Convert to search result with content preview
+            notes.push(note.to_search_result());
         }
 
         Ok(notes)
     }
+}
+
+/// Transform user query to FTS5 prefix search query
+/// Example: "hello world" → "hello* world*"
+/// Sanitizes special FTS5 characters to prevent syntax errors
+fn transform_to_fts5_query(query: &str) -> String {
+    query
+        .trim()
+        .split_whitespace()
+        .filter_map(|word| {
+            // Remove special FTS5 characters: . - " * ( ) and keep only alphanumeric + underscore
+            let cleaned: String = word
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+
+            if cleaned.is_empty() {
+                None
+            } else {
+                Some(format!("{}*", cleaned))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 // Row structs để SQLx có thể map đúng kiểu - tất cả TEXT fields đều là Option<String>

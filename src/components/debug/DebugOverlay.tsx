@@ -4,9 +4,10 @@ import DatabaseDebug from './DatabaseDebug';
 import PDFImportTest from './PDFImportTest';
 import NoteTest from './NoteTest';
 import VaultArchitectureTest from './VaultArchitectureTest';
+import FTSDebug from './FTSDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'api' | 'files' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'api' | 'files' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,6 +16,7 @@ const DebugOverlay = () => {
   const debugOptions = [
     { id: 'database' as const, label: '🗄️ Database', description: 'Test database operations' },
     { id: 'integrity' as const, label: '🔍 DB Integrity', description: 'Check database integrity' },
+    { id: 'fts' as const, label: '🔎 FTS Search', description: 'Full-text search index debug' },
     { id: 'vault' as const, label: '📂 Vault Architecture', description: 'Test session-document relationships' },
     { id: 'pdf' as const, label: '📄 PDF Import', description: 'Test PDF import & metadata' },
     { id: 'notes' as const, label: '📝 Notes', description: 'Test note creation & markdown' },
@@ -28,6 +30,8 @@ const DebugOverlay = () => {
         return <DatabaseTest />;
       case 'integrity':
         return <DatabaseDebug />;
+      case 'fts':
+        return <FTSDebug />;
       case 'vault':
         return <VaultArchitectureTest />;
       case 'pdf':

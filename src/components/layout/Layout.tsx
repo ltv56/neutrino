@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import CommandPalette from '@/components/ui/CommandPalette';
@@ -14,7 +14,8 @@ import WorkspacePage from '@/pages/WorkspacePage';
 
 const Layout: React.FC = () => {
   const location = useLocation();
-  const { refetch: refetchSessions, selectSession, createSession, updateSession, sessions } = useSessionsContext();
+  const navigate = useNavigate();
+  const { refetch: refetchSessions, selectSession, createSession, updateSession, sessions, currentSession } = useSessionsContext();
   const toast = useToast();
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -171,6 +172,15 @@ const Layout: React.FC = () => {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         initialPrefix={searchPrefix}
+        currentSessionId={currentSession?.id}
+        actions={{
+          onCreateSession: () => setShowSessionForm(true),
+          onCreateNote: createNewNote,
+          onOpenSettings: () => toast.info('Settings page coming soon!'),
+          onOpenDocument: openDocumentTab,
+          onOpenNote: openNoteTab,
+          onNavigateToSessions: () => navigate(ROUTES.SESSIONS),
+        }}
       />
 
       {/* Session Form Modal */}

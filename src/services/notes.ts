@@ -11,6 +11,17 @@ export interface Note {
   updated_at: string;
 }
 
+export interface NoteSearchResult {
+  id: string;
+  title: string;
+  content_preview: string;
+  session_id?: string;
+  document_id?: string;
+  note_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DatabaseIntegrityCheck {
   is_ok: boolean;
   errors: string[];
@@ -60,13 +71,24 @@ export const noteService = {
     } catch (err) {
       // If database error, check integrity
       const errorMessage = err instanceof Error ? err.message : String(err);
-      if (errorMessage.includes('malformed') || errorMessage.includes('corrupt')) {
-        console.error('[noteService] Database corruption detected, running integrity check...');
+      if (
+        errorMessage.includes('malformed') ||
+        errorMessage.includes('corrupt')
+      ) {
+        console.error(
+          '[noteService] Database corruption detected, running integrity check...'
+        );
         try {
           const integrityCheck = await this.checkIntegrity();
-          console.error('[noteService] Integrity check result:', integrityCheck);
+          console.error(
+            '[noteService] Integrity check result:',
+            integrityCheck
+          );
         } catch (integrityErr) {
-          console.error('[noteService] Failed to run integrity check:', integrityErr);
+          console.error(
+            '[noteService] Failed to run integrity check:',
+            integrityErr
+          );
         }
       }
       throw err;
@@ -85,5 +107,14 @@ export const noteService = {
    */
   async checkIntegrity(): Promise<DatabaseIntegrityCheck> {
     return await invoke('check_database_integrity');
+  },
+
+  /**
+   * Search notes using Full-Text Search (FTS5)
+   * Backend automatically transforms query for prefix matching
+   * Returns NoteSearchResult with content_preview for UI
+   */
+  async search(query: string): Promise<NoteSearchResult[]> {
+    return await invoke('search_notes', { query });
   },
 };
