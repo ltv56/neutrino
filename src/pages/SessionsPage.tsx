@@ -8,7 +8,7 @@ import type { ResearchSession } from '@/types';
 
 const SessionsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { createSession, updateSession, selectSession } = useSessionsContext();
+  const { createSession, updateSession, selectSession, sessions } = useSessionsContext();
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ResearchSession | null>(null);
 
@@ -18,52 +18,79 @@ const SessionsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Page Header */}
-      <div
-        className="flex items-center justify-between px-6 py-4"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="p-2 rounded hover:bg-[var(--bg-active)] transition-colors"
-            title="Back"
-          >
-            <ArrowLeft size={20} style={{ color: 'var(--fg-primary)' }} />
-          </button>
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--fg-primary)' }}>
-            All Sessions
-          </h1>
-        </div>
-
+    <div
+      className="flex-1 rounded-lg p-6 overflow-auto"
+      style={{
+        backgroundColor: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+      }}
+    >
+      <div className="max-w-4xl mx-auto">
+        {/* Back Button */}
         <button
-          onClick={() => {
-            setEditingSession(null);
-            setShowSessionForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded transition-colors"
+          onClick={() => navigate(-1)}
+          className="mb-6 flex items-center gap-1.5 px-2 py-1 rounded transition-colors"
           style={{
-            backgroundColor: 'var(--accent)',
-            color: 'white',
+            color: 'var(--fg-secondary)',
+            backgroundColor: 'transparent',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--fg-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--fg-secondary)';
           }}
         >
-          <Plus size={18} />
-          <span className="font-medium">New Session</span>
+          <ArrowLeft size={16} />
+          <span className="text-sm">Back</span>
         </button>
-      </div>
 
-      {/* Sessions List */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-4xl mx-auto">
-          <SessionsList
-            onSelectSession={handleSelectSession}
-            onEditSession={(session) => {
-              setEditingSession(session);
-              setShowSessionForm(true);
-            }}
-          />
+        {/* Header Section */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--fg-primary)' }}>
+                Research Sessions
+              </h1>
+              <p className="text-sm" style={{ color: 'var(--fg-secondary)' }}>
+                Manage your research sessions and organize your work
+              </p>
+            </div>
+
+            {/* New Session Button */}
+            <button
+              onClick={() => {
+                setEditingSession(null);
+                setShowSessionForm(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm transition-all"
+              style={{
+                backgroundColor: 'var(--accent)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = 'brightness(0.9)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'brightness(1)';
+              }}
+            >
+              <Plus size={14} />
+              <span>New</span>
+            </button>
+          </div>
+
         </div>
+
+        {/* Sessions List */}
+        <SessionsList
+          onSelectSession={handleSelectSession}
+          onEditSession={(session) => {
+            setEditingSession(session);
+            setShowSessionForm(true);
+          }}
+          showActions={true}
+        />
       </div>
 
       {/* Session Form Modal */}

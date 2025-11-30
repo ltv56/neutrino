@@ -5,6 +5,7 @@ import Tooltip from '@/components/common/Tooltip';
 import type { ResearchSession } from '@/types';
 
 interface SessionsListProps {
+  sessions?: ResearchSession[]; // Optional: override sessions from context
   onSelectSession?: (session: ResearchSession) => void;
   onEditSession?: (session: ResearchSession) => void;
   onDeleteSession?: (sessionId: string) => void;
@@ -12,12 +13,16 @@ interface SessionsListProps {
 }
 
 export const SessionsList: React.FC<SessionsListProps> = ({
+  sessions: sessionsProp,
   onSelectSession,
   onEditSession,
   onDeleteSession,
   showActions = true,
 }) => {
-  const { sessions, currentSession, selectSession, deleteSession } = useSessionsContext();
+  const { sessions: sessionsFromContext, currentSession, selectSession, deleteSession } = useSessionsContext();
+
+  // Use prop sessions if provided, otherwise use context sessions
+  const sessions = sessionsProp || sessionsFromContext;
 
   // Sort sessions by updated_at (newest first)
   const sortedSessions = useMemo(() => {

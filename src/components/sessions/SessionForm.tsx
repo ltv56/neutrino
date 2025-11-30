@@ -67,25 +67,28 @@ export const SessionForm: React.FC<SessionFormProps> = ({
       onClick={onClose}
     >
       <div
-        className="rounded-lg p-6 w-full max-w-md"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        className="rounded-lg p-5 w-full max-w-md"
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+        }}
         onClick={(e) => e.stopPropagation()}
         data-no-drag
       >
-        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--fg-primary)' }}>
-          {editSession ? 'Edit Session' : 'Create New Session'}
+        <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--fg-primary)' }}>
+          {editSession ? 'Edit Session' : 'New Session'}
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--fg-primary)' }}>
-              Session Title *
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--fg-secondary)' }}>
+              Title *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg outline-none"
+              className="w-full px-2.5 py-1.5 rounded text-sm outline-none"
               style={{
                 backgroundColor: 'var(--bg-primary)',
                 border: '1px solid var(--border)',
@@ -97,21 +100,21 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--fg-primary)' }}>
-              Research Goal (optional)
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--fg-secondary)' }}>
+              Goal (optional)
             </label>
             <textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg outline-none"
+              className="w-full px-2.5 py-1.5 rounded text-sm outline-none resize-none"
               style={{
                 backgroundColor: 'var(--bg-primary)',
                 border: '1px solid var(--border)',
                 color: 'var(--fg-primary)',
               }}
               rows={3}
-              placeholder="What do you want to achieve with this research?"
+              placeholder="What do you want to achieve?"
             />
           </div>
 
@@ -119,8 +122,18 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded hover:bg-[var(--bg-active)] transition-colors"
-              style={{ color: 'var(--fg-secondary)' }}
+              className="px-2.5 py-1.5 rounded text-sm transition-colors"
+              style={{
+                color: 'var(--fg-secondary)',
+                border: '1px solid var(--border)',
+                backgroundColor: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
               disabled={isSubmitting}
             >
               Cancel
@@ -128,10 +141,20 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 rounded transition-colors"
+              className="px-2.5 py-1.5 rounded text-sm transition-all"
               style={{
-                backgroundColor: isSubmitting ? 'var(--bg-tertiary)' : 'var(--accent)',
+                backgroundColor: 'var(--accent)',
                 color: 'white',
+                opacity: isSubmitting ? 0.5 : 1,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.filter = 'brightness(0.9)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'brightness(1)';
               }}
             >
               {isSubmitting ? 'Saving...' : (editSession ? 'Update' : 'Create')}
