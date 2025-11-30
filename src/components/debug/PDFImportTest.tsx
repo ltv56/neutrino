@@ -14,7 +14,6 @@ const PDFImportTest = () => {
     setResult(
       `✅ PDF imported via drag & drop!\n` +
       `ID: ${document.id}\n` +
-      `Session: ${document.session_id || 'null'}\n` +
       `Title: ${document.title}\n` +
       `Path: ${document.file_path}`
     );
@@ -131,9 +130,8 @@ const PDFImportTest = () => {
       const { document } = await documentService.importPDF(selected, currentSession.id);
 
       setResult(
-        `✅ Document imported to current session!\n` +
+        `✅ Document imported and linked to current session!\n` +
         `Document ID: ${document.id}\n` +
-        `Session ID: ${document.session_id || 'null'}\n` +
         `Session Title: ${currentSession.title}\n` +
         `Document Title: ${document.title}\n` +
         `File Path: ${document.file_path}`
@@ -155,12 +153,11 @@ const PDFImportTest = () => {
         return;
       }
 
-      const { document } = await documentService.importPDF(selected, null);
+      const { document } = await documentService.importPDF(selected);
 
       setResult(
-        `✅ Document created without session!\n` +
+        `✅ Document created (not linked to any session)!\n` +
         `ID: ${document.id}\n` +
-        `Session: ${document.session_id || 'null'}\n` +
         `Title: ${document.title}\n` +
         `Path: ${document.file_path}`
       );

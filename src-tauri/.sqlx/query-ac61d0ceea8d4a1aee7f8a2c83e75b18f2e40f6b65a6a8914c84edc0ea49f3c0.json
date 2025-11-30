@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT d.id, d.title, d.file_path, d.content_type,\n                   d.metadata, d.reading_progress, d.created_at, d.updated_at\n            FROM documents d\n            INNER JOIN documents_fts fts ON d.id = fts.id\n            WHERE documents_fts MATCH ?\n            ORDER BY rank\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "metadata",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "reading_progress",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ac61d0ceea8d4a1aee7f8a2c83e75b18f2e40f6b65a6a8914c84edc0ea49f3c0"
+}

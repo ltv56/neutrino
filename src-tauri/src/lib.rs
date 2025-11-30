@@ -68,6 +68,11 @@ pub fn run() {
             commands::update_document_reading_progress,
             commands::search_documents,
 
+            // ========== Session-Document Relationships ==========
+            commands::add_document_to_session,
+            commands::remove_document_from_session,
+            commands::update_session_document_notes,
+
             // ========== PDF Management ==========
             commands::pdf_get_app_directories,
             commands::pdf_save_file,

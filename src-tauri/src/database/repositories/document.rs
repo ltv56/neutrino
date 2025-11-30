@@ -17,18 +17,16 @@ impl DocumentRepository {
 
     pub async fn create(
         &self,
-        session_id: Uuid,
         title: String,
         file_path: String,
         content_type: String,
     ) -> DbResult<Document> {
-        self.create_with_metadata(Some(session_id), title, file_path, content_type, None)
+        self.create_with_metadata(title, file_path, content_type, None)
             .await
     }
 
     pub async fn create_with_metadata(
         &self,
-        session_id: Option<Uuid>,
         title: String,
         file_path: String,
         content_type: String,
@@ -39,15 +37,13 @@ impl DocumentRepository {
         let now_str = now.to_rfc3339();
 
         let document_id_str = document_id.to_string();
-        let session_id_str = session_id.map(|id| id.to_string());
 
         sqlx::query!(
             r#"
-            INSERT INTO documents (id, session_id, title, file_path, content_type, metadata, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            INSERT INTO documents (id, title, file_path, content_type, metadata, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
             document_id_str,
-            session_id_str,
             title,
             file_path,
             content_type,
@@ -60,7 +56,6 @@ impl DocumentRepository {
 
         Ok(Document {
             id: document_id,
-            session_id,
             title,
             file_path,
             content_type,
@@ -71,73 +66,13 @@ impl DocumentRepository {
         })
     }
 
-    pub async fn find_by_session(&self, session_id: Uuid) -> DbResult<Vec<Document>> {
-        let session_id_str = session_id.to_string();
-        let rows = sqlx::query_as!(
-            DocumentRow,
-            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
-             FROM documents WHERE session_id = ? ORDER BY created_at DESC",
-            session_id_str
-        )
-        .fetch_all(&*self.pool)
-        .await?;
-
-        let mut documents = Vec::new();
-        for row in rows {
-            let doc_id = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
-                value: "null".to_string(),
-            })?;
-            let created_at_str =
-                row.created_at
-                    .as_ref()
-                    .ok_or_else(|| DatabaseError::InvalidDateTime {
-                        value: "null".to_string(),
-                    })?;
-            let updated_at_str =
-                row.updated_at
-                    .as_ref()
-                    .ok_or_else(|| DatabaseError::InvalidDateTime {
-                        value: "null".to_string(),
-                    })?;
-
-            let doc = Document {
-                id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
-                    value: doc_id.clone(),
-                })?,
-                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
-                title: row.title.ok_or_else(|| DatabaseError::InternalError {
-                    message: "Missing title".to_string(),
-                })?,
-                file_path: row.file_path.ok_or_else(|| DatabaseError::InternalError {
-                    message: "Missing file_path".to_string(),
-                })?,
-                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
-                    message: "Missing content_type".to_string(),
-                })?,
-                metadata: row.metadata,
-                reading_progress: row.reading_progress.unwrap_or(0) as i32,
-                created_at: DateTime::parse_from_rfc3339(created_at_str)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .map_err(|_| DatabaseError::InvalidDateTime {
-                        value: created_at_str.clone(),
-                    })?,
-                updated_at: DateTime::parse_from_rfc3339(updated_at_str)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .map_err(|_| DatabaseError::InvalidDateTime {
-                        value: updated_at_str.clone(),
-                    })?,
-            };
-            documents.push(doc);
-        }
-
-        Ok(documents)
-    }
+    // Removed: find_by_session - now handled by SessionDocumentRepository
 
     pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<Document>> {
         let id_str = id.to_string();
         let row = sqlx::query_as!(
             DocumentRow,
-            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+            "SELECT id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
              FROM documents WHERE id = ?",
             id_str
         )
@@ -168,7 +103,6 @@ impl DocumentRepository {
             id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                 value: doc_id.clone(),
             })?,
-            session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
             title: row.title.ok_or_else(|| DatabaseError::InternalError {
                 message: "Missing title".to_string(),
             })?,
@@ -221,7 +155,7 @@ impl DocumentRepository {
     pub async fn find_all(&self) -> DbResult<Vec<Document>> {
         let rows = sqlx::query_as!(
             DocumentRow,
-            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+            "SELECT id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
              FROM documents ORDER BY created_at DESC"
         )
         .fetch_all(&*self.pool)
@@ -249,7 +183,6 @@ impl DocumentRepository {
                 id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                     value: doc_id.clone(),
                 })?,
-                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                 title: row.title.ok_or_else(|| DatabaseError::InternalError {
                     message: "Missing title".to_string(),
                 })?,
@@ -282,7 +215,7 @@ impl DocumentRepository {
     pub async fn find_by_title(&self, title: &str) -> DbResult<Vec<Document>> {
         let rows = sqlx::query_as!(
             DocumentRow,
-            "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
+            "SELECT id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at
              FROM documents WHERE title = ? ORDER BY created_at DESC",
             title
         )
@@ -311,7 +244,6 @@ impl DocumentRepository {
                 id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                     value: doc_id.clone(),
                 })?,
-                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                 title: row.title.ok_or_else(|| DatabaseError::InternalError {
                     message: "Missing title".to_string(),
                 })?,
@@ -369,7 +301,7 @@ impl DocumentRepository {
         let rows = sqlx::query_as!(
             DocumentRow,
             r#"
-            SELECT d.id, d.session_id, d.title, d.file_path, d.content_type,
+            SELECT d.id, d.title, d.file_path, d.content_type,
                    d.metadata, d.reading_progress, d.created_at, d.updated_at
             FROM documents d
             INNER JOIN documents_fts fts ON d.id = fts.id
@@ -403,7 +335,6 @@ impl DocumentRepository {
                 id: Uuid::parse_str(doc_id).map_err(|_| DatabaseError::InvalidUuid {
                     value: doc_id.clone(),
                 })?,
-                session_id: row.session_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                 title: row.title.ok_or_else(|| DatabaseError::InternalError {
                     message: "Missing title".to_string(),
                 })?,
@@ -437,7 +368,6 @@ impl DocumentRepository {
 #[derive(Debug)]
 struct DocumentRow {
     pub id: Option<String>,
-    pub session_id: Option<String>,
     pub title: Option<String>,
     pub file_path: Option<String>,
     pub content_type: Option<String>,

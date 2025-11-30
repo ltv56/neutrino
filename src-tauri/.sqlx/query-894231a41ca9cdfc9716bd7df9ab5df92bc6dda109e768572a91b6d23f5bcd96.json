@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, session_id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at\n             FROM documents WHERE session_id = ? ORDER BY created_at DESC",
+  "query": "SELECT id, title, file_path, content_type, metadata, reading_progress, created_at, updated_at\n             FROM documents ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -9,51 +9,45 @@
         "type_info": "Text"
       },
       {
-        "name": "session_id",
+        "name": "title",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "title",
+        "name": "file_path",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "file_path",
+        "name": "content_type",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "content_type",
+        "name": "metadata",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "metadata",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
         "name": "reading_progress",
-        "ordinal": 6,
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 7,
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "updated_at",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
-      true,
       true,
       false,
       false,
@@ -64,5 +58,5 @@
       false
     ]
   },
-  "hash": "7fc634703b3977430a3e32d2bc6d145b863d7be99ce8155eb44069eccb6d1b95"
+  "hash": "894231a41ca9cdfc9716bd7df9ab5df92bc6dda109e768572a91b6d23f5bcd96"
 }
