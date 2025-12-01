@@ -1,6 +1,7 @@
 import React from 'react';
 import { SIDEBAR_HEADERS, SIDEBAR_EMPTY_STATES, type SidebarTab } from '@/constants/sidebar';
 import { NotesList } from '@/components/notes/NotesList';
+import SessionDocumentsList from '@/components/sessions/SessionDocumentsList';
 import { useSessionsContext } from '@/hooks';
 
 interface SidebarPanelProps {
@@ -8,6 +9,7 @@ interface SidebarPanelProps {
   mode: 'floating' | 'pinned';
   onNewClick: () => void;
   onNoteSelect?: (noteId: string, title: string) => void;
+  onDocumentSelect?: (documentId: string, title: string) => void;
 }
 
 const SidebarPanel: React.FC<SidebarPanelProps> = ({
@@ -15,11 +17,18 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   mode,
   onNewClick,
   onNoteSelect,
+  onDocumentSelect,
 }) => {
   const { currentSession } = useSessionsContext();
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'documents':
+        return (
+          <SessionDocumentsList
+            onDocumentSelect={onDocumentSelect}
+          />
+        );
       case 'papers':
         return (
           <NotesList
@@ -28,7 +37,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
             onCreateNote={onNewClick}
           />
         );
-      case 'documents':
       default:
         return (
           <div className="px-2 py-2">
