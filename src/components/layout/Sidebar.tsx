@@ -28,6 +28,7 @@ interface SidebarProps {
   onOpenDocument?: (documentId: string, title: string) => void;
   onNoteSelect?: (noteId: string, title: string) => void;
   onCreateNote?: () => void;
+  isDraggingFiles?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -45,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenDocument,
   onNoteSelect,
   onCreateNote,
+  isDraggingFiles,
 }) => {
   const isFloating = mode === 'floating';
   const showBackdrop = isFloating && isVisible;
@@ -170,7 +172,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               {/* Vault Panel */}
               {isVaultOpen && (
                 <div style={{ width: '240px', flexShrink: 0, borderRight: '2px solid var(--border-light)' }}>
-                  <VaultPanel onOpenDocument={onOpenDocument} />
+                  <VaultPanel onOpenDocument={onOpenDocument} isDraggingFiles={isDraggingFiles} />
                 </div>
               )}
 
@@ -204,6 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   mode={mode}
                   onNewClick={handleNewClick}
                   onNoteSelect={onNoteSelect}
+                  onDocumentSelect={onOpenDocument}
                 />
 
                 {/* Footer: Vault + Theme + Settings */}

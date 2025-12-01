@@ -26,8 +26,6 @@ const TitleBar: React.FC<TitleBarProps> = ({
   const [isTauri, setIsTauri] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
-
-
   // Get search context based on current route
   const searchContext = SEARCH_CONTEXTS[location.pathname] || DEFAULT_SEARCH_CONTEXT;
 
