@@ -52,6 +52,43 @@ async fn toggle_window_visibility(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::WebviewUrl;
+    use tauri::WebviewWindowBuilder;
+
+    // Check if floating note window already exists
+    if let Some(window) = app.get_webview_window("floating-note") {
+        // If exists, toggle visibility
+        if window.is_visible().map_err(|e| e.to_string())? {
+            window.hide().map_err(|e| e.to_string())?;
+        } else {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+        }
+    } else {
+        // Create new floating note window
+        let window = WebviewWindowBuilder::new(
+            &app,
+            "floating-note",
+            WebviewUrl::App("floating-note".into())
+        )
+        .title("Quick Capture")
+        .inner_size(400.0, 500.0)
+        .min_inner_size(300.0, 400.0)
+        .resizable(true)
+        .decorations(false)
+        .visible(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        // Show window after creation
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -66,23 +103,36 @@ pub fn run() {
         }))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    use tauri_plugin_global_shortcut::ShortcutState;
+                .with_handler(|app, shortcut, event| {
+                    use tauri_plugin_global_shortcut::{ShortcutState, Code, Modifiers};
 
                     // Only respond to key press, not release
                     if event.state == ShortcutState::Pressed {
-                        if let Some(window) = app.get_webview_window("main") {
-                            if let Ok(is_visible) = window.is_visible() {
-                                if is_visible {
-                                    let _ = window.hide();
-                                    println!("[GlobalShortcut] Window hidden");
-                                } else {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                    let _ = window.unminimize();
-                                    println!("[GlobalShortcut] Window shown");
+                        // Check which shortcut was pressed
+                        let is_main_window_shortcut = shortcut.matches(Modifiers::CONTROL | Modifiers::ALT, Code::KeyN);
+                        let is_floating_note_shortcut = shortcut.matches(Modifiers::CONTROL | Modifiers::SHIFT, Code::KeyF);
+
+                        if is_main_window_shortcut {
+                            // Toggle main window (Ctrl+Alt+N)
+                            if let Some(window) = app.get_webview_window("main") {
+                                if let Ok(is_visible) = window.is_visible() {
+                                    if is_visible {
+                                        let _ = window.hide();
+                                    } else {
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                        let _ = window.unminimize();
+                                    }
                                 }
                             }
+                        } else if is_floating_note_shortcut {
+                            // Toggle floating note window (Ctrl+Shift+F)
+                            let app_handle = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                if let Err(e) = toggle_floating_note(app_handle).await {
+                                    eprintln!("[FloatingNote] Error: {}", e);
+                                }
+                            });
                         }
                     }
                 })
@@ -97,6 +147,7 @@ pub fn run() {
             get_available_memory, // For future cache optimization
             show_main_window,
             toggle_window_visibility,
+            toggle_floating_note,
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -216,14 +267,22 @@ pub fn run() {
                 .build(app)?;
             println!("[Setup] System tray initialized");
 
-            // Register global shortcut using the correct API
+            // Register global shortcuts using the correct API
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
+            // Register Ctrl+Alt+N for main window
+            let main_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
             println!("[Setup] Registering global shortcut: Ctrl+Alt+N");
-
-            match app.global_shortcut().register(shortcut) {
+            match app.global_shortcut().register(main_shortcut) {
                 Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Alt+N) registered successfully!"),
+                Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
+            }
+
+            // Register Ctrl+Shift+F for floating note
+            let floating_note_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyF);
+            println!("[Setup] Registering global shortcut: Ctrl+Shift+F");
+            match app.global_shortcut().register(floating_note_shortcut) {
+                Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Shift+F) registered successfully!"),
                 Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
             }
 
