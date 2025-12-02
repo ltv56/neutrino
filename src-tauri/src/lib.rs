@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![allow(dead_code)]
-use tauri::Manager;
+use tauri::{Manager, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}};
 
 mod database;
 mod debug;
@@ -40,9 +40,55 @@ async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn toggle_window_visibility(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app.get_webview_window("main").ok_or("Window not found")?;
+    if window.is_visible().map_err(|e| e.to_string())? {
+        window.hide().map_err(|e| e.to_string())?;
+    } else {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // When second instance is launched, show the main window
+            println!("[Single Instance] Another instance detected, showing main window");
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+                let _ = window.unminimize();
+            }
+        }))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    use tauri_plugin_global_shortcut::ShortcutState;
+
+                    // Only respond to key press, not release
+                    if event.state == ShortcutState::Pressed {
+                        if let Some(window) = app.get_webview_window("main") {
+                            if let Ok(is_visible) = window.is_visible() {
+                                if is_visible {
+                                    let _ = window.hide();
+                                    println!("[GlobalShortcut] Window hidden");
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                    let _ = window.unminimize();
+                                    println!("[GlobalShortcut] Window shown");
+                                }
+                            }
+                        }
+                    }
+                })
+                .build()
+        )
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -50,6 +96,7 @@ pub fn run() {
             greet,
             get_available_memory, // For future cache optimization
             show_main_window,
+            toggle_window_visibility,
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -137,8 +184,61 @@ pub fn run() {
             http_server::start_http_server(app.handle().clone());
             println!("[Setup] HTTP server started");
 
+            // Setup system tray
+            let show_item = MenuItem::with_id(app, "show", "Show", true, None::<&str>).unwrap();
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
+            let menu = Menu::with_items(app, &[&show_item, &quit_item]).unwrap();
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| {
+                    match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|_tray, event| {
+                    if let TrayIconEvent::Click { button, .. } = event {
+                        if button == tauri::tray::MouseButton::Left {
+                            // Double-click to show window (handled by TrayIconEvent::DoubleClick in v2)
+                        }
+                    }
+                })
+                .build(app)?;
+            println!("[Setup] System tray initialized");
+
+            // Register global shortcut using the correct API
+            use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
+            println!("[Setup] Registering global shortcut: Ctrl+Alt+N");
+
+            match app.global_shortcut().register(shortcut) {
+                Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Alt+N) registered successfully!"),
+                Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
+            }
+
             println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Prevent app from exiting when window is closed
+            // Instead, hide the window so app continues running in tray
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Don't close the window, just hide it
+                // This keeps the app running in the background
+                window.hide().unwrap();
+                api.prevent_close();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

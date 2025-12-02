@@ -9,6 +9,7 @@ import NavigationButtons from './titlebar/NavigationButtons';
 import Divider from '@/components/common/Divider';
 import Tooltip from '@/components/common/Tooltip';
 import SessionSelector from '@/components/sessions/SessionSelector';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Menu } from 'lucide-react';
 interface TitleBarProps {
   sidebarMode?: 'floating' | 'pinned';
@@ -25,6 +26,8 @@ const TitleBar: React.FC<TitleBarProps> = ({
   const { sessions, currentSession, selectSession } = useSessionsContext();
   const [isTauri, setIsTauri] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [closePreference, setClosePreference] = useState<'minimize' | 'exit' | null>(null);
 
   // Get search context based on current route
   const searchContext = SEARCH_CONTEXTS[location.pathname] || DEFAULT_SEARCH_CONTEXT;
@@ -78,8 +81,37 @@ const TitleBar: React.FC<TitleBarProps> = ({
 
   const handleClose = async () => {
     if (!isTauri) return;
+
+    // If user has already chosen a preference this session, use it
+    if (closePreference === 'minimize') {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().hide();
+      return;
+    } else if (closePreference === 'exit') {
+      const { exit } = await import('@tauri-apps/plugin-process');
+      await exit(0);
+      return;
+    }
+
+    // Otherwise show the dialog
+    setShowCloseDialog(true);
+  };
+
+  const handleConfirmMinimizeToTray = async () => {
+    setShowCloseDialog(false);
+    // TODO: Check if "don't ask again" is checked and save preference
+    // For now, we save preference in memory (resets when app fully exits)
+    setClosePreference('minimize');
     const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    await getCurrentWindow().close();
+    await getCurrentWindow().hide();
+  };
+
+  const handleExitCompletely = async () => {
+    setShowCloseDialog(false);
+    // TODO: Check if "don't ask again" is checked and save preference
+    setClosePreference('exit');
+    const { exit } = await import('@tauri-apps/plugin-process');
+    await exit(0);
   };
 
   return (
@@ -161,7 +193,20 @@ const TitleBar: React.FC<TitleBarProps> = ({
         onClose={handleClose}
       />
 
-
+      {/* Close to Tray Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showCloseDialog}
+        title="Close Neutrino"
+        message="Do you want to keep Neutrino running in the background or exit completely?"
+        confirmLabel="Minimize to Tray"
+        cancelLabel="Exit"
+        onConfirm={handleConfirmMinimizeToTray}
+        onCancel={handleExitCompletely}
+        onClose={() => setShowCloseDialog(false)}
+        variant="info"
+        dismissible={false}
+        showDontAskAgain={true}
+      />
     </div>
   );
 };

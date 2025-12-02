@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,7 +10,10 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  onClose?: () => void;
   variant?: 'danger' | 'warning' | 'info';
+  dismissible?: boolean;
+  showDontAskAgain?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -21,16 +24,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  onClose,
   variant = 'danger',
+  dismissible = true,
+  showDontAskAgain = false,
 }) => {
   const cancelButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [dontAskAgain, setDontAskAgain] = React.useState(false);
 
   // Handle keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && dismissible) {
         e.preventDefault();
         onCancel();
       } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -41,7 +48,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onConfirm, onCancel]);
+  }, [isOpen, onConfirm, onCancel, dismissible]);
 
   // Auto-focus cancel button when dialog opens (safe default)
   useEffect(() => {
@@ -96,7 +103,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         animation: 'fadeIn 0.15s ease-out',
         zIndex: 9999,
       }}
-      onClick={onCancel}
+      onClick={dismissible ? onCancel : undefined}
     >
       <style>{`
         @keyframes fadeIn {
@@ -121,92 +128,107 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       `}</style>
 
       <div
-        className="rounded-lg shadow-xl max-w-md w-full mx-4"
+        className="rounded-lg shadow-xl mx-4"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           border: '1px solid var(--border)',
           animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          width: '460px',
+          maxWidth: '90vw',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-start gap-3">
-            <div
-              className="p-2 rounded"
-              style={{
-                backgroundColor: getBgColor(),
-              }}
+        {/* Content */}
+        <div className="px-5 py-4">
+          <div className="flex items-start justify-between mb-2">
+            <h3
+              className="text-sm font-semibold"
+              style={{ color: 'var(--fg-primary)' }}
             >
-              <AlertTriangle
-                size={20}
-                style={{
-                  color: getColor(),
-                }}
-              />
-            </div>
-            <div className="flex-1">
-              <h3
-                className="text-base font-semibold"
-                style={{ color: 'var(--fg-primary)' }}
+              {title}
+            </h3>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 rounded hover:bg-[var(--bg-tertiary)] transition-colors -mt-1 -mr-1"
+                style={{ color: 'var(--fg-tertiary)' }}
               >
-                {title}
-              </h3>
-              <p
-                className="text-sm mt-2"
-                style={{ color: 'var(--fg-secondary)', lineHeight: '1.5' }}
-              >
-                {message}
-              </p>
-              <p
-                className="text-xs mt-3"
-                style={{ color: 'var(--fg-tertiary)', fontStyle: 'italic' }}
-              >
-                Press <kbd className="px-1 py-0.5 rounded text-xs" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--fg-secondary)' }}>ESC</kbd> to cancel or{' '}
-                <kbd className="px-1 py-0.5 rounded text-xs" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--fg-secondary)' }}>Ctrl+Enter</kbd> to confirm
-              </p>
-            </div>
+                <X size={16} />
+              </button>
+            )}
           </div>
+          <p
+            style={{
+              color: 'var(--fg-secondary)',
+              lineHeight: '1.4',
+              fontSize: '13px'
+            }}
+          >
+            {message}
+          </p>
+
+          {showDontAskAgain && (
+            <label
+              className="flex items-center gap-2 mt-3 cursor-pointer group"
+              style={{ fontSize: '12px', color: 'var(--fg-tertiary)' }}
+            >
+              <div
+                className="relative flex items-center justify-center rounded transition-colors"
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderWidth: '1.5px',
+                  borderStyle: 'solid',
+                  borderColor: dontAskAgain ? 'var(--accent)' : 'var(--border)',
+                  backgroundColor: dontAskAgain ? 'var(--accent)' : 'var(--bg-tertiary)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={dontAskAgain}
+                  onChange={(e) => setDontAskAgain(e.target.checked)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                {dontAskAgain && (
+                  <svg
+                    width="10"
+                    height="8"
+                    viewBox="0 0 10 8"
+                    fill="none"
+                    style={{ color: 'white' }}
+                  >
+                    <path
+                      d="M1 4L3.5 6.5L9 1"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+              <span className="group-hover:text-[var(--fg-secondary)] transition-colors">
+                Don't ask again
+              </span>
+            </label>
+          )}
         </div>
 
         {/* Actions */}
         <div
-          className="px-6 py-4 flex items-center justify-end gap-3 border-t"
+          className="px-5 py-3 flex items-center justify-end gap-2 border-t"
           style={{ borderColor: 'var(--border)' }}
         >
           <button
-            ref={cancelButtonRef}
-            onClick={onCancel}
-            className="px-4 py-2 rounded text-sm font-medium transition-colors"
-            style={{
-              color: 'var(--fg-primary)',
-              backgroundColor: 'var(--bg-tertiary)',
-              outline: 'none',
-              boxShadow: 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 0 2px var(--bg-active)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            {cancelLabel}
-          </button>
-          <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded text-sm font-medium transition-colors"
+            className="px-3 py-1.5 rounded transition-colors"
             style={{
               color: 'white',
               backgroundColor: getColor(),
+              border: 'none',
               outline: 'none',
               boxShadow: 'none',
+              fontSize: '13px'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = '0.85';
@@ -222,6 +244,35 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             }}
           >
             {confirmLabel}
+          </button>
+          <button
+            ref={cancelButtonRef}
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded transition-colors"
+            style={{
+              color: 'var(--fg-primary)',
+              backgroundColor: 'var(--bg-tertiary)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: 'var(--border)',
+              outline: 'none',
+              boxShadow: 'none',
+              fontSize: '13px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 0 2px var(--bg-active)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            {cancelLabel}
           </button>
         </div>
       </div>

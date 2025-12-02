@@ -10,6 +10,11 @@
     "core:window:allow-close",
     "core:window:allow-toggle-maximize",
     "core:window:allow-is-maximized",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "core:window:allow-unminimize",
     "core:event:default",
     "dialog:default",
     "dialog:allow-open",
@@ -18,6 +23,14 @@
     "fs:allow-write-file",
     "fs:allow-exists",
     "fs:allow-mkdir",
-    "fs:allow-read-dir"
+    "fs:allow-read-dir",
+    "process:default",
+    "process:allow-exit",
+    "global-shortcut:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-register-all",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-unregister-all"
   ]
 }
