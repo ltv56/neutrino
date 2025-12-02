@@ -1,7 +1,7 @@
 use super::{DbResult, DatabaseError};
 use super::super::models::*;
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, Row};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -293,62 +293,193 @@ impl DocumentRepository {
 
     /// Search documents with session context for command palette
     /// Returns documents grouped by session association
-    pub async fn search_with_session_context(&self, query: &str) -> DbResult<Vec<DocumentSearchResult>> {
-        if query.trim().is_empty() {
-            return Ok(Vec::new());
+    /// Supports filtering by: file_filter, path_filter, type_filter, in_filter
+    /// Supports negation for all filters via negate flags
+    pub async fn search_with_session_context(
+        &self,
+        query: &str,
+        file_filter: Option<&str>,
+        file_negate: bool,
+        path_filter: Option<&str>,
+        path_negate: bool,
+        type_filter: Option<&str>,
+        type_negate: bool,
+        in_filter: Option<&str>,
+        in_negate: bool,
+        current_session_id: Option<Uuid>,
+    ) -> DbResult<Vec<DocumentSearchResult>> {
+        // Build WHERE clauses dynamically
+        let mut where_clauses = Vec::new();
+        let mut params: Vec<String> = Vec::new();
+
+        // FTS query (if not empty after sanitization)
+        let fts_query = if !query.trim().is_empty() {
+            Some(transform_to_fts5_query(query))
+        } else {
+            None
+        };
+
+        if let Some(ref fts_q) = fts_query {
+            if !fts_q.is_empty() {
+                where_clauses.push("documents_fts MATCH ?".to_string());
+                params.push(fts_q.clone());
+            }
         }
 
-        let fts_query = transform_to_fts5_query(query);
-
-        #[derive(Debug)]
-        struct Row {
-            id: Option<String>,
-            title: Option<String>,
-            content_type: Option<String>,
-            session_id: Option<String>,
-            session_name: Option<String>,
-            created_at: Option<String>,
+        // File filter (match title or file_path)
+        if let Some(file) = file_filter {
+            let pattern = format!("%{}%", file);
+            if file_negate {
+                where_clauses.push("(d.title NOT LIKE ? AND d.file_path NOT LIKE ?)".to_string());
+            } else {
+                where_clauses.push("(d.title LIKE ? OR d.file_path LIKE ?)".to_string());
+            }
+            params.push(pattern.clone());
+            params.push(pattern);
         }
 
-        let rows = sqlx::query_as!(
-            Row,
+        // Path filter (match file_path)
+        if let Some(path) = path_filter {
+            if path_negate {
+                where_clauses.push("d.file_path NOT LIKE ?".to_string());
+            } else {
+                where_clauses.push("d.file_path LIKE ?".to_string());
+            }
+            params.push(format!("%{}%", path));
+        }
+
+        // Type filter (match content_type)
+        if let Some(type_val) = type_filter {
+            if type_negate {
+                where_clauses.push("d.content_type != ?".to_string());
+            } else {
+                where_clauses.push("d.content_type = ?".to_string());
+            }
+            params.push(type_val.to_string());
+        }
+
+        // In filter (location filter - replaces session filter)
+        if let Some(in_val) = in_filter {
+            match in_val {
+                "current" => {
+                    // Documents in current session
+                    if let Some(current_id) = current_session_id {
+                        if in_negate {
+                            where_clauses.push("(sd.session_id IS NULL OR sd.session_id != ?)".to_string());
+                        } else {
+                            where_clauses.push("sd.session_id = ?".to_string());
+                        }
+                        params.push(current_id.to_string());
+                    } else {
+                        // No current session
+                        if in_negate {
+                            // -in:current with no session → show all (no filter)
+                        } else {
+                            // in:current with no session → return empty
+                            return Ok(Vec::new());
+                        }
+                    }
+                }
+                "other" => {
+                    // Documents in other sessions (not current)
+                    if let Some(current_id) = current_session_id {
+                        if in_negate {
+                            // NOT in other → in current OR in vault
+                            where_clauses.push("(sd.session_id IS NULL OR sd.session_id = ?)".to_string());
+                            params.push(current_id.to_string());
+                        } else {
+                            // in other → in a session AND not current
+                            where_clauses.push("(sd.session_id IS NOT NULL AND sd.session_id != ?)".to_string());
+                            params.push(current_id.to_string());
+                        }
+                    } else {
+                        // No current session → "other" means any session
+                        if in_negate {
+                            where_clauses.push("sd.session_id IS NULL".to_string());
+                        } else {
+                            where_clauses.push("sd.session_id IS NOT NULL".to_string());
+                        }
+                    }
+                }
+                "vault" => {
+                    // Documents NOT in any session
+                    if in_negate {
+                        where_clauses.push("sd.session_id IS NOT NULL".to_string());
+                    } else {
+                        where_clauses.push("sd.session_id IS NULL".to_string());
+                    }
+                }
+                "sessions" => {
+                    // Documents in any session (≥1)
+                    if in_negate {
+                        where_clauses.push("sd.session_id IS NULL".to_string());
+                    } else {
+                        where_clauses.push("sd.session_id IS NOT NULL".to_string());
+                    }
+                }
+                _ => {
+                    // Match session by name
+                    if in_negate {
+                        where_clauses.push("(sd.session_id IS NULL OR s.title NOT LIKE ?)".to_string());
+                    } else {
+                        where_clauses.push("s.title LIKE ?".to_string());
+                    }
+                    params.push(format!("%{}%", in_val));
+                }
+            }
+        }
+
+        let where_sql = if where_clauses.is_empty() {
+            "1=1".to_string()
+        } else {
+            where_clauses.join(" AND ")
+        };
+
+        // Build query dynamically
+        let needs_fts_join = fts_query.as_ref().map(|q| !q.is_empty()).unwrap_or(false);
+        let sql = format!(
             r#"
             SELECT DISTINCT d.id, d.title, d.content_type,
                    sd.session_id, s.title as session_name,
                    d.created_at
             FROM documents d
-            INNER JOIN documents_fts fts ON d.id = fts.id
+            {}
             LEFT JOIN session_documents sd ON d.id = sd.document_id
             LEFT JOIN research_sessions s ON sd.session_id = s.id
-            WHERE documents_fts MATCH ?
+            WHERE {}
             ORDER BY d.created_at DESC
             "#,
-            fts_query
-        )
-        .fetch_all(&*self.pool)
-        .await?;
+            if needs_fts_join { "INNER JOIN documents_fts fts ON d.id = fts.id" } else { "" },
+            where_sql
+        );
+
+        // Execute query with dynamic parameters
+        let mut query_builder = sqlx::query(&sql);
+        for param in params {
+            query_builder = query_builder.bind(param);
+        }
+
+        let rows = query_builder
+            .fetch_all(&*self.pool)
+            .await?;
 
         let mut results = Vec::new();
         for row in rows {
-            let id_str = row.id.ok_or_else(|| DatabaseError::InternalError {
-                message: "Missing id".to_string(),
-            })?;
-            let created_at_str = row.created_at.ok_or_else(|| DatabaseError::InternalError {
-                message: "Missing created_at".to_string(),
-            })?;
+            let id_str: String = row.try_get("id")?;
+            let title: String = row.try_get("title")?;
+            let content_type: String = row.try_get("content_type")?;
+            let session_id: Option<String> = row.try_get("session_id").ok();
+            let session_name: Option<String> = row.try_get("session_name").ok();
+            let created_at_str: String = row.try_get("created_at")?;
 
             results.push(DocumentSearchResult {
                 id: Uuid::parse_str(&id_str).map_err(|_| DatabaseError::InvalidUuid {
                     value: id_str.clone(),
                 })?,
-                title: row.title.ok_or_else(|| DatabaseError::InternalError {
-                    message: "Missing title".to_string(),
-                })?,
-                content_type: row.content_type.ok_or_else(|| DatabaseError::InternalError {
-                    message: "Missing content_type".to_string(),
-                })?,
-                session_id: row.session_id.as_deref().and_then(|s| Uuid::parse_str(s).ok()),
-                session_name: row.session_name,
+                title,
+                content_type,
+                session_id: session_id.as_deref().and_then(|s| Uuid::parse_str(s).ok()),
+                session_name,
                 created_at: DateTime::parse_from_rfc3339(&created_at_str)
                     .map(|dt| dt.with_timezone(&Utc))
                     .map_err(|_| DatabaseError::InvalidDateTime {

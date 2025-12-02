@@ -16,6 +16,7 @@ export interface NoteSearchResult {
   title: string;
   content_preview: string;
   session_id?: string;
+  session_name?: string;
   document_id?: string;
   note_type: string;
   created_at: string;
@@ -112,9 +113,25 @@ export const noteService = {
   /**
    * Search notes using Full-Text Search (FTS5)
    * Backend automatically transforms query for prefix matching
-   * Returns NoteSearchResult with content_preview for UI
+   * Returns NoteSearchResult with content_preview and session_name for UI
+   * Supports filtering by: type_filter (note_type), in_filter (location filter)
+   * Supports negation for all filters
    */
-  async search(query: string): Promise<NoteSearchResult[]> {
-    return await invoke('search_notes', { query });
+  async search(
+    query: string,
+    typeFilter?: string,
+    typeNegate?: boolean,
+    inFilter?: string,
+    inNegate?: boolean,
+    currentSessionId?: string
+  ): Promise<NoteSearchResult[]> {
+    return await invoke('search_notes', {
+      query,
+      typeFilter,
+      typeNegate,
+      inFilter,
+      inNegate,
+      currentSessionId,
+    });
   },
 };

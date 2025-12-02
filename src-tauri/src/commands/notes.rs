@@ -89,9 +89,26 @@ pub async fn delete_note(
 pub async fn search_notes(
     database: tauri::State<'_, Database>,
     query: String,
+    type_filter: Option<String>,
+    type_negate: Option<bool>,
+    in_filter: Option<String>,
+    in_negate: Option<bool>,
+    current_session_id: Option<String>,
 ) -> Result<Vec<models::NoteSearchResult>, String> {
+    let current_session_uuid = match current_session_id {
+        Some(id) => Some(uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?),
+        None => None,
+    };
+
     database.notes()
-        .search(&query)
+        .search(
+            &query,
+            type_filter.as_deref(),
+            type_negate.unwrap_or(false),
+            in_filter.as_deref(),
+            in_negate.unwrap_or(false),
+            current_session_uuid,
+        )
         .await
         .map_err(|e| e.to_string())
 }

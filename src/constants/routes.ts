@@ -18,15 +18,15 @@ export const ROUTES = {
 // Search context configurations for each route
 export const SEARCH_CONTEXTS: Record<string, SearchContext> = {
   [ROUTES.SESSIONS]: {
-    prefix: '/sessions',
+    prefix: '@session ',
     placeholder: 'Search sessions...',
   },
   [ROUTES.DOCUMENTS]: {
-    prefix: '/documents',
+    prefix: '@doc ',
     placeholder: 'Search documents...',
   },
   [ROUTES.NOTES]: {
-    prefix: '/notes',
+    prefix: '@note ',
     placeholder: 'Search notes...',
   },
 };

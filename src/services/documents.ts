@@ -153,9 +153,33 @@ export const documentService = {
   /**
    * Search documents with session context (for command palette)
    * Returns documents with session information for grouping
+   * Supports filtering by: file_filter, path_filter, type_filter, in_filter
+   * Supports negation for all filters
    */
-  async searchWithContext(query: string): Promise<DocumentSearchResult[]> {
-    return await invoke('search_documents_with_context', { query });
+  async searchWithContext(
+    query: string,
+    fileFilter?: string,
+    fileNegate?: boolean,
+    pathFilter?: string,
+    pathNegate?: boolean,
+    typeFilter?: string,
+    typeNegate?: boolean,
+    inFilter?: string,
+    inNegate?: boolean,
+    currentSessionId?: string
+  ): Promise<DocumentSearchResult[]> {
+    return await invoke('search_documents_with_context', {
+      query,
+      fileFilter,
+      fileNegate,
+      pathFilter,
+      pathNegate,
+      typeFilter,
+      typeNegate,
+      inFilter,
+      inNegate,
+      currentSessionId,
+    });
   },
 
   // ========== Session-Document Relationship Methods ==========

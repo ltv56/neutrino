@@ -70,14 +70,15 @@ pub struct Note {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Note search result with content preview
+/// Note search result with content preview and session context
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NoteSearchResult {
     pub id: Uuid,
     pub session_id: Option<Uuid>,
+    pub session_name: Option<String>,
     pub document_id: Option<Uuid>,
     pub title: String,
-    pub content_preview: String, 
+    pub content_preview: String,
     pub note_type: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -101,6 +102,7 @@ impl Note {
         NoteSearchResult {
             id: self.id,
             session_id: self.session_id,
+            session_name: None, // Set by search query when joining with sessions
             document_id: self.document_id,
             title: self.title.clone(),
             content_preview,

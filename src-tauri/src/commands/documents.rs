@@ -109,9 +109,34 @@ pub async fn search_documents(
 pub async fn search_documents_with_context(
     database: tauri::State<'_, Database>,
     query: String,
+    file_filter: Option<String>,
+    file_negate: Option<bool>,
+    path_filter: Option<String>,
+    path_negate: Option<bool>,
+    type_filter: Option<String>,
+    type_negate: Option<bool>,
+    in_filter: Option<String>,
+    in_negate: Option<bool>,
+    current_session_id: Option<String>,
 ) -> Result<Vec<models::DocumentSearchResult>, String> {
+    let current_session_uuid = match current_session_id {
+        Some(id) => Some(uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?),
+        None => None,
+    };
+
     database.documents()
-        .search_with_session_context(&query)
+        .search_with_session_context(
+            &query,
+            file_filter.as_deref(),
+            file_negate.unwrap_or(false),
+            path_filter.as_deref(),
+            path_negate.unwrap_or(false),
+            type_filter.as_deref(),
+            type_negate.unwrap_or(false),
+            in_filter.as_deref(),
+            in_negate.unwrap_or(false),
+            current_session_uuid,
+        )
         .await
         .map_err(|e| e.to_string())
 }
