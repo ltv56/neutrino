@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Minimize2, Check } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { sessionService } from '@/services/sessions';
 import { noteService } from '@/services/notes';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { MarkdownToolbar } from '@/components/ui/MarkdownToolbar';
+import type { EditorView } from '@codemirror/view';
 
 interface FloatingNoteProps {}
 
 export const FloatingNote: React.FC<FloatingNoteProps> = () => {
   const [content, setContent] = useState('');
-  const [isFocused, setIsFocused] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const editorViewRef = useRef<EditorView | null>(null);
 
   const handleClose = async () => {
     const window = getCurrentWindow();
@@ -75,6 +78,23 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
     }
   };
 
+  const handleInsert = (text: string, offset?: number) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const { from, to } = view.state.selection.main;
+    const newPos = from + text.length + (offset || 0);
+
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: newPos },
+      scrollIntoView: true  // Auto-scroll to cursor
+    });
+
+    view.focus();
+  };
+
+
   return (
     <div
       className="h-screen flex flex-col"
@@ -136,21 +156,16 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+          {/* Toolbar */}
+          <MarkdownToolbar onInsert={handleInsert} />
+
+          {/* Editor */}
+          <MarkdownEditor
+            content={content}
+            onChange={setContent}
             placeholder="Capture your thoughts..."
-            autoFocus
-            className="flex-1 w-full resize-none outline-none p-4"
-            style={{
-              backgroundColor: 'transparent',
-              color: 'var(--text-primary)',
-              border: 'none',
-              fontSize: '14px',
-              lineHeight: '1.7',
-            }}
+            autoFocus={true}
+            onEditorReady={(view) => { editorViewRef.current = view; }}
           />
 
           {/* Bottom Bar with Actions */}

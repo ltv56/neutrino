@@ -46,6 +46,7 @@ Thumbs.db
 *.tar.gz
 
 docs
+bak
 
 # Database files
 *.db
