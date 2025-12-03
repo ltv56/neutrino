@@ -138,6 +138,16 @@
     background: var(--border);
   }
 
+  /* Hide scrollbar for toolbar */
+  .toolbar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbar-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* Resizable divider */
   .resize-handle {
     width: 4px;

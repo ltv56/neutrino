@@ -1,7 +1,7 @@
 import React, { type ReactNode, type RefObject } from 'react';
-import { X, Minimize2, Clock, Plus } from 'lucide-react';
+import { X, Minimize2, Clock, Plus, ExternalLink } from 'lucide-react';
 import Tooltip from '@/components/common/Tooltip';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow, getAllWindows } from '@tauri-apps/api/window';
 
 interface FloatingNoteTitleBarProps {
   showRecentMenu: boolean;
@@ -19,6 +19,19 @@ export const FloatingNoteTitleBar: React.FC<FloatingNoteTitleBarProps> = ({
   const handleNewNote = () => {
     // Trigger custom event for parent to handle
     window.dispatchEvent(new CustomEvent('floating-note-new'));
+  };
+
+  const handleOpenMainApp = async () => {
+    try {
+      const windows = await getAllWindows();
+      const mainWindow = windows.find(w => w.label === 'main');
+      if (mainWindow) {
+        await mainWindow.show();
+        await mainWindow.setFocus();
+      }
+    } catch (error) {
+      console.error('Failed to open main app:', error);
+    }
   };
 
   const handleMinimize = async () => {
@@ -40,15 +53,45 @@ export const FloatingNoteTitleBar: React.FC<FloatingNoteTitleBarProps> = ({
       }}
     >
       <div className="flex items-center gap-2">
-        <span
+        <img
+          src="/neutrino.png"
+          alt="Neutrino"
           style={{
-            fontSize: '12px',
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
+            width: '20px',
+            height: '20px',
+            flexShrink: 0,
+            objectFit: 'contain'
           }}
-        >
-          Quick Capture
-        </span>
+        />
+        <Tooltip content="Open main app" placement="bottom">
+          <button
+            onClick={handleOpenMainApp}
+            className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Quick Capture
+            </span>
+            <ExternalLink
+              size={12}
+              style={{
+                color: 'var(--text-secondary)',
+                opacity: 0.6
+              }}
+            />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex items-center gap-1">

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bold,
   Italic,
@@ -12,7 +13,9 @@ import {
   Quote,
   Minus,
   Image as ImageIcon,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import Tooltip from '../common/Tooltip';
 
@@ -33,10 +36,49 @@ const HEADING_OPTIONS = [
 export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) => {
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
   const [showListMenu, setShowListMenu] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const headingButtonRef = useRef<HTMLButtonElement>(null);
   const listButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const listMenuRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [headingMenuPosition, setHeadingMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [listMenuPosition, setListMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Check scroll position
+  const updateScrollButtons = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+  };
+
+  // Scroll handlers
+  const handleScrollLeft = () => {
+    scrollContainerRef.current?.scrollBy({ left: -100, behavior: 'smooth' });
+  };
+
+  const handleScrollRight = () => {
+    scrollContainerRef.current?.scrollBy({ left: 100, behavior: 'smooth' });
+  };
+
+  // Update menu positions when buttons change
+  useEffect(() => {
+    if (showHeadingMenu && headingButtonRef.current) {
+      const rect = headingButtonRef.current.getBoundingClientRect();
+      setHeadingMenuPosition({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [showHeadingMenu]);
+
+  useEffect(() => {
+    if (showListMenu && listButtonRef.current) {
+      const rect = listButtonRef.current.getBoundingClientRect();
+      setListMenuPosition({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [showListMenu]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -70,6 +112,24 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showHeadingMenu, showListMenu]);
+
+  // Update scroll buttons on mount and resize
+  useEffect(() => {
+    updateScrollButtons();
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => updateScrollButtons();
+    const resizeObserver = new ResizeObserver(updateScrollButtons);
+
+    container.addEventListener('scroll', handleScroll);
+    resizeObserver.observe(container);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const handleHeading = (level: number, prefix: string) => {
     onInsert(prefix);
@@ -131,7 +191,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
     <div
       style={{
         width: '1px',
-        height: '16px',
+        height: '18px',
         backgroundColor: 'var(--border)',
       }}
     />
@@ -158,13 +218,44 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
 
   return (
     <div
-      className="flex items-center gap-1 px-2 py-1.5"
       style={{
         borderBottom: '1px solid var(--border)',
         backgroundColor: 'var(--bg-secondary)',
+        display: 'flex',
+        alignItems: 'center',
+        position: 'relative',
+        zIndex: 50,
       }}
     >
-      {/* Heading Dropdown */}
+      {/* Left scroll arrow */}
+      {canScrollLeft && (
+        <button
+          onClick={handleScrollLeft}
+          className="absolute left-0 z-10 p-1 rounded-r"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            boxShadow: '3px 0 10px rgba(0, 0, 0, 0.35)',
+            border: '1px solid var(--border)',
+            borderLeft: 'none',
+          }}
+        >
+          <ChevronLeft size={14} />
+        </button>
+      )}
+
+      {/* Scrollable toolbar */}
+      <div
+        ref={scrollContainerRef}
+        className="flex items-center gap-1 px-2 py-1.5 toolbar-scroll"
+        style={{
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          flex: 1,
+        }}
+      >
+        {/* Heading Dropdown */}
       <div className="relative">
         <Tooltip content="Heading" delay={300}>
           <button
@@ -181,25 +272,24 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
           </button>
         </Tooltip>
 
-        {showHeadingMenu && (
+        {showHeadingMenu && headingMenuPosition && createPortal(
           <div
             ref={menuRef}
-            className="absolute top-full left-0 mt-1 rounded shadow-lg z-50"
+            className="rounded shadow-lg z-50"
             style={{
+              position: 'fixed',
+              top: `${headingMenuPosition.top}px`,
+              left: `${headingMenuPosition.left}px`,
               backgroundColor: 'var(--bg-secondary)',
               border: '1px solid var(--border)',
-              minWidth: '140px',
+              width: '130px',
+              zIndex: 9999,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
           >
             {HEADING_OPTIONS.map((option) => {
-              const fontSize = option.level === 0 ? '13px' :
-                option.level === 1 ? '18px' :
-                option.level === 2 ? '16px' :
-                option.level === 3 ? '15px' :
-                option.level === 4 ? '14px' :
-                option.level === 5 ? '13.5px' : '13px';
+              const fontSize = option.level === 0 ? '13px' : `${18 - option.level * 1}px`;
               const fontWeight = option.level === 0 ? 400 : 600;
-
               return (
                 <button
                   key={option.label}
@@ -215,7 +305,8 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
                 </button>
               );
             })}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
@@ -238,14 +329,19 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
           </button>
         </Tooltip>
 
-        {showListMenu && (
+        {showListMenu && listMenuPosition && createPortal(
           <div
             ref={listMenuRef}
-            className="absolute top-full left-0 mt-1 rounded shadow-lg z-50"
+            className="rounded shadow-lg z-50"
             style={{
+              position: 'fixed',
+              top: `${listMenuPosition.top}px`,
+              left: `${listMenuPosition.left}px`,
               backgroundColor: 'var(--bg-secondary)',
               border: '1px solid var(--border)',
               minWidth: '160px',
+              zIndex: 9999,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
           >
             <button
@@ -281,7 +377,8 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
               <CheckSquare size={14} />
               <span>Task list</span>
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
@@ -337,6 +434,24 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
       <ToolButton onClick={handleBlockquote} title="Blockquote" icon={Quote} />
       <ToolButton onClick={handleCodeBlock} title="Code block" icon={FileCode} />
       <ToolButton onClick={handleHorizontalRule} title="Horizontal rule" icon={Minus} placement="top-right" />
+      </div>
+
+      {/* Right scroll arrow */}
+      {canScrollRight && (
+        <button
+          onClick={handleScrollRight}
+          className="absolute right-0 z-10 p-1 rounded-l"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            boxShadow: '-3px 0 10px rgba(0, 0, 0, 0.35)',
+            border: '1px solid var(--border)',
+            borderRight: 'none',
+          }}
+        >
+          <ChevronRight size={14} />
+        </button>
+      )}
     </div>
   );
 };
