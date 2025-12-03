@@ -17,6 +17,7 @@ interface TooltipProps {
   delay?: number;
   placement?: TooltipPlacement;
   fullHeight?: boolean;
+  fullWidth?: boolean;
 }
 
 const Tooltip: React.FC<TooltipProps> = ({
@@ -24,7 +25,8 @@ const Tooltip: React.FC<TooltipProps> = ({
   children,
   delay = 200,
   placement = 'top',
-  fullHeight = false
+  fullHeight = false,
+  fullWidth = false
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -134,7 +136,8 @@ const Tooltip: React.FC<TooltipProps> = ({
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
         style={{
-          display: 'inline-flex',
+          display: fullWidth ? 'flex' : 'inline-flex',
+          width: fullWidth ? '100%' : 'auto',
           height: fullHeight ? '100%' : 'auto',
           verticalAlign: 'middle',
         }}

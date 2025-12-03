@@ -1,29 +1,30 @@
-import React, { useState, useRef } from 'react';
-import { X, Minimize2, Check } from 'lucide-react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { sessionService } from '@/services/sessions';
 import { noteService } from '@/services/notes';
+import { draftStorage, type Draft } from '@/services/draftStorage';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { MarkdownToolbar } from '@/components/ui/MarkdownToolbar';
-import type { EditorView } from '@codemirror/view';
+import { FloatingNoteTitleBar } from './FloatingNoteTitleBar';
+import { FloatingNoteBottomBar } from './FloatingNoteBottomBar';
+import { RecentDraftsDropdown } from './RecentDraftsDropdown';
+import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
+import { useEditorInsert } from '@/hooks/useEditorInsert';
 
-interface FloatingNoteProps {}
-
-export const FloatingNote: React.FC<FloatingNoteProps> = () => {
+export const FloatingNote: React.FC = () => {
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const editorViewRef = useRef<EditorView | null>(null);
+  const [showRecentMenu, setShowRecentMenu] = useState(false);
+  const [savedDrafts, setSavedDrafts] = useState<Draft[]>([]);
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const recentMenuRef = useRef<HTMLDivElement>(null);
+  const recentButtonRef = useRef<HTMLButtonElement>(null);
 
-  const handleClose = async () => {
-    const window = getCurrentWindow();
-    await window.hide();
-  };
+  // Custom hooks
+  const { editorViewRef, handleInsert } = useEditorInsert();
+  useAutoSaveDraft(content, currentNoteId, currentDraftId);
 
-  const handleMinimize = async () => {
-    const window = getCurrentWindow();
-    await window.minimize();
-  };
 
   const generateTitle = (text: string): string => {
     if (!text.trim()) {
@@ -65,9 +66,25 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
         'quick-capture'
       );
 
+      // Clear draft after successful save
+      draftStorage.clearDraft();
+
+      // Remove from saved drafts if it was a saved draft
+      if (currentDraftId) {
+        draftStorage.removeDraft(currentDraftId);
+      } else {
+        // Remove by content if it matches any saved draft
+        draftStorage.removeDraftByContent(content);
+      }
+
+      // Reload drafts
+      loadSavedDrafts();
+
       // Show success and clear
       setSaveSuccess(true);
       setContent('');
+      setCurrentNoteId(null);
+      setCurrentDraftId(null);
 
       // Hide success indicator after 2 seconds
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -78,22 +95,65 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
     }
   };
 
-  const handleInsert = (text: string, offset?: number) => {
-    const view = editorViewRef.current;
-    if (!view) return;
+  // Load saved drafts from localStorage
+  const loadSavedDrafts = useCallback(() => {
+    const drafts = draftStorage.getDrafts();
+    setSavedDrafts(drafts);
+  }, []);
 
-    const { from, to } = view.state.selection.main;
-    const newPos = from + text.length + (offset || 0);
+  // Load a draft into the editor
+  const loadDraft = useCallback((draft: Draft) => {
+    // Save current content as draft before switching if has unsaved changes
+    const hasUnsaved = !currentNoteId && !currentDraftId && content.trim().length > 0;
+    if (hasUnsaved) {
+      const title = generateTitle(content);
+      draftStorage.addDraft(content, title);
+      loadSavedDrafts();
+    }
 
-    view.dispatch({
-      changes: { from, to, insert: text },
-      selection: { anchor: newPos },
-      scrollIntoView: true  // Auto-scroll to cursor
-    });
+    setContent(draft.content);
+    setCurrentNoteId(null);
+    setCurrentDraftId(draft.id);
+    draftStorage.clearDraft(); // Clear current draft
+    setShowRecentMenu(false); // Close menu after loading
+  }, [content, currentNoteId, currentDraftId, loadSavedDrafts]);
 
-    view.focus();
-  };
+  // Start new note (clear editor)
+  const startNewNote = useCallback(() => {
+    // Save current content as draft if not empty and not already a saved note/draft
+    if (content.trim() && !currentNoteId && !currentDraftId) {
+      const title = generateTitle(content);
+      draftStorage.addDraft(content, title);
+      loadSavedDrafts();
+    }
 
+    setContent('');
+    setCurrentNoteId(null);
+    setCurrentDraftId(null);
+    draftStorage.clearDraft();
+    setShowRecentMenu(false); // Close menu
+  }, [content, currentNoteId, currentDraftId, loadSavedDrafts]);
+
+  // Load draft and saved drafts on mount
+  useEffect(() => {
+    const draft = draftStorage.getDraft();
+    if (draft && draft.content.trim()) {
+      setContent(draft.content);
+      setCurrentNoteId(null); // Draft has no ID
+      setCurrentDraftId(null);
+    }
+    loadSavedDrafts();
+
+    // Listen for new note event from title bar
+    const handleNewNote = () => {
+      startNewNote();
+    };
+    window.addEventListener('floating-note-new', handleNewNote);
+
+    return () => {
+      window.removeEventListener('floating-note-new', handleNewNote);
+    };
+  }, [loadSavedDrafts, startNewNote]);
 
   return (
     <div
@@ -103,51 +163,30 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
         color: 'var(--text-primary)',
       }}
     >
-      {/* Custom Title Bar - Same color as background */}
-      <div
-        data-tauri-drag-region
-        className="flex items-center justify-between px-3 py-2 select-none"
-        style={{
-          backgroundColor: 'var(--bg-primary)',
-        }}
+      {/* Custom Title Bar */}
+      <FloatingNoteTitleBar
+        showRecentMenu={showRecentMenu}
+        setShowRecentMenu={setShowRecentMenu}
+        recentButtonRef={recentButtonRef}
       >
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              fontSize: '12px',
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Quick Capture
-          </span>
-        </div>
+        <RecentDraftsDropdown
+          showRecentMenu={showRecentMenu}
+          recentMenuRef={recentMenuRef}
+          recentButtonRef={recentButtonRef}
+          content={content}
+          currentDraftId={currentDraftId}
+          currentNoteId={currentNoteId}
+          savedDrafts={savedDrafts}
+          generateTitle={generateTitle}
+          loadDraft={loadDraft}
+          loadSavedDrafts={loadSavedDrafts}
+          setContent={setContent}
+          setCurrentDraftId={setCurrentDraftId}
+          setShowRecentMenu={setShowRecentMenu}
+        />
+      </FloatingNoteTitleBar>
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleMinimize}
-            className="p-1 rounded hover:bg-[var(--bg-secondary)] transition-colors"
-            style={{
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <Minimize2 size={13} />
-          </button>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded hover:bg-[var(--bg-secondary)] transition-colors"
-            style={{
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <X size={13} />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content - Elevated Card Design */}
+      {/* Main Content - Editor Only */}
       <div className="flex-1 flex flex-col p-3 overflow-hidden">
         <div
           className="flex-1 flex flex-col rounded-lg overflow-hidden"
@@ -169,61 +208,13 @@ export const FloatingNote: React.FC<FloatingNoteProps> = () => {
           />
 
           {/* Bottom Bar with Actions */}
-          <div
-            className="flex items-center justify-between px-4 py-2.5"
-            style={{
-              borderTop: '1px solid var(--border)',
-              backgroundColor: 'var(--bg-secondary)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--text-secondary)',
-                fontWeight: 500,
-              }}
-            >
-              {saveSuccess ? (
-                <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Check size={12} />
-                  Saved!
-                </span>
-              ) : (
-                <span>{content.length} chars</span>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                className="px-2.5 py-1 rounded transition-colors"
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--text-secondary)',
-                  backgroundColor: 'transparent',
-                }}
-                onClick={() => setContent('')}
-                disabled={!content.trim()}
-              >
-                Clear
-              </button>
-              <button
-                className="px-3 py-1 rounded transition-colors"
-                style={{
-                  fontSize: '12px',
-                  backgroundColor: 'var(--accent)',
-                  color: 'white',
-                  border: 'none',
-                  fontWeight: 500,
-                  opacity: !content.trim() || isSaving ? 0.5 : 1,
-                  cursor: !content.trim() || isSaving ? 'not-allowed' : 'pointer',
-                }}
-                onClick={handleSave}
-                disabled={!content.trim() || isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
+          <FloatingNoteBottomBar
+            content={content}
+            saveSuccess={saveSuccess}
+            isSaving={isSaving}
+            onClear={startNewNote}
+            onSave={handleSave}
+          />
         </div>
       </div>
     </div>
