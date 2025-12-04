@@ -1,0 +1,178 @@
+use arboard::Clipboard;
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter};
+use super::context_detection::{self, WindowContext};
+
+#[cfg(target_os = "windows")]
+use clipboard_master::{Master, ClipboardHandler, CallbackResult};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClipboardContent {
+    pub content: String,
+    pub content_type: ContentType,
+    pub timestamp: i64,
+    pub context: Option<WindowContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ContentType {
+    Text,
+    Code,
+    Url,
+    FilePath,
+    Unknown,
+}
+
+pub struct ClipboardMonitor {
+    last_content: Arc<Mutex<Option<String>>>,
+    enabled: Arc<Mutex<bool>>,
+}
+
+impl ClipboardMonitor {
+    pub fn new() -> Self {
+        Self {
+            last_content: Arc::new(Mutex::new(None)),
+            enabled: Arc::new(Mutex::new(false)),
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn start(&self, app: AppHandle, _interval_ms: u64) {
+        let last_content = Arc::clone(&self.last_content);
+        let enabled = Arc::clone(&self.enabled);
+
+        // Initialize with current clipboard to prevent emitting old content
+        if let Ok(mut clipboard) = Clipboard::new() {
+            if let Ok(text) = clipboard.get_text() {
+                *last_content.lock().unwrap() = Some(text);
+            }
+        }
+
+        *enabled.lock().unwrap() = true;
+
+        std::thread::spawn(move || {
+            let handler = ClipboardChangeHandler {
+                app,
+                last_content,
+                enabled,
+            };
+
+            match Master::new(handler) {
+                Ok(mut master) => {
+                    println!("[ClipboardMonitor] Clipboard listener started (real-time)");
+                    let _ = master.run();
+                    println!("[ClipboardMonitor] Clipboard listener stopped");
+                }
+                Err(e) => {
+                    eprintln!("[ClipboardMonitor] Failed to start clipboard listener: {}", e);
+                }
+            }
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn start(&self, _app: AppHandle, _interval_ms: u64) {
+        eprintln!("[ClipboardMonitor] Not supported on this platform");
+    }
+
+    pub fn stop(&self) {
+        *self.enabled.lock().unwrap() = false;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        *self.enabled.lock().unwrap()
+    }
+}
+
+#[cfg(target_os = "windows")]
+struct ClipboardChangeHandler {
+    app: AppHandle,
+    last_content: Arc<Mutex<Option<String>>>,
+    enabled: Arc<Mutex<bool>>,
+}
+
+#[cfg(target_os = "windows")]
+impl ClipboardHandler for ClipboardChangeHandler {
+    fn on_clipboard_change(&mut self) -> CallbackResult {
+        // Check if still enabled
+        if !*self.enabled.lock().unwrap() {
+            return CallbackResult::Stop;
+        }
+
+        // Read clipboard in separate thread to prevent blocking
+        let app = self.app.clone();
+        let last_content = Arc::clone(&self.last_content);
+
+        std::thread::spawn(move || {
+            // Create new Clipboard instance for each read
+            let clipboard_result = Clipboard::new();
+            if clipboard_result.is_err() {
+                return;
+            }
+
+            let mut clipboard = clipboard_result.unwrap();
+
+            match clipboard.get_text() {
+                Ok(text) => {
+                    let mut last = last_content.lock().unwrap();
+
+                    if last.as_ref() != Some(&text) {
+                        *last = Some(text.clone());
+
+                        let content_type = detect_content_type(&text);
+                        let context = context_detection::get_active_window_context().ok();
+
+                        if let Some(ref ctx) = context {
+                            println!("[Clipboard] Detected copy from: {} - {}", ctx.app_name, ctx.window_title);
+                        }
+
+                        let clipboard_content = ClipboardContent {
+                            content: text,
+                            content_type,
+                            timestamp: chrono::Utc::now().timestamp_millis(),
+                            context,
+                        };
+
+                        let _ = app.emit("clipboard-changed", clipboard_content);
+                    }
+                }
+                Err(_) => {
+                    let mut last = last_content.lock().unwrap();
+                    *last = None;
+                }
+            }
+        });
+
+        CallbackResult::Next
+    }
+
+    fn on_clipboard_error(&mut self, error: std::io::Error) -> CallbackResult {
+        eprintln!("[ClipboardMonitor] Error: {}", error);
+        CallbackResult::Next
+    }
+}
+
+fn detect_content_type(text: &str) -> ContentType {
+    let trimmed = text.trim();
+
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        return ContentType::Url;
+    }
+
+    if trimmed.contains(":\\") || trimmed.starts_with("/") || trimmed.starts_with("~/") {
+        return ContentType::FilePath;
+    }
+
+    let code_indicators = [
+        "function ", "const ", "let ", "var ", "import ", "export ",
+        "class ", "def ", "fn ", "=>", "{", "}", "[]", "()",
+        "if (", "for (", "while (", "return ", "public ", "private "
+    ];
+
+    if code_indicators.iter().any(|&indicator| trimmed.contains(indicator)) {
+        return ContentType::Code;
+    }
+
+    ContentType::Text
+}
