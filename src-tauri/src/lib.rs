@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![allow(dead_code)]
-use tauri::{Manager, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}};
+use tauri::{Manager, Emitter, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}};
 
 mod database;
 mod debug;
@@ -64,10 +64,24 @@ async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
         if window.is_visible().map_err(|e| e.to_string())? {
             window.hide().map_err(|e| e.to_string())?;
         } else {
+            // Detect context BEFORE showing window
+            if let Ok(context) = services::context_detection::get_active_window_context() {
+                println!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
+                // Emit context to frontend
+                let _ = app.emit("floating-note-context", context);
+            }
+
             window.show().map_err(|e| e.to_string())?;
             window.set_focus().map_err(|e| e.to_string())?;
         }
     } else {
+        // Detect context BEFORE creating window
+        if let Ok(context) = services::context_detection::get_active_window_context() {
+            println!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
+            // Emit context to frontend
+            let _ = app.emit("floating-note-context", context);
+        }
+
         // Create new floating note window
         let window = WebviewWindowBuilder::new(
             &app,
@@ -107,6 +121,13 @@ fn get_context_monitor() -> &'static Mutex<services::context_monitor::ContextMon
     &CONTEXT_MONITOR
 }
 
+static CLIPBOARD_MONITOR: Lazy<Mutex<services::clipboard_monitor::ClipboardMonitor>> =
+    Lazy::new(|| Mutex::new(services::clipboard_monitor::ClipboardMonitor::new()));
+
+fn get_clipboard_monitor() -> &'static Mutex<services::clipboard_monitor::ClipboardMonitor> {
+    &CLIPBOARD_MONITOR
+}
+
 #[tauri::command]
 fn start_context_monitor(app: tauri::AppHandle, interval_ms: Option<u64>) -> Result<(), String> {
     let monitor = get_context_monitor().lock().unwrap();
@@ -125,6 +146,36 @@ fn stop_context_monitor() -> Result<(), String> {
 fn is_context_monitor_enabled() -> bool {
     let monitor = get_context_monitor().lock().unwrap();
     monitor.is_enabled()
+}
+
+#[tauri::command]
+fn start_clipboard_monitor(app: tauri::AppHandle, interval_ms: Option<u64>) -> Result<(), String> {
+    let monitor = get_clipboard_monitor().lock().unwrap();
+    monitor.start(app, interval_ms.unwrap_or(1000)); // Check every 1s
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_clipboard_monitor() -> Result<(), String> {
+    let monitor = get_clipboard_monitor().lock().unwrap();
+    monitor.stop();
+    Ok(())
+}
+
+#[tauri::command]
+fn is_clipboard_monitor_enabled() -> bool {
+    let monitor = get_clipboard_monitor().lock().unwrap();
+    monitor.is_enabled()
+}
+
+#[tauri::command]
+fn get_current_clipboard() -> Result<Option<String>, String> {
+    use arboard::Clipboard;
+    let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
+    match clipboard.get_text() {
+        Ok(text) => Ok(Some(text)),
+        Err(_) => Ok(None),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -187,11 +238,15 @@ pub fn run() {
             toggle_window_visibility,
             toggle_floating_note,
 
-            // ========== Context Detection ==========
+            // ========== Context Detection & Clipboard ==========
             get_window_context,
             start_context_monitor,
             stop_context_monitor,
             is_context_monitor_enabled,
+            start_clipboard_monitor,
+            stop_clipboard_monitor,
+            is_clipboard_monitor_enabled,
+            get_current_clipboard,
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -333,6 +388,11 @@ pub fn run() {
             // Context monitor is available but NOT started automatically
             // Start it manually from Debug Overlay for testing
             println!("[Setup] Context monitor available (start from Debug Overlay)");
+
+            // Start clipboard monitor automatically to track all copy actions
+            let clipboard_monitor = get_clipboard_monitor().lock().unwrap();
+            clipboard_monitor.start(app.handle().clone(), 1000); // Poll every 1s (reduce heap corruption risk)
+            println!("[Setup] Clipboard monitor started (tracking copy actions)");
 
             println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())

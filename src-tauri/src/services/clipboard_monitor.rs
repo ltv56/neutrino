@@ -4,12 +4,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::time;
+use super::context_detection::{self, WindowContext};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipboardContent {
     pub content: String,
     pub content_type: ContentType,
     pub timestamp: i64,
+    pub context: Option<WindowContext>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -24,6 +26,7 @@ pub enum ContentType {
 pub struct ClipboardMonitor {
     last_content: Arc<Mutex<Option<String>>>,
     enabled: Arc<Mutex<bool>>,
+    generation: Arc<Mutex<u64>>, // Track which loop is current
 }
 
 impl ClipboardMonitor {
@@ -31,54 +34,79 @@ impl ClipboardMonitor {
         Self {
             last_content: Arc::new(Mutex::new(None)),
             enabled: Arc::new(Mutex::new(false)),
+            generation: Arc::new(Mutex::new(0)),
         }
     }
 
     pub fn start(&self, app: AppHandle, interval_ms: u64) {
         let last_content = Arc::clone(&self.last_content);
         let enabled = Arc::clone(&self.enabled);
+        let generation = Arc::clone(&self.generation);
 
-        // Set enabled to true
+        let current_gen = {
+            let mut gen_lock = generation.lock().unwrap();
+            *gen_lock += 1;
+            *gen_lock
+        };
+
+        // Initialize with current clipboard to prevent emitting old content
+        if let Ok(mut clipboard) = Clipboard::new() {
+            if let Ok(text) = clipboard.get_text() {
+                *last_content.lock().unwrap() = Some(text);
+            }
+        }
+
         *enabled.lock().unwrap() = true;
 
-        // Use Tauri's async runtime instead of tokio::spawn
         tauri::async_runtime::spawn(async move {
-            let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
             let mut interval = time::interval(Duration::from_millis(interval_ms));
 
             loop {
                 interval.tick().await;
 
-                // Check if monitoring is enabled
+                if *generation.lock().unwrap() != current_gen {
+                    break;
+                }
+
                 if !*enabled.lock().unwrap() {
+                    break;
+                }
+
+                // Create new instance each read to prevent heap corruption
+                let clipboard_result = Clipboard::new();
+                if clipboard_result.is_err() {
                     continue;
                 }
 
-                // Try to read clipboard
+                let mut clipboard = clipboard_result.unwrap();
+
                 match clipboard.get_text() {
                     Ok(text) => {
                         let mut last = last_content.lock().unwrap();
 
-                        // Check if content changed
                         if last.as_ref() != Some(&text) {
                             *last = Some(text.clone());
 
-                            // Detect content type
                             let content_type = detect_content_type(&text);
+
+                            // NOTE: Context may be inaccurate if user switched apps after copying
+                            let context = context_detection::get_active_window_context().ok();
+
+                            if let Some(ref ctx) = context {
+                                println!("[Clipboard] Detected copy from: {} - {}", ctx.app_name, ctx.window_title);
+                            }
 
                             let clipboard_content = ClipboardContent {
                                 content: text,
                                 content_type,
                                 timestamp: chrono::Utc::now().timestamp_millis(),
+                                context,
                             };
 
-                            // Emit event to frontend
                             let _ = app.emit("clipboard-changed", clipboard_content);
                         }
                     }
                     Err(_) => {
-                        // Clipboard might be empty or contain non-text data
-                        // Reset last content if we can't read
                         let mut last = last_content.lock().unwrap();
                         *last = None;
                     }
@@ -99,17 +127,14 @@ impl ClipboardMonitor {
 fn detect_content_type(text: &str) -> ContentType {
     let trimmed = text.trim();
 
-    // Check if it's a URL
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
         return ContentType::Url;
     }
 
-    // Check if it's a file path (Windows or Unix)
     if trimmed.contains(":\\") || trimmed.starts_with("/") || trimmed.starts_with("~/") {
         return ContentType::FilePath;
     }
 
-    // Check if it looks like code (contains common code patterns)
     let code_indicators = [
         "function ", "const ", "let ", "var ", "import ", "export ",
         "class ", "def ", "fn ", "=>", "{", "}", "[]", "()",
@@ -120,6 +145,5 @@ fn detect_content_type(text: &str) -> ContentType {
         return ContentType::Code;
     }
 
-    // Default to text
     ContentType::Text
 }

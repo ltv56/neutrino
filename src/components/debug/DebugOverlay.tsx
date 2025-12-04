@@ -6,9 +6,10 @@ import NoteTest from './NoteTest';
 import VaultArchitectureTest from './VaultArchitectureTest';
 import FTSDebug from './FTSDebug';
 import ContextMonitorDebug from './ContextMonitorDebug';
+import ClipboardDebug from './ClipboardDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +17,7 @@ const DebugOverlay = () => {
 
   const debugOptions = [
     { id: 'context' as const, label: '🎯 Context', description: 'Window context tracking' },
+    { id: 'clipboard' as const, label: '📋 Clipboard', description: 'Clipboard monitoring' },
     { id: 'fts' as const, label: '🔎 FTS', description: 'Full-text search' },
     { id: 'database' as const, label: '🗄️ Database', description: 'DB operations' },
     { id: 'integrity' as const, label: '🔍 Integrity', description: 'Check DB health' },
@@ -34,6 +36,8 @@ const DebugOverlay = () => {
         return <FTSDebug />;
       case 'context':
         return <ContextMonitorDebug />;
+      case 'clipboard':
+        return <ClipboardDebug />;
       case 'vault':
         return <VaultArchitectureTest />;
       case 'pdf':

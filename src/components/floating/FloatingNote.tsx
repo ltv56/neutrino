@@ -9,6 +9,8 @@ import { FloatingNoteBottomBar } from './FloatingNoteBottomBar';
 import { RecentDraftsDropdown } from './RecentDraftsDropdown';
 import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
 import { useEditorInsert } from '@/hooks/useEditorInsert';
+import { listen } from '@tauri-apps/api/event';
+import { smartCaptureService, type WindowContext } from '@/services/smartCapture';
 
 export const FloatingNote: React.FC = () => {
   const [content, setContent] = useState('');
@@ -18,6 +20,7 @@ export const FloatingNote: React.FC = () => {
   const [savedDrafts, setSavedDrafts] = useState<Draft[]>([]);
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [detectedContext, setDetectedContext] = useState<WindowContext | null>(null);
   const recentMenuRef = useRef<HTMLDivElement>(null);
   const recentButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -25,7 +28,32 @@ export const FloatingNote: React.FC = () => {
   const { editorViewRef, handleInsert } = useEditorInsert();
   useAutoSaveDraft(content, currentNoteId, currentDraftId);
 
-  // TODO: Smart capture - detect context on copy and on window open (not continuous)
+  // Listen for context detection when floating note opens
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const setupContextListener = async () => {
+      unlisten = await listen<WindowContext>('floating-note-context', (event) => {
+        const context = event.payload;
+        setDetectedContext(context);
+
+        // Generate tags
+        const tags = smartCaptureService.generateTags(context);
+
+        console.log('[FloatingNote] Context detected:', {
+          app: context.app_name,
+          window: context.window_title,
+          tags,
+        });
+      });
+    };
+
+    setupContextListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
 
   const generateTitle = (text: string): string => {
