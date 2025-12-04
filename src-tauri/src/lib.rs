@@ -151,7 +151,7 @@ fn is_context_monitor_enabled() -> bool {
 #[tauri::command]
 fn start_clipboard_monitor(app: tauri::AppHandle, interval_ms: Option<u64>) -> Result<(), String> {
     let monitor = get_clipboard_monitor().lock().unwrap();
-    monitor.start(app, interval_ms.unwrap_or(1000)); // Check every 1s
+    monitor.start(app, interval_ms.unwrap_or(1000));
     Ok(())
 }
 
@@ -389,10 +389,10 @@ pub fn run() {
             // Start it manually from Debug Overlay for testing
             println!("[Setup] Context monitor available (start from Debug Overlay)");
 
-            // Start clipboard monitor automatically to track all copy actions
+            // Start clipboard monitor automatically (real-time event-driven)
             let clipboard_monitor = get_clipboard_monitor().lock().unwrap();
-            clipboard_monitor.start(app.handle().clone(), 1000); // Poll every 1s (reduce heap corruption risk)
-            println!("[Setup] Clipboard monitor started (tracking copy actions)");
+            clipboard_monitor.start(app.handle().clone(), 1000);
+            println!("[Setup] Clipboard monitor started (real-time)");
 
             println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())
