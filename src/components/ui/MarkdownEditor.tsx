@@ -28,6 +28,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const viewRef = useRef<EditorView | null>(null);
   const isInternalUpdate = useRef(false);
   const onChangeRef = useRef(onChange);
+  const pendingContent = useRef<string | null>(null);
 
   // Keep onChange ref updated
   useEffect(() => {
@@ -50,7 +51,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       EditorView.updateListener.of((update: ViewUpdate) => {
         if (update.docChanged && !isInternalUpdate.current) {
           const newContent = update.state.doc.toString();
-          console.log('[CodeMirror] onChange:', newContent);
+          pendingContent.current = newContent;
           onChangeRef.current(newContent);
         }
       }),
@@ -91,8 +92,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     if (!view) return;
 
     const currentContent = view.state.doc.toString();
+
+    // Skip if this is the content we just emitted (prevent loop)
+    if (pendingContent.current === content) {
+      pendingContent.current = null;
+      return;
+    }
+
+    // Only update if content actually different
     if (currentContent !== content) {
       isInternalUpdate.current = true;
+
       view.dispatch({
         changes: {
           from: 0,
@@ -100,9 +110,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           insert: content,
         },
       });
-      setTimeout(() => {
+
+      // Reset flag synchronously after dispatch completes
+      queueMicrotask(() => {
         isInternalUpdate.current = false;
-      }, 0);
+      });
     }
   }, [content]);
 
