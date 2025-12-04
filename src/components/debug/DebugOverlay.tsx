@@ -5,23 +5,23 @@ import PDFImportTest from './PDFImportTest';
 import NoteTest from './NoteTest';
 import VaultArchitectureTest from './VaultArchitectureTest';
 import FTSDebug from './FTSDebug';
+import ContextMonitorDebug from './ContextMonitorDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'api' | 'files' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeOption, setActiveOption] = useState<DebugOption>(null);
 
   const debugOptions = [
-    { id: 'database' as const, label: '🗄️ Database', description: 'Test database operations' },
-    { id: 'integrity' as const, label: '🔍 DB Integrity', description: 'Check database integrity' },
-    { id: 'fts' as const, label: '🔎 FTS Search', description: 'Full-text search index debug' },
-    { id: 'vault' as const, label: '📂 Vault Architecture', description: 'Test session-document relationships' },
-    { id: 'pdf' as const, label: '📄 PDF Import', description: 'Test PDF import & metadata' },
-    { id: 'notes' as const, label: '📝 Notes', description: 'Test note creation & markdown' },
-    { id: 'api' as const, label: '🌐 API', description: 'Test API calls (coming soon)' },
-    { id: 'files' as const, label: '📁 Files', description: 'Test file operations (coming soon)' }
+    { id: 'context' as const, label: '🎯 Context', description: 'Window context tracking' },
+    { id: 'fts' as const, label: '🔎 FTS', description: 'Full-text search' },
+    { id: 'database' as const, label: '🗄️ Database', description: 'DB operations' },
+    { id: 'integrity' as const, label: '🔍 Integrity', description: 'Check DB health' },
+    { id: 'vault' as const, label: '📂 Vault', description: 'Session relationships' },
+    { id: 'pdf' as const, label: '📄 PDF', description: 'PDF import & metadata' },
+    { id: 'notes' as const, label: '📝 Notes', description: 'Note creation' },
   ];
 
   const renderActiveOption = () => {
@@ -32,26 +32,14 @@ const DebugOverlay = () => {
         return <DatabaseDebug />;
       case 'fts':
         return <FTSDebug />;
+      case 'context':
+        return <ContextMonitorDebug />;
       case 'vault':
         return <VaultArchitectureTest />;
       case 'pdf':
         return <PDFImportTest />;
       case 'notes':
         return <NoteTest />;
-      case 'api':
-        return (
-          <div className="p-4 text-center text-gray-500">
-            🌐 API Testing<br />
-            <small>Coming soon...</small>
-          </div>
-        );
-      case 'files':
-        return (
-          <div className="p-4 text-center text-gray-500">
-            📁 File Testing<br />
-            <small>Coming soon...</small>
-          </div>
-        );
       default:
         return null;
     }
@@ -68,11 +56,11 @@ const DebugOverlay = () => {
         <Bug size={20} />
       </button>
 
-      {/* Main debug overlay */}
+      {/* Main debug overlay - Grid layout */}
       {isOpen && !activeOption && (
-        <div className="fixed bottom-20 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-80 z-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">Debug Tools</h3>
+        <div className="fixed bottom-20 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-56 z-50">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-semibold text-sm text-gray-900 dark:text-white">Debug</h3>
             <button
               onClick={() => setIsOpen(false)}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -81,18 +69,19 @@ const DebugOverlay = () => {
             </button>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             {debugOptions.map(option => (
               <button
                 key={option.id}
                 onClick={() => setActiveOption(option.id)}
-                className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex flex-col items-center justify-center p-3 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                title={option.description}
               >
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {option.label}
+                <div className="text-2xl mb-1">
+                  {option.label.split(' ')[0]}
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {option.description}
+                <div className="text-xs text-gray-900 dark:text-white font-medium text-center">
+                  {option.label.split(' ').slice(1).join(' ')}
                 </div>
               </button>
             ))}

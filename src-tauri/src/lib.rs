@@ -7,6 +7,7 @@ mod debug;
 mod commands;
 mod documents;
 mod http_server;
+mod services;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -89,6 +90,43 @@ async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ========== Context Detection & Clipboard ==========
+
+#[tauri::command]
+fn get_window_context() -> Result<services::context_detection::WindowContext, String> {
+    services::context_detection::get_active_window_context()
+}
+
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+static CONTEXT_MONITOR: Lazy<Mutex<services::context_monitor::ContextMonitor>> =
+    Lazy::new(|| Mutex::new(services::context_monitor::ContextMonitor::new()));
+
+fn get_context_monitor() -> &'static Mutex<services::context_monitor::ContextMonitor> {
+    &CONTEXT_MONITOR
+}
+
+#[tauri::command]
+fn start_context_monitor(app: tauri::AppHandle, interval_ms: Option<u64>) -> Result<(), String> {
+    let monitor = get_context_monitor().lock().unwrap();
+    monitor.start(app, interval_ms.unwrap_or(1000)); // Check every 1 second
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_context_monitor() -> Result<(), String> {
+    let monitor = get_context_monitor().lock().unwrap();
+    monitor.stop();
+    Ok(())
+}
+
+#[tauri::command]
+fn is_context_monitor_enabled() -> bool {
+    let monitor = get_context_monitor().lock().unwrap();
+    monitor.is_enabled()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -148,6 +186,12 @@ pub fn run() {
             show_main_window,
             toggle_window_visibility,
             toggle_floating_note,
+
+            // ========== Context Detection ==========
+            get_window_context,
+            start_context_monitor,
+            stop_context_monitor,
+            is_context_monitor_enabled,
 
             // ========== Session Management ==========
             commands::create_research_session,
@@ -285,6 +329,10 @@ pub fn run() {
                 Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Shift+F) registered successfully!"),
                 Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
             }
+
+            // Context monitor is available but NOT started automatically
+            // Start it manually from Debug Overlay for testing
+            println!("[Setup] Context monitor available (start from Debug Overlay)");
 
             println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())

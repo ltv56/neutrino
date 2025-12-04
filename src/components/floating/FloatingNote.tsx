@@ -25,6 +25,8 @@ export const FloatingNote: React.FC = () => {
   const { editorViewRef, handleInsert } = useEditorInsert();
   useAutoSaveDraft(content, currentNoteId, currentDraftId);
 
+  // TODO: Smart capture - detect context on copy and on window open (not continuous)
+
 
   const generateTitle = (text: string): string => {
     if (!text.trim()) {
