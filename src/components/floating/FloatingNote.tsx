@@ -33,10 +33,20 @@ export const FloatingNote: React.FC = () => {
   const [bannerDismissing, setBannerDismissing] = useState(false);
   const recentMenuRef = useRef<HTMLDivElement>(null);
   const recentButtonRef = useRef<HTMLButtonElement>(null);
+  const startNewNoteRef = useRef<(() => void) | null>(null);
 
   // Custom hooks
   const { editorViewRef, handleInsert } = useEditorInsert();
   useAutoSaveDraft(content, currentNoteId, currentDraftId);
+
+  // Dismiss banner with animation
+  const dismissBanner = useCallback(() => {
+    setBannerDismissing(true);
+    setTimeout(() => {
+      setShowClipboardBanner(false);
+      setBannerDismissing(false);
+    }, 300); // Match animation duration
+  }, []);
 
   // Listen for context detection when floating note opens
   useEffect(() => {
@@ -44,17 +54,7 @@ export const FloatingNote: React.FC = () => {
 
     const setupContextListener = async () => {
       unlisten = await listen<WindowContext>('floating-note-context', (event) => {
-        const context = event.payload;
-        setDetectedContext(context);
-
-        // Generate tags
-        const tags = smartCaptureService.generateTags(context);
-
-        console.log('[FloatingNote] Context detected:', {
-          app: context.app_name,
-          window: context.window_title,
-          tags,
-        });
+        setDetectedContext(event.payload);
       });
     };
 
@@ -88,12 +88,6 @@ export const FloatingNote: React.FC = () => {
         setShowClipboardBanner(true);
         setBannerDismissing(false);
 
-        console.log('[FloatingNote] Clipboard captured:', {
-          type: clipboardData.content_type,
-          from: clipboardData.context?.app_name,
-          length: clipboardData.content.length,
-        });
-
         // Auto-hide banner after 5 seconds
         dismissTimer = setTimeout(() => dismissBanner(), 5000);
       });
@@ -105,17 +99,7 @@ export const FloatingNote: React.FC = () => {
       if (unlisten) unlisten();
       if (dismissTimer) clearTimeout(dismissTimer);
     };
-  }, []);
-
-
-  // Dismiss banner with animation
-  const dismissBanner = useCallback(() => {
-    setBannerDismissing(true);
-    setTimeout(() => {
-      setShowClipboardBanner(false);
-      setBannerDismissing(false);
-    }, 300); // Match animation duration
-  }, []);
+  }, [dismissBanner]);
 
   // Insert clipboard content into editor
   const handleInsertClipboard = useCallback(() => {
@@ -228,21 +212,12 @@ export const FloatingNote: React.FC = () => {
 
   // Load a draft into the editor
   const loadDraft = useCallback((draft: Draft) => {
-    // Save current content as draft before switching if has unsaved changes
-    const hasUnsaved = !currentNoteId && !currentDraftId && content.trim().length > 0;
-    if (hasUnsaved) {
-      const title = generateTitle(content);
-      draftStorage.addDraft(content, title);
-      const drafts = draftStorage.getDrafts();
-      setSavedDrafts(drafts);
-    }
-
     setContent(draft.content);
     setCurrentNoteId(null);
     setCurrentDraftId(draft.id);
-    draftStorage.clearDraft(); // Clear current draft
-    setShowRecentMenu(false); // Close menu after loading
-  }, [content, currentNoteId, currentDraftId]);
+    draftStorage.clearDraft();
+    setShowRecentMenu(false);
+  }, []);
 
   // Start new note (clear editor)
   const startNewNote = useCallback(() => {
@@ -258,16 +233,20 @@ export const FloatingNote: React.FC = () => {
     setCurrentNoteId(null);
     setCurrentDraftId(null);
     draftStorage.clearDraft();
-    setShowRecentMenu(false); // Close menu
+    setShowRecentMenu(false);
   }, [content, currentNoteId, currentDraftId]);
+
+  // Update ref whenever startNewNote changes
+  useEffect(() => {
+    startNewNoteRef.current = startNewNote;
+  }, [startNewNote]);
 
   // Load draft and saved drafts on mount
   useEffect(() => {
     const draft = draftStorage.getDraft();
     if (draft && draft.content.trim()) {
-      console.log('[FloatingNote] Loading draft on mount:', draft.content.substring(0, 50));
       setContent(draft.content);
-      setCurrentNoteId(null); // Draft has no ID
+      setCurrentNoteId(null);
       setCurrentDraftId(null);
     }
 
@@ -275,9 +254,11 @@ export const FloatingNote: React.FC = () => {
     const drafts = draftStorage.getDrafts();
     setSavedDrafts(drafts);
 
-    // Listen for new note event from title bar
+    // Listen for new note event from title bar (use ref to avoid stale closure)
     const handleNewNote = () => {
-      startNewNote();
+      if (startNewNoteRef.current) {
+        startNewNoteRef.current();
+      }
     };
     window.addEventListener('floating-note-new', handleNewNote);
 
@@ -304,15 +285,10 @@ export const FloatingNote: React.FC = () => {
           showRecentMenu={showRecentMenu}
           recentMenuRef={recentMenuRef}
           recentButtonRef={recentButtonRef}
-          content={content}
           currentDraftId={currentDraftId}
-          currentNoteId={currentNoteId}
           savedDrafts={savedDrafts}
-          generateTitle={generateTitle}
           loadDraft={loadDraft}
           loadSavedDrafts={loadSavedDrafts}
-          setContent={setContent}
-          setCurrentDraftId={setCurrentDraftId}
           setShowRecentMenu={setShowRecentMenu}
         />
       </FloatingNoteTitleBar>

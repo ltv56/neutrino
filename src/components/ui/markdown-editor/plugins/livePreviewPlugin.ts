@@ -1,10 +1,11 @@
-import { ViewPlugin, Decoration, WidgetType } from '@codemirror/view';
+import { ViewPlugin, Decoration, WidgetType, EditorView as EditorViewBase } from '@codemirror/view';
 import type { EditorView, DecorationSet } from '@codemirror/view';
 import type { ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { CheckboxWidget } from '../widgets/CheckboxWidget';
 import { CodeBlockCopyWidget } from '../widgets/CodeBlockCopyWidget';
 import { ImageWidget } from '../widgets/ImageWidget';
+import { RangeSet } from '@codemirror/state';
 
 export const livePreviewPlugin = ViewPlugin.fromClass(
   class {
@@ -162,28 +163,32 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
             decorations.push(Decoration.replace({}).range(node.to - 2, node.to));
           }
 
-          // Inline code - style backticks with span
+          // Inline code - hide backticks when cursor not on same line (Obsidian-style)
           if (node.name === 'InlineCode') {
-            if (!cursorInNode) {
-              // Preview mode: style backticks (make them subtle)
+            const line = view.state.doc.lineAt(node.from);
+            const cursorOnSameLine = cursorPos >= line.from && cursorPos <= line.to;
+
+            if (!cursorOnSameLine) {
+              // Cursor on different line: hide backticks completely
+              decorations.push(Decoration.replace({}).range(node.from, node.from + 1));
+              decorations.push(Decoration.replace({}).range(node.to - 1, node.to));
+
+              // Add background to content only
+              if (node.to - node.from > 2) {
+                decorations.push(
+                  Decoration.mark({
+                    class: 'cm-inline-code-preview'
+                  }).range(node.from + 1, node.to - 1)
+                );
+              }
+            } else if (!cursorInNode) {
+              // Cursor on same line but not in node: show with background
               decorations.push(
                 Decoration.mark({
-                  class: 'cm-inline-code-backtick'
-                }).range(node.from, node.from + 1)
-              );
-              decorations.push(
-                Decoration.mark({
-                  class: 'cm-inline-code-backtick'
-                }).range(node.to - 1, node.to)
+                  class: 'cm-inline-code-preview'
+                }).range(node.from, node.to)
               );
             }
-
-            // Mark the full range for styling (both modes)
-            decorations.push(
-              Decoration.mark({
-                class: 'cm-inline-code-expanded'
-              }).range(node.from, node.to)
-            );
           }
 
           // Links - hide markdown link syntax

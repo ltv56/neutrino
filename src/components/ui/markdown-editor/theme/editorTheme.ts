@@ -95,15 +95,11 @@ export const markdownTheme = EditorView.theme({
     color: '#eb5757 !important',
   },
 
-  // Expanded inline code - background covers full range including backtick positions
-  '.cm-line:not(.cm-codeblock-line) .cm-inline-code-expanded': {
+  // Inline code preview - background for entire code including backticks
+  '.cm-line:not(.cm-codeblock-line) .cm-inline-code-preview': {
     backgroundColor: 'rgba(135, 131, 120, 0.15) !important',
     borderRadius: '3px !important',
-    padding: '0em 0.25em !important',
-  },
-  // Backticks in inline code - make them subtle
-  '.cm-line:not(.cm-codeblock-line) .cm-inline-code-backtick': {
-    opacity: '0 !important',
+    padding: '0.1em 0.3em !important',
   },
 
   // Code blocks - reset inline code styling (remove background/padding that applies outside code blocks)

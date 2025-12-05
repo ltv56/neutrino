@@ -6,8 +6,10 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { getLanguageSupport } from './markdown-editor/config/languageSupport';
 import { listKeymap } from './markdown-editor/config/listKeymap';
+import { blockKeymap } from './markdown-editor/config/blockKeymap';
 import { markdownTheme, highlightingExtension } from './markdown-editor/theme/editorTheme';
 import { livePreviewPlugin } from './markdown-editor/plugins/livePreviewPlugin';
+import { inlineCodeAtomicRanges } from './markdown-editor/plugins/inlineCodeAtomicRanges';
 
 interface MarkdownEditorProps {
   content: string;
@@ -45,9 +47,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }),
       markdownTheme,
       history(),
-      keymap.of([...listKeymap, ...defaultKeymap, ...historyKeymap]),
+      keymap.of([...blockKeymap, ...listKeymap, ...defaultKeymap, ...historyKeymap]),
       highlightingExtension,
       livePreviewPlugin,
+      inlineCodeAtomicRanges,
       EditorView.updateListener.of((update: ViewUpdate) => {
         if (update.docChanged && !isInternalUpdate.current) {
           const newContent = update.state.doc.toString();
