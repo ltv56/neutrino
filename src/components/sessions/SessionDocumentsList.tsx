@@ -19,7 +19,7 @@ const SessionDocumentsList: React.FC<SessionDocumentsListProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const loadDocuments = useCallback(async () => {
     if (!currentSession?.id) {
@@ -44,11 +44,21 @@ const SessionDocumentsList: React.FC<SessionDocumentsListProps> = ({
     loadDocuments();
   }, [loadDocuments]);
 
-  // Listen for document drops from Tauri (since Tauri intercepts drag events)
+  // Listen for drag events from VaultPanel (custom mouse-based drag)
   useEffect(() => {
+    const handleDragOver = () => {
+      setIsDragOver(true);
+    };
+
+    const handleDragLeave = () => {
+      setIsDragOver(false);
+    };
+
     const handleDocumentDrop = async (e: Event) => {
       const event = e as CustomEvent<{ documentId: string; title: string }>;
       const { documentId, title } = event.detail;
+
+      setIsDragOver(false);
 
       if (!currentSession?.id) {
         toast.error('No active session');
@@ -67,14 +77,21 @@ const SessionDocumentsList: React.FC<SessionDocumentsListProps> = ({
         await loadDocuments();
         toast.success(`Added "${title}" to session`);
       } catch (error) {
-        console.error('Failed to add document to session:', error);
+        console.error('[Session] Failed to add document:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         toast.error(`Failed to add document: ${errorMessage}`);
       }
     };
 
+    window.addEventListener('session:drag-over', handleDragOver);
+    window.addEventListener('session:drag-leave', handleDragLeave);
     window.addEventListener('session:document-drop', handleDocumentDrop);
-    return () => window.removeEventListener('session:document-drop', handleDocumentDrop);
+
+    return () => {
+      window.removeEventListener('session:drag-over', handleDragOver);
+      window.removeEventListener('session:drag-leave', handleDragLeave);
+      window.removeEventListener('session:document-drop', handleDocumentDrop);
+    };
   }, [currentSession, documents, loadDocuments, toast]);
 
   const handleDocumentClick = (doc: Document) => {
@@ -124,7 +141,36 @@ const SessionDocumentsList: React.FC<SessionDocumentsListProps> = ({
     <div
       ref={dropZoneRef}
       className="flex flex-col h-full relative"
+      style={{
+        border: isDragOver ? '2px dashed var(--accent)' : '2px dashed transparent',
+        transition: 'border-color 0.2s',
+      }}
     >
+      {/* Drag Overlay */}
+      {isDragOver && (
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            className="px-6 py-4 rounded-lg"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '2px dashed var(--accent)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <FileText size={32} style={{ color: 'var(--accent)', margin: '0 auto', display: 'block' }} />
+            <p className="text-sm mt-2 font-medium" style={{ color: 'var(--accent)' }}>
+              Add to session
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Documents List */}
       {documents.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full px-4 text-center">
