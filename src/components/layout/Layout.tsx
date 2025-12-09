@@ -19,10 +19,6 @@ import WorkspacePage from '@/pages/WorkspacePage';
 let globalDragUnlisten: (() => void) | undefined;
 let setupInProgress = false;
 
-// Module-level storage for internal drag data
-// (needed because Tauri intercepts drag events before they reach DOM)
-let internalDragData: { documentId: string; title: string } | null = null;
-
 const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,7 +30,6 @@ const Layout: React.FC = () => {
   const [splitViewOpen, setSplitViewOpen] = useState(false);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
-  const isInternalDragRef = useRef(false);
 
   // Check if we're on a full-page route (like /sessions)
   const isFullPageRoute = location.pathname === ROUTES.SESSIONS;
@@ -110,9 +105,7 @@ const Layout: React.FC = () => {
   // Listen for vault open request (from drag & drop)
   useEffect(() => {
     const handleVaultOpenRequest = () => {
-      console.log('[Layout] Received vault:request-open event');
       if (!isVaultOpen) {
-        console.log('[Layout] Opening vault');
         setIsVaultOpen(true);
       }
     };
@@ -121,27 +114,6 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('vault:request-open', handleVaultOpenRequest);
   }, [isVaultOpen]);
 
-  // Listen for internal drag start/end
-  useEffect(() => {
-    const handleInternalDragStart = (e: Event) => {
-      const event = e as CustomEvent<{ documentId: string; title: string }>;
-      isInternalDragRef.current = true;
-      internalDragData = event.detail; // Store drag data globally
-    };
-
-    const handleInternalDragEnd = () => {
-      // Don't clear the flag here - it will be cleared in the Tauri drop handler
-      // This is because dragend fires BEFORE Tauri's drop event
-    };
-
-    window.addEventListener('neutrino:internal-drag-start', handleInternalDragStart);
-    window.addEventListener('neutrino:internal-drag-end', handleInternalDragEnd);
-
-    return () => {
-      window.removeEventListener('neutrino:internal-drag-start', handleInternalDragStart);
-      window.removeEventListener('neutrino:internal-drag-end', handleInternalDragEnd);
-    };
-  }, []);
 
   // Global Tauri drag & drop listener (handles file import + auto-open vault)
   useEffect(() => {
@@ -187,6 +159,7 @@ const Layout: React.FC = () => {
 
     const setupListener = async () => {
       try {
+        // Register listener to enable drag & drop for external files
         const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
           const payload = event.payload as {
             type: string;
@@ -194,23 +167,7 @@ const Layout: React.FC = () => {
             position?: { x: number; y: number }
           };
 
-          // Only handle if dragging actual files (has paths)
-          // Ignore internal React HTML5 drags (no paths)
           const hasFiles = payload.paths && payload.paths.length > 0;
-
-          // Handle internal drags (since Tauri intercepts them before DOM)
-          if (isInternalDragRef.current) {
-            if (payload.type === 'drop' && internalDragData) {
-              // Dispatch event to SessionDocumentsList to handle the drop
-              window.dispatchEvent(new CustomEvent('session:document-drop', {
-                detail: internalDragData
-              }));
-              // Clear internal drag state after handling drop
-              isInternalDragRef.current = false;
-              internalDragData = null;
-            }
-            return; // Don't process as external file drop
-          }
 
           if (payload.type === 'enter' || payload.type === 'over') {
             if (hasFiles) {

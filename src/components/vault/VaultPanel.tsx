@@ -22,8 +22,12 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sortType, setSortType] = useState<SortType>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedDoc, setDraggedDoc] = useState<Document | null>(null);
+  const [dragPreviewPos, setDragPreviewPos] = useState<{ x: number; y: number } | null>(null);
   const sortButtonRef = useRef<HTMLButtonElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -67,24 +71,64 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
     }
   };
 
-  // Handle drag start for documents
-  const handleDocumentDragStart = (e: React.DragEvent, doc: Document) => {
-    // Set custom data type for neutrino documents
-    e.dataTransfer.setData('application/x-neutrino-document', doc.id);
-    e.dataTransfer.setData('text/plain', doc.title);
-    e.dataTransfer.effectAllowed = 'copy'; // Allow both copy and link (reference)
-
-    // Dispatch custom event to signal internal drag start
-    // This tells Layout to handle the drop via Tauri (since Tauri intercepts all drags)
-    window.dispatchEvent(new CustomEvent('neutrino:internal-drag-start', {
-      detail: { documentId: doc.id, title: doc.title }
-    }));
+  // Custom drag implementation using mouse events (workaround for Tauri WebView limitation)
+  const handleMouseDown = (e: React.MouseEvent, doc: Document) => {
+    e.stopPropagation(); // Prevent titlebar drag
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    setDraggedDoc(doc);
   };
 
-  const handleDocumentDragEnd = () => {
-    // Dispatch custom event to signal internal drag end
-    window.dispatchEvent(new Event('neutrino:internal-drag-end'));
-  };
+  useEffect(() => {
+    if (!draggedDoc) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStartPos.current) return;
+
+      // Update drag preview position
+      const previewPos = { x: e.clientX, y: e.clientY };
+      setDragPreviewPos(previewPos);
+
+      // Check if moved more than 5px (drag threshold)
+      const dx = e.clientX - dragStartPos.current.x;
+      const dy = e.clientY - dragStartPos.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > 5 && !isDragging) {
+        setIsDragging(true);
+
+        // Activate drop zone visual feedback
+        window.dispatchEvent(new CustomEvent('session:drag-over', {
+          detail: { documentId: draggedDoc.id, title: draggedDoc.title }
+        }));
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging && draggedDoc) {
+        // Dispatch drop event
+        window.dispatchEvent(new CustomEvent('session:document-drop', {
+          detail: { documentId: draggedDoc.id, title: draggedDoc.title }
+        }));
+
+        // Clear visual feedback
+        window.dispatchEvent(new Event('session:drag-leave'));
+      }
+
+      // Reset drag state
+      dragStartPos.current = null;
+      setDraggedDoc(null);
+      setDragPreviewPos(null);
+      setTimeout(() => setIsDragging(false), 100);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedDoc, isDragging]);
 
   // Sort documents based on selected criteria
   const sortedDocuments = useMemo(() => {
@@ -159,39 +203,41 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
   }, [isDraggingFiles, isCollapsed]);
 
   return (
-    <div
-      ref={dropZoneRef}
-      className="flex flex-col h-full relative"
-      style={{
-        backgroundColor: 'var(--bg-secondary)',
-        border: isDraggingFiles ? '1px dashed var(--accent)' : '1px solid transparent',
-        transition: 'border-color 0.2s, opacity 0.2s',
-      }}
-    >
-      {/* Drop Zone Overlay */}
-      {isDraggingFiles && (
-        <div
-          className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
+    <>
+      <div
+        ref={dropZoneRef}
+        className="flex flex-col h-full relative"
+        data-no-drag
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          border: isDraggingFiles ? '2px dashed var(--accent)' : '1px solid transparent',
+          transition: 'border-color 0.2s, opacity 0.2s',
+        }}
+      >
+        {/* Drop Zone Overlay */}
+        {isDraggingFiles && (
           <div
-            className="px-5 py-3 rounded-lg"
+            className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
             style={{
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px dashed var(--accent)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              backdropFilter: 'blur(2px)',
             }}
           >
-            <Upload size={28} style={{ color: 'var(--accent)', margin: '0 auto', display: 'block' }} />
-            <p className="text-xs mt-1.5 font-medium" style={{ color: 'var(--accent)' }}>
-              Drop PDF files here
-            </p>
+            <div
+              className="px-6 py-4 rounded-lg"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '2px dashed var(--accent)',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <Upload size={32} style={{ color: 'var(--accent)', margin: '0 auto', display: 'block' }} />
+              <p className="text-sm mt-2 font-medium" style={{ color: 'var(--accent)' }}>
+                Drop PDF files here
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
@@ -203,7 +249,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
           <Tooltip content="Import PDF" placement="bottom">
             <button
               onClick={handleImport}
-              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              className="p-1 rounded hover:bg-(--bg-active) transition-colors"
             >
               <Upload size={14} style={{ color: 'var(--fg-secondary)' }} />
             </button>
@@ -211,7 +257,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
 
           <Tooltip content="New Folder" placement="bottom">
             <button
-              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              className="p-1 rounded hover:bg-(--bg-active) transition-colors"
               disabled
             >
               <FolderPlus size={14} style={{ color: 'var(--fg-secondary)' }} />
@@ -223,7 +269,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
               <button
                 ref={sortButtonRef}
                 onClick={() => setShowSortMenu(!showSortMenu)}
-                className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+                className="p-1 rounded hover:bg-(--bg-active) transition-colors"
               >
                 <ArrowUpDown size={14} style={{ color: 'var(--fg-secondary)' }} />
               </button>
@@ -241,7 +287,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                 <div className="py-1">
                   <button
                     onClick={() => handleSort('name')}
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-active)] flex items-center justify-between"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-(--bg-active) flex items-center justify-between"
                     style={{ color: 'var(--fg-primary)' }}
                   >
                     <span>Name</span>
@@ -249,7 +295,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                   </button>
                   <button
                     onClick={() => handleSort('date')}
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-active)] flex items-center justify-between"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-(--bg-active) flex items-center justify-between"
                     style={{ color: 'var(--fg-primary)' }}
                   >
                     <span>Date</span>
@@ -257,7 +303,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                   </button>
                   <button
                     onClick={() => handleSort('type')}
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-active)] flex items-center justify-between"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-(--bg-active) flex items-center justify-between"
                     style={{ color: 'var(--fg-primary)' }}
                   >
                     <span>Type</span>
@@ -265,7 +311,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                   </button>
                   <button
                     onClick={() => handleSort('progress')}
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-active)] flex items-center justify-between"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-(--bg-active) flex items-center justify-between"
                     style={{ color: 'var(--fg-primary)' }}
                   >
                     <span>Progress</span>
@@ -277,7 +323,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                       setShowSortMenu(false);
                     }}
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--bg-active)]"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-(--bg-active)"
                     style={{ color: 'var(--fg-secondary)' }}
                   >
                     {sortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
@@ -289,7 +335,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
           <Tooltip content={isCollapsed ? "Expand" : "Collapse"} placement="right">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+              className="p-1 rounded hover:bg-(--bg-active) transition-colors"
             >
               {isCollapsed ? (
                 <ChevronDown size={14} style={{ color: 'var(--fg-secondary)' }} />
@@ -323,13 +369,18 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
               {sortedDocuments.map((doc) => (
                 <div
                   key={doc.id}
-                  draggable="true"
-                  onDragStart={(e) => handleDocumentDragStart(e, doc)}
-                  onDragEnd={handleDocumentDragEnd}
-                  onClick={() => handleDocumentClick(doc)}
+                  onClick={() => {
+                    if (!isDragging) {
+                      handleDocumentClick(doc);
+                    }
+                  }}
+                  onMouseDown={(e) => handleMouseDown(e, doc)}
                   className="group px-2 py-1.5 mx-1 cursor-pointer rounded flex items-center justify-between gap-2 transition-colors"
                   style={{
                     backgroundColor: selectedDocId === doc.id ? 'var(--bg-active)' : 'transparent',
+                    cursor: isDragging && draggedDoc?.id === doc.id ? 'grabbing' : 'grab',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
                   }}
                   onMouseEnter={(e) => {
                     if (selectedDocId !== doc.id) {
@@ -342,7 +393,7 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                     }
                   }}
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0" style={{ pointerEvents: 'none' }}>
                     <FileText
                       size={14}
                       style={{
@@ -369,7 +420,39 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
           )}
         </div>
       )}
-    </div>
+      </div>
+
+      {/* Drag Preview Ghost */}
+      {isDragging && draggedDoc && dragPreviewPos && (
+        <div
+          style={{
+            position: 'fixed',
+            left: dragPreviewPos.x - 15,
+            top: dragPreviewPos.y - 60,
+            pointerEvents: 'none',
+            zIndex: 9999,
+            backgroundColor: 'var(--bg-secondary)',
+            border: '2px solid var(--accent)',
+            borderRadius: '8px',
+            padding: '6px 10px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            maxWidth: '220px',
+            opacity: 0.95,
+          }}
+        >
+          <FileText size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          <span
+            className="text-xs font-medium truncate"
+            style={{ color: 'var(--accent)' }}
+          >
+            {draggedDoc.title}
+          </span>
+        </div>
+      )}
+    </>
   );
 };
 
