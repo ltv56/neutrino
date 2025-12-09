@@ -1,5 +1,7 @@
 import React from 'react';
 import type { Tab } from '@/components/layout/TabBar';
+import type { ContextSnapshot } from '@/types';
+import WelcomeBack from '@/components/welcome/WelcomeBack';
 
 export const WELCOME_TAB: Tab = {
   id: '1',
@@ -19,6 +21,13 @@ export const WELCOME_TAB: Tab = {
     </div>
   ),
 };
+
+export const createWelcomeBackTab = (snapshot: ContextSnapshot, onContinue?: () => void): Tab => ({
+  id: '1',
+  title: 'Welcome Back',
+  type: 'welcome',
+  content: <WelcomeBack snapshot={snapshot} onContinue={onContinue} />,
+});
 
 export const createNewChatTab = (): Tab => ({
   id: Date.now().toString(),

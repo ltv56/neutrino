@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ContentPanel from '@/components/layout/ContentPanel';
 import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
-import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
+import { WELCOME_TAB, createWelcomeBackTab, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { useSessionsContext } from '@/hooks';
-import { noteService, sessionService } from '@/services';
+import { noteService, sessionService, contextService } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
 
 interface WorkspacePageProps {
@@ -18,12 +18,13 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   splitViewOpen,
   onSplitViewChange,
 }) => {
-  const { refetch, selectSession } = useSessionsContext();
+  const { refetch, selectSession, currentSession, sessions } = useSessionsContext();
   const toast = useToast();
 
   // Tab management
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
+  const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
 
   // Split view state
   const [secondaryTab, setSecondaryTab] = useState<Tab | null>(null);
@@ -230,6 +231,51 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       window.removeEventListener('workspace:create-note', handleCreateNote);
     };
   }, [openDocumentTab, openNoteTab, createNewNote]);
+
+  // Check for context snapshot on mount
+  useEffect(() => {
+    const loadContextSnapshot = async () => {
+      try {
+        if (sessions.length === 0) {
+          setIsLoadingSnapshot(false);
+          return;
+        }
+
+        const latestSession = sessions.reduce((latest, session) => {
+          return new Date(session.updated_at) > new Date(latest.updated_at) ? session : latest;
+        });
+
+        const snapshot = await contextService.getSnapshot(latestSession.id);
+
+        if (snapshot && snapshot.last_document) {
+          const welcomeBackTab = createWelcomeBackTab(snapshot, () => {
+            if (snapshot.last_document) {
+              openDocumentTab(
+                snapshot.last_document.document_id,
+                snapshot.last_document.document_title
+              );
+            }
+          });
+
+          setTabs([welcomeBackTab]);
+          selectSession(latestSession);
+        } else {
+          setTabs([WELCOME_TAB]);
+        }
+      } catch (error) {
+        console.error('Failed to load context snapshot:', error);
+        setTabs([WELCOME_TAB]);
+      } finally {
+        setIsLoadingSnapshot(false);
+      }
+    };
+
+    if (sessions.length > 0) {
+      loadContextSnapshot();
+    } else {
+      setIsLoadingSnapshot(false);
+    }
+  }, [sessions, selectSession, openDocumentTab]);
 
   return (
     <div className="flex-1 min-h-0" style={{ position: 'relative', minWidth: 0, overflow: 'hidden' }}>
