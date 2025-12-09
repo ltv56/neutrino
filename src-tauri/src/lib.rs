@@ -253,6 +253,8 @@ pub fn run() {
             commands::get_research_sessions,
             commands::delete_research_session,
             commands::update_research_session,
+            commands::save_context_snapshot,
+            commands::get_context_snapshot,
 
             // ========== Document Management ==========
             commands::create_document,

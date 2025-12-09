@@ -149,3 +149,38 @@ pub struct ConceptLink {
     pub confidence: f32, // AI confidence score
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastDocumentInfo {
+    pub document_id: String,
+    pub document_title: String,
+    pub page_number: i32,
+    pub scroll_position: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastHighlightInfo {
+    pub id: String,
+    pub content: String,
+    pub page_number: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastNoteInfo {
+    pub id: String,
+    pub title: String,
+    pub content_preview: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContextSnapshot {
+    pub timestamp: DateTime<Utc>,
+    pub active_session_id: Option<String>,
+    pub last_document: Option<LastDocumentInfo>,
+    pub last_highlight: Option<LastHighlightInfo>,
+    pub last_note: Option<LastNoteInfo>,
+    pub research_questions: Option<Vec<String>>,
+    pub open_documents: Option<Vec<String>>,
+}
