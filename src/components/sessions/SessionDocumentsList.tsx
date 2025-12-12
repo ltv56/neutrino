@@ -141,10 +141,6 @@ const SessionDocumentsList: React.FC<SessionDocumentsListProps> = ({
     <div
       ref={dropZoneRef}
       className="flex flex-col h-full relative"
-      style={{
-        border: isDragOver ? '2px dashed var(--accent)' : '2px dashed transparent',
-        transition: 'border-color 0.2s',
-      }}
     >
       {/* Drag Overlay */}
       {isDragOver && (
