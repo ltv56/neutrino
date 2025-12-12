@@ -219,7 +219,6 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
   return (
     <div
       style={{
-        borderBottom: '1px solid var(--border)',
         backgroundColor: 'var(--bg-secondary)',
         display: 'flex',
         alignItems: 'center',
@@ -256,184 +255,184 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({ onInsert }) =>
         }}
       >
         {/* Heading Dropdown */}
-      <div className="relative">
-        <Tooltip content="Heading" delay={300}>
-          <button
-            ref={headingButtonRef}
-            onClick={() => setShowHeadingMenu(!showHeadingMenu)}
-            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-(--bg-tertiary) transition-colors"
-            style={{
-              fontSize: '12px',
-              color: 'var(--text-primary)',
-            }}
-          >
-            <span>H1</span>
-            <ChevronDown size={12} />
-          </button>
-        </Tooltip>
-
-        {showHeadingMenu && headingMenuPosition && createPortal(
-          <div
-            ref={menuRef}
-            className="rounded shadow-lg z-50"
-            style={{
-              position: 'fixed',
-              top: `${headingMenuPosition.top}px`,
-              left: `${headingMenuPosition.left}px`,
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              width: '130px',
-              zIndex: 9999,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            }}
-          >
-            {HEADING_OPTIONS.map((option) => {
-              const fontSize = option.level === 0 ? '13px' : `${18 - option.level * 1}px`;
-              const fontWeight = option.level === 0 ? 400 : 600;
-              return (
-                <button
-                  key={option.label}
-                  onClick={() => handleHeading(option.level, option.prefix)}
-                  className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors"
-                  style={{
-                    fontSize,
-                    fontWeight,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>,
-          document.body
-        )}
-      </div>
-
-      <Separator />
-
-      {/* Lists Dropdown */}
-      <div className="relative">
-        <Tooltip content="Lists" delay={300}>
-          <button
-            ref={listButtonRef}
-            onClick={() => setShowListMenu(!showListMenu)}
-            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-(--bg-tertiary) transition-colors"
-            style={{
-              fontSize: '12px',
-              color: 'var(--text-primary)',
-            }}
-          >
-            <List size={14} />
-            <ChevronDown size={12} />
-          </button>
-        </Tooltip>
-
-        {showListMenu && listMenuPosition && createPortal(
-          <div
-            ref={listMenuRef}
-            className="rounded shadow-lg z-50"
-            style={{
-              position: 'fixed',
-              top: `${listMenuPosition.top}px`,
-              left: `${listMenuPosition.left}px`,
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              minWidth: '160px',
-              zIndex: 9999,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            }}
-          >
+        <div className="relative">
+          <Tooltip content="Heading" delay={300}>
             <button
-              onClick={handleBulletList}
-              className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
+              ref={headingButtonRef}
+              onClick={() => setShowHeadingMenu(!showHeadingMenu)}
+              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-(--bg-tertiary) transition-colors"
               style={{
-                fontSize: '13px',
+                fontSize: '12px',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <span>H1</span>
+              <ChevronDown size={12} />
+            </button>
+          </Tooltip>
+
+          {showHeadingMenu && headingMenuPosition && createPortal(
+            <div
+              ref={menuRef}
+              className="rounded shadow-lg z-50"
+              style={{
+                position: 'fixed',
+                top: `${headingMenuPosition.top}px`,
+                left: `${headingMenuPosition.left}px`,
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                width: '130px',
+                zIndex: 9999,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              }}
+            >
+              {HEADING_OPTIONS.map((option) => {
+                const fontSize = option.level === 0 ? '13px' : `${18 - option.level * 1}px`;
+                const fontWeight = option.level === 0 ? 400 : 600;
+                return (
+                  <button
+                    key={option.label}
+                    onClick={() => handleHeading(option.level, option.prefix)}
+                    className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors"
+                    style={{
+                      fontSize,
+                      fontWeight,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>,
+            document.body
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Lists Dropdown */}
+        <div className="relative">
+          <Tooltip content="Lists" delay={300}>
+            <button
+              ref={listButtonRef}
+              onClick={() => setShowListMenu(!showListMenu)}
+              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-(--bg-tertiary) transition-colors"
+              style={{
+                fontSize: '12px',
                 color: 'var(--text-primary)',
               }}
             >
               <List size={14} />
-              <span>Bullet list</span>
+              <ChevronDown size={12} />
             </button>
-            <button
-              onClick={handleNumberedList}
-              className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
+          </Tooltip>
+
+          {showListMenu && listMenuPosition && createPortal(
+            <div
+              ref={listMenuRef}
+              className="rounded shadow-lg z-50"
               style={{
-                fontSize: '13px',
-                color: 'var(--text-primary)',
+                position: 'fixed',
+                top: `${listMenuPosition.top}px`,
+                left: `${listMenuPosition.left}px`,
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                minWidth: '160px',
+                zIndex: 9999,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               }}
             >
-              <ListOrdered size={14} />
-              <span>Numbered list</span>
-            </button>
-            <button
-              onClick={handleTaskList}
-              className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-primary)',
-              }}
-            >
-              <CheckSquare size={14} />
-              <span>Task list</span>
-            </button>
-          </div>,
-          document.body
-        )}
-      </div>
+              <button
+                onClick={handleBulletList}
+                className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <List size={14} />
+                <span>Bullet list</span>
+              </button>
+              <button
+                onClick={handleNumberedList}
+                className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <ListOrdered size={14} />
+                <span>Numbered list</span>
+              </button>
+              <button
+                onClick={handleTaskList}
+                className="w-full text-left px-3 py-1.5 hover:bg-(--bg-tertiary) transition-colors flex items-center gap-2"
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <CheckSquare size={14} />
+                <span>Task list</span>
+              </button>
+            </div>,
+            document.body
+          )}
+        </div>
 
-      <Separator />
+        <Separator />
 
-      {/* Text Formatting - With style preview */}
-      <Tooltip content="Bold (Ctrl+B)" delay={300}>
-        <button
-          onClick={handleBold}
-          className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <span style={{ fontWeight: 700, fontSize: '14px' }}>B</span>
-        </button>
-      </Tooltip>
-      <Tooltip content="Italic (Ctrl+I)" delay={300}>
-        <button
-          onClick={handleItalic}
-          className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <span style={{ fontStyle: 'italic', fontSize: '14px' }}>I</span>
-        </button>
-      </Tooltip>
-      <Tooltip content="Strikethrough" delay={300}>
-        <button
-          onClick={handleStrikethrough}
-          className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <span style={{ textDecoration: 'line-through', fontSize: '14px' }}>S</span>
-        </button>
-      </Tooltip>
-      <Tooltip content="Inline code" delay={300}>
-        <button
-          onClick={handleInlineCode}
-          className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <Code size={14} />
-        </button>
-      </Tooltip>
+        {/* Text Formatting - With style preview */}
+        <Tooltip content="Bold (Ctrl+B)" delay={300}>
+          <button
+            onClick={handleBold}
+            className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span style={{ fontWeight: 700, fontSize: '14px' }}>B</span>
+          </button>
+        </Tooltip>
+        <Tooltip content="Italic (Ctrl+I)" delay={300}>
+          <button
+            onClick={handleItalic}
+            className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span style={{ fontStyle: 'italic', fontSize: '14px' }}>I</span>
+          </button>
+        </Tooltip>
+        <Tooltip content="Strikethrough" delay={300}>
+          <button
+            onClick={handleStrikethrough}
+            className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span style={{ textDecoration: 'line-through', fontSize: '14px' }}>S</span>
+          </button>
+        </Tooltip>
+        <Tooltip content="Inline code" delay={300}>
+          <button
+            onClick={handleInlineCode}
+            className="p-1.5 rounded hover:bg-(--bg-tertiary) transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <Code size={14} />
+          </button>
+        </Tooltip>
 
-      <Separator />
+        <Separator />
 
-      {/* Insert */}
-      <ToolButton onClick={handleLink} title="Insert link" icon={LinkIcon} />
-      <ToolButton onClick={handleImage} title="Insert image" icon={ImageIcon} />
+        {/* Insert */}
+        <ToolButton onClick={handleLink} title="Insert link" icon={LinkIcon} />
+        <ToolButton onClick={handleImage} title="Insert image" icon={ImageIcon} />
 
-      <Separator />
+        <Separator />
 
-      {/* Blocks */}
-      <ToolButton onClick={handleBlockquote} title="Blockquote" icon={Quote} />
-      <ToolButton onClick={handleCodeBlock} title="Code block" icon={FileCode} />
-      <ToolButton onClick={handleHorizontalRule} title="Horizontal rule" icon={Minus} placement="top-right" />
+        {/* Blocks */}
+        <ToolButton onClick={handleBlockquote} title="Blockquote" icon={Quote} />
+        <ToolButton onClick={handleCodeBlock} title="Code block" icon={FileCode} />
+        <ToolButton onClick={handleHorizontalRule} title="Horizontal rule" icon={Minus} placement="top-right" />
       </div>
 
       {/* Right scroll arrow */}

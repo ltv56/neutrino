@@ -9,13 +9,13 @@ import { listKeymap } from './markdown-editor/config/listKeymap';
 import { blockKeymap } from './markdown-editor/config/blockKeymap';
 import { markdownTheme, highlightingExtension } from './markdown-editor/theme/editorTheme';
 import { livePreviewPlugin } from './markdown-editor/plugins/livePreviewPlugin';
-import { inlineCodeAtomicRanges } from './markdown-editor/plugins/inlineCodeAtomicRanges';
 
 interface MarkdownEditorProps {
   content: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  readOnly?: boolean;
   onEditorReady?: (view: EditorView) => void;
 }
 
@@ -24,6 +24,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onChange,
   placeholder = 'Start typing...',
   autoFocus = false,
+  readOnly = false,
   onEditorReady,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       keymap.of([...blockKeymap, ...listKeymap, ...defaultKeymap, ...historyKeymap]),
       highlightingExtension,
       livePreviewPlugin,
-      inlineCodeAtomicRanges,
+      EditorView.editable.of(!readOnly),
       EditorView.updateListener.of((update: ViewUpdate) => {
         if (update.docChanged && !isInternalUpdate.current) {
           const newContent = update.state.doc.toString();
