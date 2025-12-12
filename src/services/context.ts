@@ -2,7 +2,10 @@ import { invoke } from '@tauri-apps/api/core';
 import type { ContextSnapshot } from '@/types';
 
 export const contextService = {
-  async saveSnapshot(sessionId: string, snapshot: ContextSnapshot): Promise<void> {
+  async saveSnapshot(
+    sessionId: string,
+    snapshot: ContextSnapshot
+  ): Promise<void> {
     return await invoke('save_context_snapshot', { sessionId, snapshot });
   },
 
@@ -12,6 +15,7 @@ export const contextService = {
 
   buildSnapshot(params: {
     activeSessionId: string | null;
+    sessionGoal?: string;
     lastDocumentId?: string;
     lastDocumentTitle?: string;
     pageNumber?: number;
@@ -19,6 +23,7 @@ export const contextService = {
     lastHighlight?: {
       id: string;
       content: string;
+      note?: string;
       pageNumber: number;
       createdAt: string;
     };
@@ -30,13 +35,19 @@ export const contextService = {
     };
     researchQuestions?: string[];
     openDocuments?: string[];
+    openNotes?: Array<{ id: string; title: string }>;
   }): ContextSnapshot {
     const snapshot: ContextSnapshot = {
       timestamp: new Date().toISOString(),
       active_session_id: params.activeSessionId,
+      session_goal: params.sessionGoal,
     };
 
-    if (params.lastDocumentId && params.lastDocumentTitle && params.pageNumber !== undefined) {
+    if (
+      params.lastDocumentId &&
+      params.lastDocumentTitle &&
+      params.pageNumber !== undefined
+    ) {
       snapshot.last_document = {
         document_id: params.lastDocumentId,
         document_title: params.lastDocumentTitle,
@@ -49,6 +60,7 @@ export const contextService = {
       snapshot.last_highlight = {
         id: params.lastHighlight.id,
         content: params.lastHighlight.content,
+        note: params.lastHighlight.note,
         page_number: params.lastHighlight.pageNumber,
         created_at: params.lastHighlight.createdAt,
       };
@@ -69,6 +81,10 @@ export const contextService = {
 
     if (params.openDocuments) {
       snapshot.open_documents = params.openDocuments;
+    }
+
+    if (params.openNotes) {
+      snapshot.open_notes = params.openNotes;
     }
 
     return snapshot;

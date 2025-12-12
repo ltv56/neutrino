@@ -12,6 +12,8 @@ export interface Tab {
   documentId?: string;
   noteId?: string;
   page?: number; // For document tabs - which page to open
+  // Position restoration data
+  scrollPosition?: number;
 }
 
 interface TabBarProps {

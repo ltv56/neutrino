@@ -79,4 +79,21 @@ export const highlightService = {
   async delete(id: string): Promise<boolean> {
     return await invoke<boolean>('delete_highlight', { id });
   },
+
+  /**
+   * Get recent highlights for a session
+   */
+  async getRecentBySession(sessionId: string, limit: number = 1): Promise<Highlight[]> {
+    const results = await invoke<Highlight[]>('get_recent_highlights_by_session', {
+      sessionId,
+      limit,
+    });
+
+    // Parse JSON fields for each highlight
+    return results.map((h) => ({
+      ...h,
+      position_data: typeof h.position_data === 'string' ? JSON.parse(h.position_data) : h.position_data,
+      metadata: h.metadata && typeof h.metadata === 'string' ? JSON.parse(h.metadata) : h.metadata,
+    }));
+  },
 };

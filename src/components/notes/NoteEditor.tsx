@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkWikiLink from '@/utils/remarkWikiLink';
 import { Book, Edit, AlertCircle, X } from 'lucide-react';
 import { noteService, documentService, type Note } from '@/services';
+import { tabPositionTracker } from '@/services/tabPositionTracker';
 import { useToast } from '@/contexts/ToastContext';
 import Tooltip from '@/components/common/Tooltip';
 import NoteAutocomplete from './NoteAutocomplete';
@@ -11,6 +12,7 @@ import './markdown.css';
 
 interface NoteEditorProps {
   noteId?: string;
+  tabId?: string;
   sessionId?: string;
   documentId?: string;
   onClose: () => void;
@@ -19,6 +21,7 @@ interface NoteEditorProps {
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({
   noteId,
+  tabId,
   sessionId,
   documentId,
   onClose,
@@ -49,6 +52,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hasAutoFocusedRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const loadNote = useCallback(async () => {
     if (!noteId) return;
@@ -152,6 +156,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               detail: { noteId: currentNoteId, title: newTitle }
             }));
           }
+
+          // Dispatch note-saved event for context snapshot tracking
+          window.dispatchEvent(new CustomEvent('note-saved', {
+            detail: { noteId: currentNoteId, title: newTitle }
+          }));
         } else {
           // Create new note
           // Don't save if both title and content are empty/whitespace
@@ -184,6 +193,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           }));
           // Update tab title for newly created note
           window.dispatchEvent(new CustomEvent('note-title-changed', {
+            detail: { noteId: newNote.id, title: newTitle }
+          }));
+          // Dispatch note-saved event for context snapshot tracking
+          window.dispatchEvent(new CustomEvent('note-saved', {
             detail: { noteId: newNote.id, title: newTitle }
           }));
         }
@@ -624,6 +637,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     };
   }, []);
 
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -655,7 +669,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       {/* Content */}
       <div className="flex-1 overflow-hidden flex justify-center px-4">
         {mode === 'edit' ? (
-          <div className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
+          <div ref={scrollContainerRef} className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
             {/* Title input */}
             <div className="px-8 pt-12 pb-4 relative">
               <input
@@ -777,7 +791,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
           </div>
         ) : (
-          <div className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
+          <div ref={scrollContainerRef} className="h-full flex flex-col overflow-y-auto w-full" style={{ maxWidth: '800px' }}>
             {/* Title preview */}
             <div className="px-8 pt-12 pb-4">
               <h1

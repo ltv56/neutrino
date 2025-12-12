@@ -162,6 +162,7 @@ pub struct LastDocumentInfo {
 pub struct LastHighlightInfo {
     pub id: String,
     pub content: String,
+    pub note: Option<String>,
     pub page_number: i32,
     pub created_at: DateTime<Utc>,
 }
@@ -175,12 +176,20 @@ pub struct LastNoteInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OpenNoteInfo {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContextSnapshot {
     pub timestamp: DateTime<Utc>,
     pub active_session_id: Option<String>,
+    pub session_goal: Option<String>,
     pub last_document: Option<LastDocumentInfo>,
     pub last_highlight: Option<LastHighlightInfo>,
     pub last_note: Option<LastNoteInfo>,
     pub research_questions: Option<Vec<String>>,
     pub open_documents: Option<Vec<String>>,
+    pub open_notes: Option<Vec<OpenNoteInfo>>,
 }

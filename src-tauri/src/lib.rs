@@ -287,6 +287,7 @@ pub fn run() {
             commands::get_highlights_by_document,
             commands::update_highlight_note,
             commands::delete_highlight,
+            commands::get_recent_highlights_by_session,
 
             // ========== Note Management ==========
             commands::create_note,
