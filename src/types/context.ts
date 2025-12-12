@@ -26,6 +26,36 @@ export interface OpenTabInfo {
   title: string;
 }
 
+export interface ReadingBehavior {
+  total_reading_time_ms: number; // Total time in current session
+  current_document_time_ms?: number; // Time spent on current document
+  current_page_time_ms?: number; // Time on current page (struggle indicator)
+  page_changes_count: number; // Total page navigations
+  avg_time_per_page_ms?: number; // Average time per page
+}
+
+export interface StruggleSignals {
+  highlights_without_notes: number; // Confusion indicator
+  slow_progress: boolean; // Spending >5min on single page
+  rapid_highlighting: boolean; // 3+ highlights in <2min (info overload)
+  re_reading_detected: boolean; // Returning to same page/section
+}
+
+export interface SessionStatistics {
+  documents_opened_count: number;
+  highlights_created_count: number;
+  notes_created_count: number;
+  highlight_note_ratio?: number; // highlights with notes / total highlights
+}
+
+export interface AIInsights {
+  generated_at: string;
+  summary?: string; // AI-generated session summary
+  struggle_areas?: string[]; // Detected struggle points
+  suggestions?: string[]; // Personalized next steps
+  learning_pattern?: string; // Detected learning style
+}
+
 export interface ContextSnapshot {
   timestamp: string;
   active_session_id: string | null;
@@ -33,9 +63,15 @@ export interface ContextSnapshot {
   last_document?: LastDocumentInfo;
   last_highlight?: LastHighlightInfo;
   last_note?: LastNoteInfo;
-  last_activity_type?: 'document' | 'highlight' | 'note'; // Track most recent activity for banner display
+  last_activity_type?: 'document' | 'highlight' | 'note';
   research_questions?: string[];
   open_documents?: string[];
   open_notes?: Array<{ id: string; title: string }>;
-  open_tabs?: OpenTabInfo[]; // New: preserves exact tab order
+  open_tabs?: OpenTabInfo[];
+
+  // Enhanced context-aware fields
+  reading_behavior?: ReadingBehavior;
+  struggle_signals?: StruggleSignals;
+  session_statistics?: SessionStatistics;
+  ai_insights?: AIInsights;
 }

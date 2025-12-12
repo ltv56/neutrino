@@ -1,6 +1,12 @@
 import { useEffect, useCallback } from 'react';
 import { useSessionsContext } from './sessions/useSessionsContext';
-import { contextService, highlightService, noteService } from '@/services';
+import {
+  contextService,
+  highlightService,
+  noteService,
+  readingBehaviorTracker,
+  geminiAIService,
+} from '@/services';
 
 interface AppState {
   currentDocumentId?: string;
@@ -77,6 +83,9 @@ export const useContextCapture = (appState: AppState) => {
         .filter(q => q.length > 10)
         .slice(0, 5);
 
+      // Get behavior tracking data
+      const behaviorData = readingBehaviorTracker.getSnapshot();
+
       const snapshot = contextService.buildSnapshot({
         activeSessionId: currentSession.id,
         sessionGoal: currentSession.goal,
@@ -100,9 +109,23 @@ export const useContextCapture = (appState: AppState) => {
         researchQuestions: uniqueQuestions.length > 0 ? uniqueQuestions : undefined,
         openDocuments: appState.openDocuments,
         openNotes: appState.openNotes,
+        readingBehavior: behaviorData.reading_behavior,
+        struggleSignals: behaviorData.struggle_signals,
+        sessionStatistics: behaviorData.session_statistics,
       });
 
       console.log('[ContextCapture] Built snapshot:', snapshot);
+
+      // Generate AI insights
+      console.log('[ContextCapture] Generating AI insights...');
+      try {
+        const aiInsights = await geminiAIService.analyzeSession(snapshot);
+        snapshot.ai_insights = aiInsights;
+        console.log('[ContextCapture] AI insights generated:', aiInsights);
+      } catch (error) {
+        console.error('[ContextCapture] Failed to generate AI insights:', error);
+      }
+
       await contextService.saveSnapshot(currentSession.id, snapshot);
       console.log('[ContextCapture] Context saved successfully');
     } catch (error) {

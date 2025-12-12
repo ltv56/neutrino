@@ -4,7 +4,7 @@ import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
 import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { useSessionsContext } from '@/hooks';
-import { noteService, sessionService, documentService, contextService, highlightService } from '@/services';
+import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture } from '@/services';
 import { tabStateService, type WorkspaceState, type TabState } from '@/services/tabState';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import { useTabStatePersistence } from '@/hooks/useTabStatePersistence';
@@ -34,6 +34,9 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   const [contextSnapshot, setContextSnapshot] = useState<ContextSnapshot | null>(null);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const hasNewActivitySinceLoad = useRef(false);
+
+  // Activity tracking for auto-capture (Tier 2)
+  const activityCountRef = useRef({ highlights: 0, notes: 0 });
 
   // Build workspace state with fresh positions
   const getWorkspaceState = React.useCallback((): WorkspaceState => {
@@ -77,7 +80,11 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     let pendingSave: (() => Promise<void>) | null = null;
 
     const updateSnapshotIncremental = async (eventType: string, detail?: any) => {
-      if (!currentSession) return;
+      console.log('[ContextSnapshot] Event triggered:', eventType, detail);
+      if (!currentSession) {
+        console.log('[ContextSnapshot] No current session, skipping');
+        return;
+      }
 
       // Debounce to avoid too many writes
       clearTimeout(timer);
@@ -96,13 +103,26 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
           let snapshot;
           if (shouldReset || !existingSnapshot) {
-            // Reset: create fresh snapshot with ONLY this activity
+            // Reset: create fresh snapshot but PRESERVE AI insights if they exist
+            console.log('[ContextSnapshot] Resetting snapshot, preserving AI insights');
+            console.log('[ContextSnapshot] Existing snapshot has AI insights?', !!existingSnapshot?.ai_insights);
+            console.log('[ContextSnapshot] Existing AI insights:', existingSnapshot?.ai_insights);
+
             snapshot = contextService.buildSnapshot({
               activeSessionId: currentSession.id,
               sessionGoal: currentSession.goal,
             });
+
+            // Preserve AI insights from old snapshot (they don't change with activity)
+            if (existingSnapshot?.ai_insights) {
+              snapshot.ai_insights = existingSnapshot.ai_insights;
+              console.log('[ContextSnapshot] AI insights preserved!');
+            } else {
+              console.log('[ContextSnapshot] No AI insights to preserve');
+            }
           } else {
             // Preserve existing snapshot, will update/add activity below
+            console.log('[ContextSnapshot] Preserving full existing snapshot');
             snapshot = existingSnapshot;
           }
 
@@ -154,15 +174,51 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
 
     const handleNoteSaved = (event: Event) => {
+      readingBehaviorTracker.recordNote();
       updateSnapshotIncremental('note-saved', (event as CustomEvent).detail);
+
+      // Track activity for auto-capture (Tier 2)
+      activityCountRef.current.notes += 1;
+      autoContextCapture.captureOnActivity(
+        currentSession.id,
+        currentSession.goal,
+        activityCountRef.current.highlights,
+        activityCountRef.current.notes
+      ).then(captured => {
+        if (captured) {
+          // Reset counters after successful capture
+          activityCountRef.current = { highlights: 0, notes: 0 };
+        }
+      });
     };
 
     const handleHighlightCreated = (event: Event) => {
-      updateSnapshotIncremental('highlight-created', (event as CustomEvent).detail);
+      const detail = (event as CustomEvent).detail;
+      const hasNote = detail?.note && detail.note.length > 0;
+      readingBehaviorTracker.recordHighlight(hasNote);
+      updateSnapshotIncremental('highlight-created', detail);
+
+      // Track activity for auto-capture (Tier 2)
+      activityCountRef.current.highlights += 1;
+      autoContextCapture.captureOnActivity(
+        currentSession.id,
+        currentSession.goal,
+        activityCountRef.current.highlights,
+        activityCountRef.current.notes
+      ).then(captured => {
+        if (captured) {
+          // Reset counters after successful capture
+          activityCountRef.current = { highlights: 0, notes: 0 };
+        }
+      });
     };
 
     const handlePageChange = (event: Event) => {
-      updateSnapshotIncremental('pdf:page-change', (event as CustomEvent).detail);
+      const detail = (event as CustomEvent).detail;
+      if (detail?.pageNumber) {
+        readingBehaviorTracker.changePage(detail.pageNumber);
+      }
+      updateSnapshotIncremental('pdf:page-change', detail);
     };
 
     window.addEventListener('note-saved', handleNoteSaved);
@@ -228,6 +284,14 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     window.addEventListener('note-deleted', handleNoteDeleted as EventListener);
     return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
   }, []);
+
+  // Track active document changes for behavior tracking
+  useEffect(() => {
+    const activeTab = tabs.find(tab => tab.id === activeTabId);
+    if (activeTab?.type === 'document' && activeTab.documentId) {
+      readingBehaviorTracker.startDocument(activeTab.documentId);
+    }
+  }, [activeTabId, tabs]);
 
   // Listen for split view requests
   useEffect(() => {
@@ -444,6 +508,18 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     (window as any).__debugSaveTabState = saveNow;
   }, [saveNow]);
 
+  // Auto-capture context on app close (Tier 1 - Primary)
+  useEffect(() => {
+    if (!currentSession) return;
+
+    // Cleanup function runs when component unmounts (app closes)
+    return () => {
+      console.log('[AutoCapture] App closing, triggering auto-capture...');
+      // Use void to ignore promise - this is fire-and-forget on unmount
+      void autoContextCapture.captureOnClose(currentSession.id, currentSession.goal);
+    };
+  }, [currentSession]);
+
   // Load snapshot on mount to show banner with previous activities
   useEffect(() => {
     const loadSnapshot = async () => {
@@ -463,6 +539,21 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
         // Show banner if there's any meaningful context (document, note, or highlight)
         if (snapshot && (snapshot.last_document || snapshot.last_note || snapshot.last_highlight)) {
+          console.log('[WelcomeBanner] ========================================');
+          console.log('[WelcomeBanner] 📋 Loaded context snapshot from previous session');
+          console.log('[WelcomeBanner] Snapshot:', snapshot);
+
+          if (snapshot.ai_insights) {
+            console.log('[WelcomeBanner] 🤖 AI Insights generated at:', snapshot.ai_insights.generated_at);
+            console.log('[WelcomeBanner] 📝 Summary:', snapshot.ai_insights.summary);
+            console.log('[WelcomeBanner] ⚠️  Struggle areas:', snapshot.ai_insights.struggle_areas);
+            console.log('[WelcomeBanner] 💡 Suggestions:', snapshot.ai_insights.suggestions);
+            console.log('[WelcomeBanner] 🧠 Learning pattern:', snapshot.ai_insights.learning_pattern);
+          } else {
+            console.log('[WelcomeBanner] ℹ️  No AI insights in snapshot');
+          }
+          console.log('[WelcomeBanner] ========================================');
+
           setContextSnapshot(snapshot);
           setShowWelcomeBanner(true);
         }
