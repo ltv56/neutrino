@@ -449,7 +449,9 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     const loadSnapshot = async () => {
       if (!currentSession) return;
 
-      // Check if banner was already dismissed this session
+      // Clear dismissed flag to allow banner to show on fresh app start
+      sessionStorage.removeItem('welcomeBannerDismissed');
+
       const dismissed = sessionStorage.getItem('welcomeBannerDismissed');
       if (dismissed === 'true') return;
 
