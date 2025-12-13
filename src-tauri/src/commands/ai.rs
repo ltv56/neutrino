@@ -31,6 +31,8 @@ struct GenerationConfig {
     temperature: f32,
     #[serde(rename = "maxOutputTokens")]
     max_output_tokens: i32,
+    #[serde(rename = "responseMimeType")]
+    response_mime_type: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,7 +67,8 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
         }],
         generation_config: GenerationConfig {
             temperature: 0.3,
-            max_output_tokens: 1024, // Increased from 500 to prevent truncation
+            max_output_tokens: 2048, // Increased to prevent truncation
+            response_mime_type: "application/json".to_string(), // Force JSON response
         },
     };
 

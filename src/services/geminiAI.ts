@@ -134,13 +134,20 @@ export const geminiAIService = {
       '3. 2-3 actionable suggestions for next steps',
       '4. Their apparent learning pattern (e.g., "visual learner", "needs examples", "prefers depth-first")',
       '',
-      'IMPORTANT: Return ONLY valid JSON, no markdown, no explanations.',
-      'Format:',
+      'CRITICAL FORMATTING RULES:',
+      '- Return ONLY valid JSON, no markdown blocks, no explanations',
+      '- Use ONLY straight quotes ("), not curly quotes',
+      '- Keep strings SHORT (max 80 chars each)',
+      '- Do NOT include newlines inside strings',
+      '- Escape any quotes inside strings with backslash',
+      '- Ensure all strings are properly closed',
+      '',
+      'Required JSON format:',
       '{',
-      '  "summary": "one sentence summary",',
-      '  "struggle_areas": ["area1", "area2"],',
-      '  "suggestions": ["suggestion1", "suggestion2"],',
-      '  "learning_pattern": "pattern"',
+      '  "summary": "short one-line summary",',
+      '  "struggle_areas": ["brief area 1", "brief area 2"],',
+      '  "suggestions": ["short suggestion 1", "short suggestion 2"],',
+      '  "learning_pattern": "brief pattern"',
       '}',
     );
 
@@ -153,19 +160,52 @@ export const geminiAIService = {
 
   parseGeminiResponse(responseText: string): AIInsights {
     try {
+      console.log('[GeminiAI] Raw response text:', responseText);
+      console.log('[GeminiAI] Response length:', responseText.length);
+
       // Remove markdown code blocks if present (```json ... ``` or ``` ... ```)
       let cleanedText = responseText
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/g, '')
         .trim();
 
-      // Extract JSON object
+      // Extract JSON object - use greedy match to get complete object
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-      const jsonText = jsonMatch ? jsonMatch[0] : cleanedText;
+      if (!jsonMatch) {
+        console.error('[GeminiAI] No JSON object found in response');
+        throw new Error('No JSON object found');
+      }
 
-      console.log('[GeminiAI] Cleaned JSON text:', jsonText);
+      const jsonText = jsonMatch[0];
+      console.log('[GeminiAI] Extracted JSON text:', jsonText);
 
-      const parsed = JSON.parse(jsonText);
+      // Try to fix common JSON issues
+      let fixedJson = jsonText;
+
+      // Check if string seems truncated (no closing brace)
+      const openBraces = (fixedJson.match(/\{/g) || []).length;
+      const closeBraces = (fixedJson.match(/\}/g) || []).length;
+
+      if (openBraces !== closeBraces) {
+        console.warn('[GeminiAI] Mismatched braces - attempting to fix');
+        // Add missing closing braces
+        fixedJson += '}'.repeat(openBraces - closeBraces);
+      }
+
+      // Check for unterminated strings (common issue)
+      // If last quote before } is unmatched, close it
+      const beforeClosing = fixedJson.substring(0, fixedJson.lastIndexOf('}'));
+      const quotes = (beforeClosing.match(/"/g) || []).length;
+      if (quotes % 2 !== 0) {
+        console.warn('[GeminiAI] Unterminated string detected - attempting to fix');
+        // Insert closing quote before last }
+        const lastBrace = fixedJson.lastIndexOf('}');
+        fixedJson = fixedJson.substring(0, lastBrace) + '"' + fixedJson.substring(lastBrace);
+      }
+
+      console.log('[GeminiAI] Fixed JSON text:', fixedJson);
+
+      const parsed = JSON.parse(fixedJson);
 
       return {
         generated_at: new Date().toISOString(),
@@ -176,10 +216,14 @@ export const geminiAIService = {
       };
     } catch (error) {
       console.error('[GeminiAI] Failed to parse response:', error);
+      console.error('[GeminiAI] Original response:', responseText);
+
+      // Return fallback with partial data if possible
       return {
         generated_at: new Date().toISOString(),
-        summary: 'Unable to analyze session',
+        summary: 'Unable to analyze session (parsing error)',
         suggestions: ['Continue reading', 'Take notes'],
+        struggle_areas: ['AI analysis temporarily unavailable'],
       };
     }
   },

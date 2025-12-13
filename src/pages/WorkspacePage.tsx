@@ -289,7 +289,11 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   useEffect(() => {
     const activeTab = tabs.find(tab => tab.id === activeTabId);
     if (activeTab?.type === 'document' && activeTab.documentId) {
-      readingBehaviorTracker.startDocument(activeTab.documentId);
+      // Document tab active → start/resume tracking
+      readingBehaviorTracker.setActiveDocument(activeTab.documentId);
+    } else {
+      // Non-document tab active (Note, Welcome, etc.) → pause document tracking
+      readingBehaviorTracker.endDocument();
     }
   }, [activeTabId, tabs]);
 
