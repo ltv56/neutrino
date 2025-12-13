@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { SidebarTab } from '@/constants/sidebar';
 
-interface UseSidebarModeProps {
-  isFullPageRoute: boolean;
-}
-
 interface UseSidebarModeReturn {
   sidebarMode: 'floating' | 'pinned';
   sidebarVisible: boolean;
@@ -18,9 +14,7 @@ interface UseSidebarModeReturn {
  * Custom hook to manage sidebar mode, visibility, and active tab
  * Handles pin/unpin transitions with smooth animations
  */
-export const useSidebarMode = ({
-  isFullPageRoute,
-}: UseSidebarModeProps): UseSidebarModeReturn => {
+export const useSidebarMode = (): UseSidebarModeReturn => {
   const [sidebarMode, setSidebarMode] = useState<'floating' | 'pinned'>('floating');
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeRibbonTab, setActiveRibbonTab] = useState<SidebarTab>('documents');
@@ -33,13 +27,6 @@ export const useSidebarMode = ({
       if (savedMode === 'pinned') setSidebarVisible(true);
     }
   }, []);
-
-  // Hide sidebar on full page routes
-  useEffect(() => {
-    if (isFullPageRoute) {
-      setSidebarVisible(false);
-    }
-  }, [isFullPageRoute]);
 
   // Ribbon icon click handler
   const handleRibbonClick = (tab: SidebarTab) => {

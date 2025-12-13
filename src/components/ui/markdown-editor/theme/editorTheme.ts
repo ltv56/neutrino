@@ -286,6 +286,33 @@ export const markdownTheme = EditorView.theme({
     fontStyle: 'italic',
     fontFamily: '"Playfair Display", serif',
   },
+
+  // Reading mode - hide all markdown syntax
+  '.reading-mode .cm-heading-mark': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-formatting, .reading-mode .cm-formatting-strong, .reading-mode .cm-formatting-em, .reading-mode .cm-formatting-strikethrough': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-formatting-link, .reading-mode .cm-formatting-link-string': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-formatting-code': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-formatting-list': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-formatting-quote': {
+    display: 'none !important',
+  },
+  // Hide link brackets and parentheses in reading mode
+  '.reading-mode .cm-link-text-start, .reading-mode .cm-link-text-end': {
+    display: 'none !important',
+  },
+  '.reading-mode .cm-link-href-start, .reading-mode .cm-link-href-end': {
+    display: 'none !important',
+  },
 });
 
 export const highlightingExtension = syntaxHighlighting(customHighlighting);

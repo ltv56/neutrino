@@ -31,9 +31,6 @@ const Layout: React.FC = () => {
   const [isVaultOpen, setIsVaultOpen] = useState(false);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
 
-  // Check if we're on a full-page route (like /sessions)
-  const isFullPageRoute = location.pathname === ROUTES.SESSIONS;
-
   // Sidebar mode management
   const {
     sidebarMode,
@@ -42,16 +39,13 @@ const Layout: React.FC = () => {
     handleTogglePin,
     handleRibbonClick,
     setSidebarVisible,
-  } = useSidebarMode({
-    isFullPageRoute,
-  });
+  } = useSidebarMode();
 
   // Edge detection with centralized timer management
   const { scheduleSidebarHide, cancelSidebarHide } = useEdgeDetection({
     sidebarMode,
     sidebarVisible,
     activeRibbonTab,
-    isFullPageRoute,
     setSidebarVisible,
   });
 
@@ -235,26 +229,24 @@ const Layout: React.FC = () => {
         onCreateSession={() => setShowSessionForm(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar (includes Vault + Session panels) */}
-        {!isFullPageRoute && (
-          <Sidebar
-            mode={sidebarMode}
-            isVisible={sidebarVisible}
-            activeTab={activeRibbonTab}
-            onTogglePin={handleTogglePin}
-            onTabClick={handleRibbonClick}
-            onTabHover={handleRibbonHover}
-            onMouseEnter={handleSidebarEnter}
-            onMouseLeave={handleSidebarLeave}
-            onIndicatorClick={handleIndicatorClick}
-            isVaultOpen={isVaultOpen}
-            onToggleVault={() => setIsVaultOpen(!isVaultOpen)}
-            onOpenDocument={openDocumentTab}
-            onNoteSelect={openNoteTab}
-            onCreateNote={createNewNote}
-            isDraggingFiles={isDraggingFiles}
-          />
-        )}
+        {/* Sidebar (includes Vault + Session panels) - Always visible */}
+        <Sidebar
+          mode={sidebarMode}
+          isVisible={sidebarVisible}
+          activeTab={activeRibbonTab}
+          onTogglePin={handleTogglePin}
+          onTabClick={handleRibbonClick}
+          onTabHover={handleRibbonHover}
+          onMouseEnter={handleSidebarEnter}
+          onMouseLeave={handleSidebarLeave}
+          onIndicatorClick={handleIndicatorClick}
+          isVaultOpen={isVaultOpen}
+          onToggleVault={() => setIsVaultOpen(!isVaultOpen)}
+          onOpenDocument={openDocumentTab}
+          onNoteSelect={openNoteTab}
+          onCreateNote={createNewNote}
+          isDraggingFiles={isDraggingFiles}
+        />
 
         {/* Main Content Area */}
         <div
@@ -265,17 +257,17 @@ const Layout: React.FC = () => {
             overflow: 'hidden',
           }}
         >
-          {isFullPageRoute && location.pathname === ROUTES.SESSIONS ? (
+          {location.pathname === ROUTES.SESSIONS ? (
             // Sessions Page
             <SessionsPage />
-          ) : !isFullPageRoute ? (
+          ) : (
             // Workspace Page
             <WorkspacePage
               isVaultOpen={isVaultOpen}
               splitViewOpen={splitViewOpen}
               onSplitViewChange={setSplitViewOpen}
             />
-          ) : null}
+          )}
         </div>
       </div>
       <CommandPalette

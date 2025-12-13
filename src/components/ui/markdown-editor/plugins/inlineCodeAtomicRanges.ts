@@ -13,6 +13,9 @@ export const inlineCodeAtomicRanges = EditorView.atomicRanges.of((view) => {
 
   syntaxTree(view.state).iterate({
     enter: (node) => {
+      // Add null check for node
+      if (!node || !node.from || !node.to) return;
+
       if (node.name === 'InlineCode') {
         const line = view.state.doc.lineAt(node.from);
         const cursorOnSameLine = cursorPos >= line.from && cursorPos <= line.to;

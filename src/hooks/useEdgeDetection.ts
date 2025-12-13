@@ -29,7 +29,6 @@ interface UseEdgeDetectionProps {
   sidebarMode: 'floating' | 'pinned';
   sidebarVisible: boolean;
   activeRibbonTab: SidebarTab;
-  isFullPageRoute: boolean;
   setSidebarVisible: (visible: boolean) => void;
 }
 
@@ -42,7 +41,6 @@ export const useEdgeDetection = ({
   sidebarMode,
   sidebarVisible,
   activeRibbonTab,
-  isFullPageRoute,
   setSidebarVisible,
 }: UseEdgeDetectionProps): UseEdgeDetectionReturn => {
   const hideTimerRef = useRef<number | null>(null);
@@ -52,16 +50,14 @@ export const useEdgeDetection = ({
   const stateRef = useRef({
     sidebarVisible,
     sidebarMode,
-    isFullPageRoute,
   });
 
   useEffect(() => {
     stateRef.current = {
       sidebarVisible,
       sidebarMode,
-      isFullPageRoute,
     };
-  }, [sidebarVisible, sidebarMode, isFullPageRoute]);
+  }, [sidebarVisible, sidebarMode]);
 
   const clearShowTimer = useCallback(() => {
     if (showTimerRef.current !== null) {
@@ -109,7 +105,7 @@ export const useEdgeDetection = ({
 
   // MAIN EFFECT: Hold-based edge detection
   useEffect(() => {
-    if (sidebarMode !== 'floating' || isFullPageRoute) return;
+    if (sidebarMode !== 'floating') return;
 
     const handlePointerMove = (e: PointerEvent) => {
       const currentX = e.clientX;
@@ -172,7 +168,6 @@ export const useEdgeDetection = ({
     };
   }, [
     sidebarMode,
-    isFullPageRoute,
     setShowTimer,
     clearShowTimer,
     setSidebarVisible,
