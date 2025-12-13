@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertCircle, Book, Edit, Palette } from 'lucide-react';
+import { listen } from '@tauri-apps/api/event';
 import Tooltip from '@/components/common/Tooltip';
 import { noteService, documentService, type Note } from '@/services';
+import { smartCaptureService } from '@/services/smartCapture';
 import { useToast } from '@/contexts/ToastContext';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { MarkdownToolbar } from '@/components/ui/MarkdownToolbar';
 import { useEditorInsert } from '@/hooks/useEditorInsert';
 import NoteAutocomplete from './NoteAutocomplete';
+import SmartCaptureCard from '@/components/smartcapture/SmartCaptureCard';
+import type { ClipboardContent } from '@/types';
 import './markdown.css';
 
 interface NoteEditorProps {
@@ -37,10 +41,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [readingMode, setReadingMode] = useState(false);
   const [toolbarClosing, setToolbarClosing] = useState(false);
 
+  // Smart capture state
+  const [latestClipboard, setLatestClipboard] = useState<ClipboardContent | null>(null);
+  const [showSmartCapture, setShowSmartCapture] = useState(false);
+  const [captureCardDismissing, setCaptureCardDismissing] = useState(false);
+
   // Refs
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hasAutoFocusedRef = useRef(false);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Editor insert hook for toolbar
   const { editorViewRef, handleInsert } = useEditorInsert();
@@ -268,6 +278,39 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     autoSave(title, newContent, false); // Content changed, title same
   };
 
+  // Smart capture: dismiss card
+  const dismissSmartCapture = useCallback(() => {
+    setCaptureCardDismissing(true);
+    setTimeout(() => {
+      setShowSmartCapture(false);
+      setCaptureCardDismissing(false);
+      setLatestClipboard(null);
+    }, 400);
+  }, []);
+
+  // Smart capture: insert content
+  const handleInsertClipboard = useCallback(() => {
+    if (!latestClipboard) return;
+
+    let formattedContent = latestClipboard.content;
+    if (latestClipboard.content_type === 'Code') {
+      formattedContent = `\`\`\`\n${formattedContent}\n\`\`\``;
+    } else if (latestClipboard.content_type === 'Url') {
+      formattedContent = `[${formattedContent}](${formattedContent})`;
+    }
+
+    if (latestClipboard.context) {
+      const { app_name, window_title } = latestClipboard.context;
+      const tags = smartCaptureService.generateTags(latestClipboard.context);
+      const contextLine = `\n> Captured from **${app_name}** - ${window_title}${tags.length > 0 ? ' ' + tags.join(' ') : ''}\n\n`;
+      formattedContent = contextLine + formattedContent;
+    }
+
+    setContent(content.trim() ? content + '\n' + formattedContent : formattedContent);
+    setReadingMode(false); // Switch to edit mode
+    dismissSmartCapture();
+  }, [latestClipboard, content, dismissSmartCapture]);
+
 
 
   // Cleanup timeout on unmount
@@ -279,6 +322,47 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     };
   }, []);
 
+  // Cancel dismiss timer (for expand)
+  const cancelDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = undefined;
+    }
+  }, []);
+
+  // Restart dismiss timer (for collapse)
+  const restartDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+    }
+    dismissTimerRef.current = setTimeout(() => dismissSmartCapture(), 10000);
+  }, [dismissSmartCapture]);
+
+  // Listen for clipboard changes
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      unlisten = await listen<ClipboardContent>('clipboard-changed', (event) => {
+        if (event.payload.context?.app_name.toLowerCase().includes('neutrino')) return;
+
+        if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+
+        setLatestClipboard(event.payload);
+        setShowSmartCapture(true);
+        setCaptureCardDismissing(false);
+
+        dismissTimerRef.current = setTimeout(() => dismissSmartCapture(), 10000);
+      });
+    };
+
+    setupListener();
+    return () => {
+      if (unlisten) unlisten();
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    };
+  }, [dismissSmartCapture]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -288,7 +372,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ position: 'relative' }}>
       {/* Header */}
       <div
         className="flex items-center justify-end gap-2 px-3 py-1.5 border-b"
@@ -450,7 +534,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
           {/* Editor - No shadow, no toolbar */}
           <div className="flex-1 px-8 pb-8 overflow-hidden">
-            <div className="h-full rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div
+              className="h-full rounded-lg overflow-hidden"
+              style={{ backgroundColor: 'var(--bg-secondary)' }}
+              onFocus={() => {
+                if (showSmartCapture) dismissSmartCapture();
+              }}
+            >
               <MarkdownEditor
                 content={content}
                 onChange={handleContentChange}
@@ -491,6 +581,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           }
         }
       `}</style>
+
+      {/* Smart Capture Card */}
+      {showSmartCapture && latestClipboard && (
+        <SmartCaptureCard
+          clipboardData={latestClipboard}
+          onInsert={handleInsertClipboard}
+          onDismiss={dismissSmartCapture}
+          isDismissing={captureCardDismissing}
+          onExpand={cancelDismissTimer}
+          onCollapse={restartDismissTimer}
+        />
+      )}
     </div>
   );
 };

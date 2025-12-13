@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -29,6 +29,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const editableCompartment = useRef(new Compartment());
   const isInternalUpdate = useRef(false);
   const onChangeRef = useRef(onChange);
   const pendingContent = useRef<string | null>(null);
@@ -51,7 +52,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       keymap.of([...blockKeymap, ...listKeymap, ...defaultKeymap, ...historyKeymap]),
       highlightingExtension,
       livePreviewPlugin,
-      EditorView.editable.of(!readOnly),
+      editableCompartment.current.of(EditorView.editable.of(!readOnly)),
+      EditorView.contentAttributes.of(readOnly ? { tabindex: '-1' } : {}),
       EditorView.updateListener.of((update: ViewUpdate) => {
         if (update.docChanged && !isInternalUpdate.current) {
           const newContent = update.state.doc.toString();
@@ -122,9 +124,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }, [content]);
 
+  // Update editable state when readOnly changes
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    // Reconfigure editable state using compartment
+    view.dispatch({
+      effects: editableCompartment.current.reconfigure(EditorView.editable.of(!readOnly))
+    });
+
+    // Force rebuild decorations by triggering selection update
+    view.dispatch({
+      selection: view.state.selection
+    });
+  }, [readOnly]);
+
   return (
     <div
       ref={editorRef}
+      className={readOnly ? 'reading-mode' : ''}
       style={{
         height: '100%',
         overflow: 'auto',

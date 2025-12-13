@@ -26,6 +26,9 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
       const cursorPos = view.state.selection.main.head;
       const doc = view.state.doc;
 
+      // Check if in reading mode (parent has reading-mode class)
+      const isReadingMode = (view.dom.parentElement?.classList.contains('reading-mode')) || false;
+
       // Process each line for block-level decorations
       for (let pos = 0; pos < doc.length;) {
         const line = doc.lineAt(pos);
@@ -39,7 +42,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
           const checkboxPos = line.from + taskMatch[1].length;
           const matchEnd = checkboxPos + taskMatch[0].length - taskMatch[1].length;
 
-          if (!cursorInLine) {
+          if (!cursorInLine || isReadingMode) {
             decorations.push(
               Decoration.replace({
                 widget: new CheckboxWidget(checked, line.from, view),
@@ -52,7 +55,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
         // Bullet lists: hide - and show • (with or without space/content)
         else if (text.match(/^(\s*)[*-](\s|$)/) && !text.match(/^-{3,}/)) {
           const bulletMatch = text.match(/^(\s*)[*-](\s|$)/);
-          if (bulletMatch && !cursorInLine) {
+          if (bulletMatch && (!cursorInLine || isReadingMode)) {
             const bulletStart = line.from + bulletMatch[1].length;
             decorations.push(Decoration.replace({}).range(bulletStart, bulletStart + 1));
             decorations.push(
@@ -72,7 +75,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
         }
         // Horizontal rule: ---
         else if (text.match(/^-{3,}$/)) {
-          if (!cursorInLine) {
+          if (!cursorInLine || isReadingMode) {
             // Hide the --- text
             decorations.push(Decoration.replace({}).range(line.from, line.to));
             // Add line decoration for styling
@@ -105,7 +108,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
               const sizes = ['2em', '1.5em', '1.25em', '1.1em', '1em', '0.875em'];
               const line = view.state.doc.lineAt(node.from);
 
-              if (!cursorInNode) {
+              if (!cursorInNode || isReadingMode) {
                 // Preview: hide hash marks
                 decorations.push(Decoration.replace({}).range(node.from, node.from + match[1].length + 1));
               } else {
@@ -128,8 +131,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
             }
           }
 
-          // Skip other elements if cursor is in them (show raw syntax)
-          if (cursorInNode) {
+          // Skip other elements if cursor is in them (show raw syntax) - unless in reading mode
+          if (cursorInNode && !isReadingMode) {
             // Only skip elements that should show raw markdown
             // Keep styling for: headings, code blocks, inline code, blockquotes
             if (node.name !== 'ATXHeading1' && node.name !== 'ATXHeading2' &&
@@ -168,8 +171,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
             const line = view.state.doc.lineAt(node.from);
             const cursorOnSameLine = cursorPos >= line.from && cursorPos <= line.to;
 
-            if (!cursorOnSameLine) {
-              // Cursor on different line: hide backticks completely
+            if (!cursorOnSameLine || isReadingMode) {
+              // Cursor on different line or reading mode: hide backticks completely
               decorations.push(Decoration.replace({}).range(node.from, node.from + 1));
               decorations.push(Decoration.replace({}).range(node.to - 1, node.to));
 
@@ -209,8 +212,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
             if (imageMatch) {
               const [, alt, src] = imageMatch;
 
-              if (!cursorInNode) {
-                // Preview mode: replace with image widget
+              if (!cursorInNode || isReadingMode) {
+                // Preview mode or reading mode: replace with image widget
                 decorations.push(
                   Decoration.replace({
                     widget: new ImageWidget(alt, src)
@@ -236,7 +239,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
               const lastLine = doc.lineAt(node.to);
 
               // Check if cursor is in code block
-              const inEditMode = cursorInNode;
+              const inEditMode = cursorInNode && !isReadingMode;
 
               // Collect all lines
               const allLines = [];
@@ -314,8 +317,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
               const cursorInQuoteLine = cursorPos >= line.from && cursorPos <= line.to;
               const match = lineText.match(/^>\s?/);
 
-              if (match && !cursorInQuoteLine) {
-                // Preview mode: hide > marks and style
+              if (match && (!cursorInQuoteLine || isReadingMode)) {
+                // Preview mode or reading mode: hide > marks and style
                 decorations.push(Decoration.replace({}).range(line.from, line.from + match[0].length));
                 decorations.push(
                   Decoration.line({
