@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { documentService, highlightService } from '@/services';
+import { tabPositionTracker } from '@/services/tabPositionTracker';
 import type { Document, Highlight, HighlightPosition } from '@/types';
 import { usePDFCache } from '@/contexts';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
@@ -32,10 +33,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 interface PDFViewerProps {
   documentId: string;
+  tabId: string; // Tab ID for position tracking
   initialPage?: number; // Optional - which page to open (from wiki links)
+  initialScrollPosition?: number; // Optional - scroll position to restore
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
+const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, initialScrollPosition }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -181,6 +184,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
 
       setDocument(doc);
 
+      // Dispatch document open event
+      window.dispatchEvent(new CustomEvent('pdf:document-open', {
+        detail: { documentId: doc.id, title: doc.title }
+      }));
+
       // 2. Check cache
       const cachedPdf = getCachedDocument(documentId);
       if (cachedPdf) {
@@ -196,6 +204,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
         setCurrentPage(startPage);
         setLoading(false);
         setNeedsRender(true);
+
+        // Track initial position
+        if (tabId) {
+          tabPositionTracker.updatePosition(tabId, {
+            currentPage: startPage,
+          });
+        }
+
+        // Dispatch page change event for initial page
+        window.dispatchEvent(new CustomEvent('pdf:page-change', {
+          detail: {
+            documentId,
+            pageNumber: startPage,
+            documentTitle: doc.title
+          }
+        }));
         return;
       }
 
@@ -242,12 +266,28 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
       setCurrentPage(startPage);
       setLoading(false);
       setNeedsRender(true);
+
+      // Track initial position
+      if (tabId) {
+        tabPositionTracker.updatePosition(tabId, {
+          currentPage: startPage,
+        });
+      }
+
+      // Dispatch page change event for initial page
+      window.dispatchEvent(new CustomEvent('pdf:page-change', {
+        detail: {
+          documentId,
+          pageNumber: startPage,
+          documentTitle: doc.title
+        }
+      }));
     } catch (err) {
       console.error('Failed to load PDF:', err);
       setError(err instanceof Error ? err.message : 'Failed to load PDF');
       setLoading(false);
     }
-  }, [documentId, getCachedDocument, cacheDocument, detectServerPort]);
+  }, [documentId, getCachedDocument, cacheDocument, detectServerPort, tabId, initialPage]);
 
   useEffect(() => {
     if (!documentId) {
@@ -279,8 +319,26 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
     if (pageNum >= 1 && pageNum <= totalPages && pdfDocRef.current) {
       setCurrentPage(pageNum);
       setNeedsRender(true);
+
+      // Track position immediately
+      if (tabId) {
+        tabPositionTracker.updatePosition(tabId, {
+          currentPage: pageNum,
+        });
+      }
+
+      // Dispatch page change event for context tracking
+      if (document) {
+        window.dispatchEvent(new CustomEvent('pdf:page-change', {
+          detail: {
+            documentId: document.id,
+            pageNumber: pageNum,
+            documentTitle: document.title
+          }
+        }));
+      }
     }
-  }, [totalPages]);
+  }, [totalPages, tabId, document]);
 
   const goToPreviousPage = useCallback(() => {
     if (currentPage > 1) {
@@ -383,6 +441,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
 
       // Add to current highlights
       setHighlights((prev) => [...prev, newHighlight]);
+
+      // Dispatch event for context snapshot tracking
+      window.dispatchEvent(new CustomEvent('highlight-created', {
+        detail: {
+          highlightId: newHighlight.id,
+          documentId,
+          pageNumber: currentPage,
+          content: newHighlight.content
+        }
+      }));
     } catch (err) {
       console.error('Failed to create highlight:', err);
     }
@@ -517,6 +585,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, initialPage }) => {
 
     return () => clearTimeout(timer);
   }, [documentId, currentPage]);
+
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (!initialScrollPosition || !containerRef.current) return;
+
+    const scrollHeight = containerRef.current.scrollHeight;
+    const scrollTop = initialScrollPosition * scrollHeight;
+    containerRef.current.scrollTop = scrollTop;
+  }, [initialScrollPosition]);
 
   if (loading) {
     return (

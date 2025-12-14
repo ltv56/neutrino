@@ -81,3 +81,17 @@ pub async fn delete_highlight(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn get_recent_highlights_by_session(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    limit: i64,
+) -> Result<Vec<models::ReadingEvent>, String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+
+    database.reading_events()
+        .get_recent_by_session(uuid, "highlight", limit)
+        .await
+        .map_err(|e| e.to_string())
+}

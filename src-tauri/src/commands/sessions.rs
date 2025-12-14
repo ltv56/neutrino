@@ -39,3 +39,41 @@ pub async fn update_research_session(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn update_session_phase(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    phase: String,
+) -> Result<(), String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    database.sessions()
+        .update_phase(uuid, phase)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn save_context_snapshot(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    snapshot: models::ContextSnapshot,
+) -> Result<(), String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    database.sessions()
+        .save_context_snapshot(uuid, &snapshot)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_context_snapshot(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+) -> Result<Option<models::ContextSnapshot>, String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    database.sessions()
+        .get_context_snapshot(uuid)
+        .await
+        .map_err(|e| e.to_string())
+}

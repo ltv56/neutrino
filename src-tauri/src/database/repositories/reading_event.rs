@@ -133,6 +133,36 @@ impl ReadingEventRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    pub async fn get_recent_by_session(
+        &self,
+        session_id: Uuid,
+        event_type: &str,
+        limit: i64,
+    ) -> DbResult<Vec<ReadingEvent>> {
+        let session_id_str = session_id.to_string();
+
+        let rows = sqlx::query_as!(
+            ReadingEventRow,
+            r#"
+            SELECT DISTINCT re.id, re.document_id, re.event_type, re.page_number,
+                   re.position_data, re.content, re.note, re.metadata,
+                   re.created_at, re.updated_at
+            FROM reading_events re
+            INNER JOIN session_documents sd ON re.document_id = sd.document_id
+            WHERE sd.session_id = ? AND re.event_type = ?
+            ORDER BY re.created_at DESC
+            LIMIT ?
+            "#,
+            session_id_str,
+            event_type,
+            limit
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        self.parse_reading_event_rows(rows)
+    }
+
     // Helper to parse SQLite datetime format "YYYY-MM-DD HH:MM:SS" to UTC
     fn parse_sqlite_datetime(&self, datetime_str: &str) -> DbResult<DateTime<Utc>> {
         use chrono::NaiveDateTime;

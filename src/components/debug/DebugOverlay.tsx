@@ -7,15 +7,19 @@ import VaultArchitectureTest from './VaultArchitectureTest';
 import FTSDebug from './FTSDebug';
 import ContextMonitorDebug from './ContextMonitorDebug';
 import ClipboardDebug from './ClipboardDebug';
+import GeminiDebug from './GeminiDebug';
+import TimeTrackingDebug from './TimeTrackingDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | 'ai' | 'time' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeOption, setActiveOption] = useState<DebugOption>(null);
 
   const debugOptions = [
+    { id: 'time' as const, label: '⏱️ Time Track', description: 'Reading time tracking' },
+    { id: 'ai' as const, label: '🧠 Gemini AI', description: 'Test AI connection' },
     { id: 'context' as const, label: '🎯 Context', description: 'Window context tracking' },
     { id: 'clipboard' as const, label: '📋 Clipboard', description: 'Clipboard monitoring' },
     { id: 'fts' as const, label: '🔎 FTS', description: 'Full-text search' },
@@ -28,6 +32,10 @@ const DebugOverlay = () => {
 
   const renderActiveOption = () => {
     switch (activeOption) {
+      case 'time':
+        return <TimeTrackingDebug />;
+      case 'ai':
+        return <GeminiDebug />;
       case 'database':
         return <DatabaseTest />;
       case 'integrity':
@@ -109,7 +117,9 @@ const DebugOverlay = () => {
               </button>
             </div>
 
-            {renderActiveOption()}
+            <div className="p-4">
+              {renderActiveOption()}
+            </div>
           </div>
         </div>
       )}

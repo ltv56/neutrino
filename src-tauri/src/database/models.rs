@@ -149,3 +149,85 @@ pub struct ConceptLink {
     pub confidence: f32, // AI confidence score
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastDocumentInfo {
+    pub document_id: String,
+    pub document_title: String,
+    pub page_number: i32,
+    pub scroll_position: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastHighlightInfo {
+    pub id: String,
+    pub content: String,
+    pub note: Option<String>,
+    pub page_number: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LastNoteInfo {
+    pub id: String,
+    pub title: String,
+    pub content_preview: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OpenNoteInfo {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ReadingBehavior {
+    pub total_reading_time_ms: i64,
+    pub current_document_time_ms: Option<i64>,
+    pub current_page_time_ms: Option<i64>,
+    pub page_changes_count: i32,
+    pub avg_time_per_page_ms: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StruggleSignals {
+    pub highlights_without_notes: i32,
+    pub slow_progress: bool,
+    pub rapid_highlighting: bool,
+    pub re_reading_detected: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SessionStatistics {
+    pub documents_opened_count: i32,
+    pub highlights_created_count: i32,
+    pub notes_created_count: i32,
+    pub highlight_note_ratio: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AIInsights {
+    pub generated_at: String,
+    pub summary: Option<String>,
+    pub struggle_areas: Option<Vec<String>>,
+    pub suggestions: Option<Vec<String>>,
+    pub learning_pattern: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContextSnapshot {
+    pub timestamp: DateTime<Utc>,
+    pub active_session_id: Option<String>,
+    pub session_goal: Option<String>,
+    pub last_document: Option<LastDocumentInfo>,
+    pub last_highlight: Option<LastHighlightInfo>,
+    pub last_note: Option<LastNoteInfo>,
+    pub research_questions: Option<Vec<String>>,
+    pub open_documents: Option<Vec<String>>,
+    pub open_notes: Option<Vec<OpenNoteInfo>>,
+    pub reading_behavior: Option<ReadingBehavior>,
+    pub struggle_signals: Option<StruggleSignals>,
+    pub session_statistics: Option<SessionStatistics>,
+    pub ai_insights: Option<AIInsights>,
+}

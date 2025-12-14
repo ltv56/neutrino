@@ -4,3 +4,4 @@ export * from './database';
 export * from './pdf';
 export * from './highlight';
 export * from './smartcapture';
+export * from './context';

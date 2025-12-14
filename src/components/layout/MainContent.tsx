@@ -31,7 +31,9 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
         }>
           <PDFViewer
             documentId={activeTab.documentId}
+            tabId={activeTab.id}
             initialPage={activeTab.page || 1}
+            initialScrollPosition={activeTab.scrollPosition}
           />
         </Suspense>
       );
@@ -42,6 +44,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
       return (
         <NoteEditor
           noteId={activeTab.noteId}
+          tabId={activeTab.id}
           sessionId={currentSession?.id}
           onClose={() => {}} // User can close via TabBar X button
           onSave={(noteId) => {

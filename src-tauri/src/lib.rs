@@ -253,6 +253,8 @@ pub fn run() {
             commands::get_research_sessions,
             commands::delete_research_session,
             commands::update_research_session,
+            commands::save_context_snapshot,
+            commands::get_context_snapshot,
 
             // ========== Document Management ==========
             commands::create_document,
@@ -285,6 +287,7 @@ pub fn run() {
             commands::get_highlights_by_document,
             commands::update_highlight_note,
             commands::delete_highlight,
+            commands::get_recent_highlights_by_session,
 
             // ========== Note Management ==========
             commands::create_note,
@@ -304,10 +307,28 @@ pub fn run() {
             commands::vacuum_database,
             commands::get_fts_debug_info,
             commands::rebuild_fts_index,
+
+            // ========== AI Integration ==========
+            commands::call_gemini_api,
+            commands::test_gemini_connection,
         ])
         .setup(|app| {
             let setup_start = std::time::Instant::now();
             println!("[Setup] Starting...");
+
+            // Load .env file for environment variables (like GEMINI_API_KEY)
+            // Try src-tauri/.env first (production/secure), then fallback to root .env (dev)
+            let env_path = std::path::Path::new("src-tauri/.env");
+            if env_path.exists() {
+                match dotenvy::from_path(env_path) {
+                    Ok(_) => println!("[Setup] .env file loaded from src-tauri/.env"),
+                    Err(e) => println!("[Setup] Warning: Could not load src-tauri/.env: {}", e),
+                }
+            } else if let Err(e) = dotenvy::dotenv() {
+                println!("[Setup] Warning: Could not load .env file: {}", e);
+            } else {
+                println!("[Setup] .env file loaded from root");
+            }
 
             println!("[Vite] Building UI...");
 

@@ -8,3 +8,6 @@ export { useTitleBarDrag } from './useTitleBarDrag';
 
 // Sessions
 export * from './sessions';
+
+// Tab State Persistence
+export { useTabStatePersistence } from './useTabStatePersistence';

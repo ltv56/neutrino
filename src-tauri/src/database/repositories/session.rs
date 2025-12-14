@@ -194,6 +194,55 @@ impl SessionRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    pub async fn save_context_snapshot(&self, id: Uuid, snapshot: &crate::database::models::ContextSnapshot) -> DbResult<()> {
+        let now_str = chrono::Utc::now().to_rfc3339();
+        let id_str = id.to_string();
+        let snapshot_json = serde_json::to_string(snapshot)
+            .map_err(|e| DatabaseError::InternalError {
+                message: format!("Failed to serialize context snapshot: {}", e),
+            })?;
+
+        let result = sqlx::query!(
+            "UPDATE research_sessions SET context_state = ?, updated_at = ? WHERE id = ?",
+            snapshot_json,
+            now_str,
+            id_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::SessionNotFound { id: id.to_string() });
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_context_snapshot(&self, id: Uuid) -> DbResult<Option<crate::database::models::ContextSnapshot>> {
+        let id_str = id.to_string();
+        let row = sqlx::query!(
+            "SELECT context_state FROM research_sessions WHERE id = ?",
+            id_str
+        )
+        .fetch_optional(&*self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let Some(context_state) = row.context_state else {
+            return Ok(None);
+        };
+
+        let snapshot = serde_json::from_str(&context_state)
+            .map_err(|e| DatabaseError::InternalError {
+                message: format!("Failed to deserialize context snapshot: {}", e),
+            })?;
+
+        Ok(Some(snapshot))
+    }
+
     // Helper methods
     fn parse_uuid(&self, uuid_str: &str) -> DbResult<Uuid> {
         Uuid::parse_str(uuid_str).map_err(|_e| DatabaseError::InvalidUuid {
