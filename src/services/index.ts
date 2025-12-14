@@ -9,6 +9,8 @@ export * from './context';
 export * from './readingBehaviorTracker';
 export * from './geminiAI';
 export * from './autoContextCapture';
+export * from './phaseDetection';
+export * from './phasePersistence';
 
 // Re-export for convenience
 export { sessionService } from './sessions';
@@ -22,3 +24,6 @@ export { contextService } from './context';
 export { readingBehaviorTracker } from './readingBehaviorTracker';
 export { geminiAIService } from './geminiAI';
 export { autoContextCapture } from './autoContextCapture';
+export { phaseDetectionService } from './phaseDetection';
+export { phasePersistenceService } from './phasePersistence';
+

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ContextSnapshot, ReadingBehavior, StruggleSignals, SessionStatistics } from '@/types';
+import type { ContextSnapshot, ReadingBehavior, StruggleSignals, SessionStatistics, PhaseDetectionResult } from '@/types';
 
 export const contextService = {
   async saveSnapshot(
@@ -39,6 +39,7 @@ export const contextService = {
     readingBehavior?: ReadingBehavior;
     struggleSignals?: StruggleSignals;
     sessionStatistics?: SessionStatistics;
+    researchPhase?: PhaseDetectionResult;
   }): ContextSnapshot {
     const snapshot: ContextSnapshot = {
       timestamp: new Date().toISOString(),
@@ -100,6 +101,10 @@ export const contextService = {
 
     if (params.sessionStatistics) {
       snapshot.session_statistics = params.sessionStatistics;
+    }
+
+    if (params.researchPhase) {
+      snapshot.research_phase = params.researchPhase;
     }
 
     return snapshot;

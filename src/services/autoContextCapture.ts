@@ -3,6 +3,7 @@ import { geminiAIService } from './geminiAI';
 import { highlightService } from './highlights';
 import { noteService } from './notes';
 import { readingBehaviorTracker } from './readingBehaviorTracker';
+import { phaseDetectionService } from './phaseDetection';
 import type { ContextSnapshot } from '@/types';
 
 export const autoContextCapture = {
@@ -32,6 +33,18 @@ export const autoContextCapture = {
       // Get behavior data
       const behaviorData = readingBehaviorTracker.getSnapshot();
 
+      // Detect research phase (with idle detection)
+      const phaseDetection = phaseDetectionService.detectPhase(
+        behaviorData.reading_behavior,
+        behaviorData.struggle_signals,
+        behaviorData.session_statistics,
+        behaviorData.is_paused // Pass idle state
+      );
+      console.log('[AutoCapture] Phase detected:', phaseDetection.phase,
+        `(${Math.round(phaseDetection.confidence * 100)}% confidence)`,
+        '- Reasoning:', phaseDetection.reasoning,
+        '- Idle:', behaviorData.is_paused);
+
       // Build snapshot
       const snapshot = contextService.buildSnapshot({
         activeSessionId: sessionId,
@@ -39,6 +52,7 @@ export const autoContextCapture = {
         readingBehavior: behaviorData.reading_behavior,
         struggleSignals: behaviorData.struggle_signals,
         sessionStatistics: behaviorData.session_statistics,
+        researchPhase: phaseDetection,
         lastHighlight: lastHighlight ? {
           id: lastHighlight.id,
           content: lastHighlight.content || '',

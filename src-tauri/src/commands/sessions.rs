@@ -41,6 +41,19 @@ pub async fn update_research_session(
 }
 
 #[tauri::command]
+pub async fn update_session_phase(
+    database: tauri::State<'_, Database>,
+    session_id: String,
+    phase: String,
+) -> Result<(), String> {
+    let uuid = uuid::Uuid::parse_str(&session_id).map_err(|e| e.to_string())?;
+    database.sessions()
+        .update_phase(uuid, phase)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn save_context_snapshot(
     database: tauri::State<'_, Database>,
     session_id: String,

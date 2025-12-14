@@ -56,6 +56,15 @@ export interface AIInsights {
   learning_pattern?: string; // Detected learning style
 }
 
+export type ResearchPhase = 'exploration' | 'deep-dive' | 'synthesis' | 'validation';
+
+export interface PhaseDetectionResult {
+  phase: ResearchPhase;
+  confidence: number; // 0-1
+  reasoning: string; // Brief explanation of why this phase was detected
+  detected_at: string; // ISO timestamp
+}
+
 export interface ContextSnapshot {
   timestamp: string;
   active_session_id: string | null;
@@ -74,4 +83,5 @@ export interface ContextSnapshot {
   struggle_signals?: StruggleSignals;
   session_statistics?: SessionStatistics;
   ai_insights?: AIInsights;
+  research_phase?: PhaseDetectionResult;
 }

@@ -44,6 +44,9 @@ export class ReadingBehaviorTracker {
   private lastActivityTime: number;
   private idleThresholdMs = 30 * 1000; // 30 seconds idle = pause
 
+  // Callback for behavior changes (used by PhasePersistenceService)
+  private onBehaviorChangeCallback?: () => void;
+
   constructor() {
     this.sessionStartTime = Date.now();
     this.lastActivityTime = Date.now();
@@ -56,7 +59,13 @@ export class ReadingBehaviorTracker {
     if (typeof window === 'undefined') return;
 
     // Track user activity (mouse, keyboard, scroll)
+    // ONLY track when window is focused
     const recordActivity = () => {
+      // Critical: Only count activity when window has focus
+      if (!document.hasFocus()) {
+        return; // Ignore activity when app is not focused
+      }
+
       this.lastActivityTime = Date.now();
       if (this.isPaused) {
         this.resume();
@@ -156,12 +165,7 @@ export class ReadingBehaviorTracker {
           startPausedTime: this.totalPausedTime,
         });
         this.documentsOpenedCount++;
-        console.log(`[ReadingBehavior] Started tracking document: ${documentId}`);
-      } else {
-        console.log(`[ReadingBehavior] Resumed tracking document: ${documentId}`);
       }
-    } else {
-      console.log('[ReadingBehavior] No active document (switched to non-document tab)');
     }
   }
 
@@ -206,6 +210,9 @@ export class ReadingBehaviorTracker {
       pageNumber,
       startTime: this.currentPageStartTime,
     });
+
+    // Notify behavior change
+    this.notifyBehaviorChange();
   }
 
   // Event tracking
@@ -218,10 +225,26 @@ export class ReadingBehaviorTracker {
     if (hasNote) {
       this.notesCreatedCount++;
     }
+    // Notify behavior change
+    this.notifyBehaviorChange();
   }
 
   recordNote() {
     this.notesCreatedCount++;
+    // Notify behavior change
+    this.notifyBehaviorChange();
+  }
+
+  // Set callback for behavior changes (used by PhasePersistenceService)
+  setOnBehaviorChange(callback: (() => void) | undefined) {
+    this.onBehaviorChangeCallback = callback;
+  }
+
+  // Notify behavior change callback
+  private notifyBehaviorChange() {
+    if (this.onBehaviorChangeCallback) {
+      this.onBehaviorChangeCallback();
+    }
   }
 
   // Analysis methods
@@ -247,10 +270,10 @@ export class ReadingBehaviorTracker {
     const avgTimePerPage =
       completedVisits.length > 0
         ? completedVisits.reduce((sum, v) => {
-            // Calculate active time for each page visit
-            const pageActiveTime = v.endTime! - v.startTime;
-            return sum + pageActiveTime;
-          }, 0) / completedVisits.length
+          // Calculate active time for each page visit
+          const pageActiveTime = v.endTime! - v.startTime;
+          return sum + pageActiveTime;
+        }, 0) / completedVisits.length
         : undefined;
 
     return {
@@ -315,6 +338,7 @@ export class ReadingBehaviorTracker {
       reading_behavior: this.getReadingBehavior(),
       struggle_signals: this.getStruggleSignals(),
       session_statistics: this.getSessionStatistics(),
+      is_paused: this.isPaused, // For phase detection idle handling
     };
   }
 
