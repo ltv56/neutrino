@@ -1,18 +1,35 @@
 import { useState, useEffect } from 'react';
-import { readingBehaviorTracker } from '@/services';
+import { readingBehaviorTracker, phaseDetectionService, phasePersistenceService } from '@/services';
+import type { ResearchPhase } from '@/types';
 
 const TimeTrackingDebug = () => {
   const [metrics, setMetrics] = useState({
+    // Time metrics
     totalTime: 0,
     documentTime: 0,
     pageTime: 0,
-    pageChanges: 0,
     avgTimePerPage: 0,
+    // Activity stats
     documentsOpened: 0,
+    pageChanges: 0,
     highlightsCreated: 0,
     notesCreated: 0,
+    highlightNoteRatio: 0,
+    // Behavior signals
+    reReadingDetected: false,
+    rapidHighlighting: false,
+    slowProgress: false,
+    highlightsWithoutNotes: 0,
+    // Status
     isPaused: false,
   });
+
+  const [phaseDebug, setPhaseDebug] = useState<{
+    currentPhase: ResearchPhase;
+    confidence: number;
+    reasoning: string;
+    scores: { phase: ResearchPhase; score: number; reasons: string[] }[];
+  } | null>(null);
 
   // Update metrics every second
   useEffect(() => {
@@ -20,27 +37,49 @@ const TimeTrackingDebug = () => {
       const snapshot = readingBehaviorTracker.getSnapshot();
       const behavior = snapshot.reading_behavior;
       const stats = snapshot.session_statistics;
+      const signals = snapshot.struggle_signals;
 
       const trackerInternal = readingBehaviorTracker as any;
       const isPaused = trackerInternal.isPaused || false;
 
-      // Debug logging
-      console.log('[TimeDebug] isPaused:', isPaused);
-      console.log('[TimeDebug] totalPausedTime:', trackerInternal.totalPausedTime);
-      console.log('[TimeDebug] lastActivityTime:', trackerInternal.lastActivityTime);
-      console.log('[TimeDebug] timeSinceActivity:', Date.now() - trackerInternal.lastActivityTime);
-      console.log('[TimeDebug] totalTime:', behavior.total_reading_time_ms);
-
       setMetrics({
+        // Time metrics
         totalTime: behavior.total_reading_time_ms,
         documentTime: behavior.current_document_time_ms || 0,
         pageTime: behavior.current_page_time_ms || 0,
-        pageChanges: behavior.page_changes_count,
         avgTimePerPage: behavior.avg_time_per_page_ms || 0,
+        // Activity stats
         documentsOpened: stats.documents_opened_count,
+        pageChanges: behavior.page_changes_count,
         highlightsCreated: stats.highlights_created_count,
         notesCreated: stats.notes_created_count,
+        highlightNoteRatio: stats.highlight_note_ratio || 0,
+        // Behavior signals
+        reReadingDetected: signals.re_reading_detected,
+        rapidHighlighting: signals.rapid_highlighting,
+        slowProgress: signals.slow_progress,
+        highlightsWithoutNotes: signals.highlights_without_notes,
+        // Status
         isPaused: isPaused,
+      });
+
+      // Calculate phase detection scores
+      const service = phaseDetectionService as any;
+      const scores = [
+        service.scoreExploration(behavior, signals, stats),
+        service.scoreDeepDive(behavior, signals, stats),
+        service.scoreSynthesis(behavior, signals, stats),
+        service.scoreValidation(behavior, signals, stats),
+      ];
+
+      // Detect current phase
+      const phaseResult = phaseDetectionService.detectPhase(behavior, signals, stats, isPaused);
+
+      setPhaseDebug({
+        currentPhase: phaseResult.phase,
+        confidence: phaseResult.confidence,
+        reasoning: phaseResult.reasoning,
+        scores: scores.sort((a, b) => b.score - a.score),
       });
     }, 1000);
 
@@ -64,9 +103,7 @@ const TimeTrackingDebug = () => {
   const formatAvgTime = (ms: number) => {
     if (ms === 0) return 'N/A';
     const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
+    if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     return `${minutes}m ${seconds % 60}s`;
   };
@@ -76,138 +113,200 @@ const TimeTrackingDebug = () => {
     console.log('[TimeTracking] Manual reset');
   };
 
-  const handleSimulateActivity = () => {
-    // Trigger activity event
-    window.dispatchEvent(new MouseEvent('mousemove'));
-    console.log('[TimeTracking] Simulated activity');
+  const handleForceSavePhase = async () => {
+    await phasePersistenceService.forceSave();
+    console.log('[TimeTracking] Force saved phase');
+  };
+
+  const phaseEmoji: Record<string, string> = {
+    'exploration': '🔍',
+    'deep-dive': '📖',
+    'synthesis': '✍️',
+    'validation': '✓'
+  };
+
+  const phaseColor: Record<string, string> = {
+    'exploration': 'bg-blue-500',
+    'deep-dive': 'bg-purple-500',
+    'synthesis': 'bg-orange-500',
+    'validation': 'bg-green-500'
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Header with Status */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">⏱️ Time Tracking Debug</h3>
-        <div className="flex items-center gap-2">
-          {metrics.isPaused && (
-            <span className="text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded">
-              ⏸️ PAUSED
-            </span>
-          )}
-          {!metrics.isPaused && (
-            <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded">
-              ▶️ ACTIVE
-            </span>
-          )}
-        </div>
+        <h3 className="font-semibold text-lg">📊 Session Analytics</h3>
+        <span className={`text-xs px-3 py-1 rounded-full font-medium ${metrics.isPaused
+          ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+          : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+          }`}>
+          {metrics.isPaused ? '⏸ Idle' : '▶ Active'}
+        </span>
       </div>
 
-      {/* Time Metrics */}
-      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-2">
-        <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-          ⏲️ Active Time (excludes idle/hidden)
-        </h4>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-blue-600 dark:text-blue-300">Total Session:</span>
-            <div className="font-mono font-medium text-blue-900 dark:text-blue-100">
-              {formatTime(metrics.totalTime)}
+      {/* Current Phase - Prominent Display */}
+      {phaseDebug && (
+        <div className={`p-4 rounded-xl ${phaseColor[phaseDebug.currentPhase]} bg-opacity-10 dark:bg-opacity-20 border border-current border-opacity-20`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{phaseEmoji[phaseDebug.currentPhase]}</span>
+              <div>
+                <div className="font-bold text-lg capitalize">
+                  {phaseDebug.currentPhase.replace('-', ' ')}
+                </div>
+                <div className="text-xs opacity-70">Current Phase</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold">{Math.round(phaseDebug.confidence * 100)}%</div>
+              <div className="text-xs opacity-70">Confidence</div>
             </div>
           </div>
-          <div>
-            <span className="text-blue-600 dark:text-blue-300">Current Document:</span>
-            <div className="font-mono font-medium text-blue-900 dark:text-blue-100">
-              {formatTime(metrics.documentTime)}
-            </div>
-          </div>
-          <div>
-            <span className="text-blue-600 dark:text-blue-300">Current Page:</span>
-            <div className="font-mono font-medium text-blue-900 dark:text-blue-100">
-              {formatTime(metrics.pageTime)}
-            </div>
-          </div>
-          <div>
-            <span className="text-blue-600 dark:text-blue-300">Avg per Page:</span>
-            <div className="font-mono font-medium text-blue-900 dark:text-blue-100">
-              {formatAvgTime(metrics.avgTimePerPage)}
-            </div>
+          {/* Confidence bar */}
+          <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-1.5">
+            <div
+              className={`${phaseColor[phaseDebug.currentPhase]} h-1.5 rounded-full transition-all duration-300`}
+              style={{ width: `${phaseDebug.confidence * 100}%` }}
+            />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Activity Stats */}
-      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg space-y-2">
-        <h4 className="text-sm font-medium text-purple-800 dark:text-purple-200">
-          📊 Activity Stats
-        </h4>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-purple-600 dark:text-purple-300">Documents Opened:</span>
-            <div className="font-mono font-medium text-purple-900 dark:text-purple-100">
-              {metrics.documentsOpened}
+      {/* Metrics Grid - Compact 2 columns */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Time Metrics */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">⏱ Time</div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Session</span>
+              <span className="font-mono text-xs font-medium">{formatTime(metrics.totalTime)}</span>
             </div>
-          </div>
-          <div>
-            <span className="text-purple-600 dark:text-purple-300">Page Changes:</span>
-            <div className="font-mono font-medium text-purple-900 dark:text-purple-100">
-              {metrics.pageChanges}
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Document</span>
+              <span className="font-mono text-xs font-medium">{formatTime(metrics.documentTime)}</span>
             </div>
-          </div>
-          <div>
-            <span className="text-purple-600 dark:text-purple-300">Highlights:</span>
-            <div className="font-mono font-medium text-purple-900 dark:text-purple-100">
-              {metrics.highlightsCreated}
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Page</span>
+              <span className="font-mono text-xs font-medium">{formatTime(metrics.pageTime)}</span>
             </div>
-          </div>
-          <div>
-            <span className="text-purple-600 dark:text-purple-300">Notes:</span>
-            <div className="font-mono font-medium text-purple-900 dark:text-purple-100">
-              {metrics.notesCreated}
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Avg/Page</span>
+              <span className="font-mono text-xs font-medium">{formatAvgTime(metrics.avgTimePerPage)}</span>
             </div>
           </div>
         </div>
+
+        {/* Activity Stats */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">📈 Activity</div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Documents</span>
+              <span className="font-mono text-xs font-medium">{metrics.documentsOpened}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Pages</span>
+              <span className="font-mono text-xs font-medium">{metrics.pageChanges}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Highlights</span>
+              <span className="font-mono text-xs font-medium">{metrics.highlightsCreated}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Notes</span>
+              <span className="font-mono text-xs font-medium">{metrics.notesCreated}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Test Instructions */}
-      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <h4 className="text-sm font-medium mb-2">🧪 How to Test:</h4>
-        <ol className="text-xs space-y-1 text-gray-700 dark:text-gray-300">
-          <li>1. ⏱️ Watch timers update every second (only when active)</li>
-          <li>2. 🐭 Stop moving mouse for 30s → Should see "⏸️ PAUSED"</li>
-          <li>3. 👆 Move mouse → Should resume to "▶️ ACTIVE"</li>
-          <li>4. 🪟 Switch to another app (Cmd+Tab) → Should pause</li>
-          <li>5. 🔙 Switch back → Should resume</li>
-          <li>6. 📄 Change page → "Current Page" resets</li>
-          <li>7. 📊 Check console logs for pause/resume events</li>
-        </ol>
+      {/* Behavior Signals - Compact Tags */}
+      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+        <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">🧠 Behavior Signals</div>
+        <div className="flex flex-wrap gap-2">
+          <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.reReadingDetected
+            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            }`}>
+            🔄 Re-reading {metrics.reReadingDetected ? '✓' : '✗'}
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.rapidHighlighting
+            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            }`}>
+            ⚡ Rapid HL {metrics.rapidHighlighting ? '✓' : '✗'}
+          </span>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.slowProgress
+            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            }`}>
+            🐢 Slow {metrics.slowProgress ? '✓' : '✗'}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+            📝 HL w/o Notes: {metrics.highlightsWithoutNotes}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+            📊 Note Ratio: {metrics.highlightNoteRatio > 0 ? `${Math.round(metrics.highlightNoteRatio * 100)}%` : 'N/A'}
+          </span>
+        </div>
       </div>
 
-      {/* Manual Controls */}
-      <div className="flex gap-2">
+      {/* Phase Scores - Compact Bars */}
+      {phaseDebug && (
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">🎯 Phase Scores</div>
+          <div className="space-y-2">
+            {phaseDebug.scores.map((scoreData, index) => {
+              const isWinner = scoreData.phase === phaseDebug.currentPhase;
+              const maxScore = Math.max(...phaseDebug.scores.map(s => s.score), 1);
+              const percentage = (scoreData.score / maxScore) * 100;
+
+              return (
+                <div key={scoreData.phase} className="flex items-center gap-2">
+                  <span className="w-16 text-xs truncate">
+                    {phaseEmoji[scoreData.phase]} {scoreData.phase.split('-')[0]}
+                  </span>
+                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${isWinner ? phaseColor[scoreData.phase] : 'bg-slate-400 dark:bg-slate-500'
+                        }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <span className={`w-8 text-right font-mono text-xs ${isWinner ? 'font-bold' : 'text-slate-500'
+                    }`}>
+                    {scoreData.score}
+                  </span>
+                  {index === 0 && <span className="text-xs">🏆</span>}
+                </div>
+              );
+            })}
+          </div>
+          {/* Reasoning */}
+          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <div className="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">
+              💡 {phaseDebug.reasoning}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-2">
         <button
-          onClick={handleSimulateActivity}
-          className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+          onClick={handleForceSavePhase}
+          className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
-          🐭 Simulate Activity (Resume if Paused)
+          💾 Save Phase Now
         </button>
         <button
           onClick={handleReset}
-          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+          className="flex-1 px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
-          🔄 Reset Tracker
+          🔄 Reset
         </button>
-      </div>
-
-      {/* Status Indicators */}
-      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-        <h4 className="text-sm font-medium mb-2 text-green-800 dark:text-green-200">
-          ✅ Accuracy Features
-        </h4>
-        <ul className="text-xs space-y-1 text-green-700 dark:text-green-300">
-          <li>✅ Auto-pause after 30s idle</li>
-          <li>✅ Pause on tab hidden (Cmd+Tab)</li>
-          <li>✅ Pause on window blur</li>
-          <li>✅ Resume on activity detected</li>
-          <li>✅ Excludes all paused time from metrics</li>
-        </ul>
       </div>
     </div>
   );

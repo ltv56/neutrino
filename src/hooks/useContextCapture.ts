@@ -6,6 +6,7 @@ import {
   noteService,
   readingBehaviorTracker,
   geminiAIService,
+  phasePersistenceService,
 } from '@/services';
 
 interface AppState {
@@ -133,24 +134,28 @@ export const useContextCapture = (appState: AppState) => {
     }
   }, [currentSession, appState]);
 
+  // Initialize Phase Persistence Service for offline-first phase saving
+  useEffect(() => {
+    if (currentSession) {
+      phasePersistenceService.init(currentSession.id);
+    }
+
+    return () => {
+      phasePersistenceService.cleanup();
+    };
+  }, [currentSession?.id]);
+
   // Save context on window close/hide
   useEffect(() => {
     const handleBeforeUnload = () => {
-      console.log('[ContextCapture] beforeunload event triggered!');
       captureAndSaveContext();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Also listen for Tauri-specific close event
-    const handleTauriClose = () => {
-      console.log('[ContextCapture] Tauri close event triggered!');
-      captureAndSaveContext();
-    };
-
-    // Expose manual capture for debugging
+    // Expose debug functions
     (window as any).__debugCaptureContext = captureAndSaveContext;
-    console.log('[ContextCapture] Manual capture available: window.__debugCaptureContext()');
+    (window as any).__debugPhasePersistence = phasePersistenceService.getDebugState.bind(phasePersistenceService);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);

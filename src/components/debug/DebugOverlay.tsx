@@ -117,7 +117,9 @@ const DebugOverlay = () => {
               </button>
             </div>
 
-            {renderActiveOption()}
+            <div className="p-4">
+              {renderActiveOption()}
+            </div>
           </div>
         </div>
       )}

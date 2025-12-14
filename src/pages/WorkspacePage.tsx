@@ -4,7 +4,7 @@ import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
 import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { useSessionsContext } from '@/hooks';
-import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture } from '@/services';
+import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture, phasePersistenceService } from '@/services';
 import { tabStateService, type WorkspaceState, type TabState } from '@/services/tabState';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import { useTabStatePersistence } from '@/hooks/useTabStatePersistence';
@@ -80,9 +80,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     let pendingSave: (() => Promise<void>) | null = null;
 
     const updateSnapshotIncremental = async (eventType: string, detail?: any) => {
-      console.log('[ContextSnapshot] Event triggered:', eventType, detail);
       if (!currentSession) {
-        console.log('[ContextSnapshot] No current session, skipping');
         return;
       }
 
@@ -104,10 +102,6 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           let snapshot;
           if (shouldReset || !existingSnapshot) {
             // Reset: create fresh snapshot but PRESERVE AI insights if they exist
-            console.log('[ContextSnapshot] Resetting snapshot, preserving AI insights');
-            console.log('[ContextSnapshot] Existing snapshot has AI insights?', !!existingSnapshot?.ai_insights);
-            console.log('[ContextSnapshot] Existing AI insights:', existingSnapshot?.ai_insights);
-
             snapshot = contextService.buildSnapshot({
               activeSessionId: currentSession.id,
               sessionGoal: currentSession.goal,
@@ -116,13 +110,9 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
             // Preserve AI insights from old snapshot (they don't change with activity)
             if (existingSnapshot?.ai_insights) {
               snapshot.ai_insights = existingSnapshot.ai_insights;
-              console.log('[ContextSnapshot] AI insights preserved!');
-            } else {
-              console.log('[ContextSnapshot] No AI insights to preserve');
             }
           } else {
             // Preserve existing snapshot, will update/add activity below
-            console.log('[ContextSnapshot] Preserving full existing snapshot');
             snapshot = existingSnapshot;
           }
 
@@ -174,6 +164,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
 
     const handleNoteSaved = (event: Event) => {
+      if (!currentSession) return;
       readingBehaviorTracker.recordNote();
       updateSnapshotIncremental('note-saved', (event as CustomEvent).detail);
 
@@ -193,6 +184,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
 
     const handleHighlightCreated = (event: Event) => {
+      if (!currentSession) return;
       const detail = (event as CustomEvent).detail;
       const hasNote = detail?.note && detail.note.length > 0;
       readingBehaviorTracker.recordHighlight(hasNote);
@@ -453,11 +445,10 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     const restoreTabs = async () => {
       const saved = tabStateService.loadState();
       if (!saved || saved.tabs.length === 0) {
-        console.log('[TabRestore] No saved state, starting fresh');
         return;
       }
 
-      console.log('[TabRestore] Restoring workspace state:', saved);
+
 
       try {
         const restoredTabs: Tab[] = [];
@@ -471,7 +462,6 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
               // Restore position data
               tab.page = tabState.currentPage;
               tab.scrollPosition = tabState.scrollPosition;
-              console.log('[TabRestore] Document:', doc.title, 'page:', tab.page);
 
               // Populate tracker immediately so it persists across refreshes
               if (tabState.currentPage) {
@@ -497,7 +487,6 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           setTabs(restoredTabs);
           const activeTab = restoredTabs.find(t => t.id === saved.activeTabId);
           setActiveTabId(activeTab ? saved.activeTabId : restoredTabs[0].id);
-          console.log('[TabRestore] Restored', restoredTabs.length, 'tabs');
         }
       } catch (error) {
         console.error('[TabRestore] Failed to restore tabs:', error);
@@ -524,6 +513,17 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
   }, [currentSession]);
 
+  // Initialize Phase Persistence Service for offline-first phase saving
+  useEffect(() => {
+    if (currentSession) {
+      phasePersistenceService.init(currentSession.id);
+    }
+
+    return () => {
+      phasePersistenceService.cleanup();
+    };
+  }, [currentSession?.id]);
+
   // Load snapshot on mount to show banner with previous activities
   useEffect(() => {
     const loadSnapshot = async () => {
@@ -543,20 +543,13 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
         // Show banner if there's any meaningful context (document, note, or highlight)
         if (snapshot && (snapshot.last_document || snapshot.last_note || snapshot.last_highlight)) {
-          console.log('[WelcomeBanner] ========================================');
-          console.log('[WelcomeBanner] 📋 Loaded context snapshot from previous session');
-          console.log('[WelcomeBanner] Snapshot:', snapshot);
-
+          // Log AI insights for testing
           if (snapshot.ai_insights) {
-            console.log('[WelcomeBanner] 🤖 AI Insights generated at:', snapshot.ai_insights.generated_at);
             console.log('[WelcomeBanner] 📝 Summary:', snapshot.ai_insights.summary);
-            console.log('[WelcomeBanner] ⚠️  Struggle areas:', snapshot.ai_insights.struggle_areas);
+            console.log('[WelcomeBanner] ⚠️ Struggle areas:', snapshot.ai_insights.struggle_areas);
             console.log('[WelcomeBanner] 💡 Suggestions:', snapshot.ai_insights.suggestions);
             console.log('[WelcomeBanner] 🧠 Learning pattern:', snapshot.ai_insights.learning_pattern);
-          } else {
-            console.log('[WelcomeBanner] ℹ️  No AI insights in snapshot');
           }
-          console.log('[WelcomeBanner] ========================================');
 
           setContextSnapshot(snapshot);
           setShowWelcomeBanner(true);
@@ -595,14 +588,14 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
   // Handle continue highlight - open document at highlight page
   const handleContinueHighlight = useCallback(async () => {
-    if (!contextSnapshot?.last_highlight) return;
+    if (!contextSnapshot?.last_highlight || !currentSession) return;
 
     try {
       const { id: highlightId, page_number } = contextSnapshot.last_highlight;
 
-      // Fetch highlight to get document_id
-      const allHighlights = await highlightService.getAll();
-      const highlight = allHighlights.find(h => h.id === highlightId);
+      // Fetch recent highlights for this session to find the one with matching ID
+      const recentHighlights = await highlightService.getRecentBySession(currentSession.id, 100);
+      const highlight = recentHighlights.find((h) => h.id === highlightId);
 
       if (highlight) {
         const doc = await documentService.getById(highlight.document_id);
@@ -624,7 +617,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
     setShowWelcomeBanner(false);
     sessionStorage.setItem('welcomeBannerDismissed', 'true');
-  }, [contextSnapshot, openDocumentTab]);
+  }, [contextSnapshot, currentSession, openDocumentTab]);
 
   // Handle continue note - open last note
   const handleContinueNote = useCallback(async () => {

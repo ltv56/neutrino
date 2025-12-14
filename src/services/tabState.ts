@@ -44,7 +44,7 @@ export const tabStateService = {
       if (!saved) return null;
 
       const state = JSON.parse(saved) as WorkspaceState;
-      console.log('[TabState] Loaded workspace state:', state);
+      console.log('[TabState] Loaded', state.tabs.length, 'tabs');
       return state;
     } catch (error) {
       console.error('[TabState] Failed to load state:', error);

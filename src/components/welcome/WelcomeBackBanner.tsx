@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ContextSnapshot } from '@/types';
 import { X, FileText, ArrowRight, Highlighter, StickyNote, HelpCircle, Brain, AlertCircle, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { phaseDetectionService } from '@/services';
 
 interface WelcomeBackBannerProps {
   snapshot: ContextSnapshot;
@@ -162,6 +163,29 @@ const WelcomeBackBanner: React.FC<WelcomeBackBannerProps> = ({
         </span>
         <span className="text-xs truncate" style={{ color: 'var(--fg-primary)' }}>
           {snapshot.research_questions[0]}
+        </span>
+      </div>
+    );
+  }
+
+  // Phase Detection
+  if (snapshot.research_phase) {
+    const phase = snapshot.research_phase;
+    const phaseEmoji = phaseDetectionService.getPhaseEmoji(phase.phase);
+    const phaseName = phaseDetectionService.getPhaseName(phase.phase);
+    const confidence = Math.round(phase.confidence * 100);
+
+    slides.push(
+      <div key="phase" className="flex items-center gap-1.5 min-w-0 min-h-[20px]">
+        <span className="text-sm shrink-0">{phaseEmoji}</span>
+        <span className="text-xs font-medium shrink-0" style={{ color: 'var(--fg-secondary)' }}>
+          Research Phase:
+        </span>
+        <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
+          {phaseName}
+        </span>
+        <span className="text-xs shrink-0" style={{ color: 'var(--fg-tertiary)' }}>
+          ({confidence}%)
         </span>
       </div>
     );
