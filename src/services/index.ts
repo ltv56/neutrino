@@ -11,6 +11,7 @@ export * from './geminiAI';
 export * from './autoContextCapture';
 export * from './phaseDetection';
 export * from './phasePersistence';
+export * from './documentPositionTracker';
 
 // Re-export for convenience
 export { sessionService } from './sessions';
@@ -26,4 +27,6 @@ export { geminiAIService } from './geminiAI';
 export { autoContextCapture } from './autoContextCapture';
 export { phaseDetectionService } from './phaseDetection';
 export { phasePersistenceService } from './phasePersistence';
+export { documentPositionTracker } from './documentPositionTracker';
+
 

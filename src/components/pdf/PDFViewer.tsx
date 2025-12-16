@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { documentService, highlightService } from '@/services';
+import { documentService, highlightService, documentPositionTracker } from '@/services';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import type { Document, Highlight, HighlightPosition } from '@/types';
 import { usePDFCache } from '@/contexts';
@@ -320,7 +320,12 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       setCurrentPage(pageNum);
       setNeedsRender(true);
 
-      // Track position immediately
+      // Update centralized tracker immediately (single source of truth)
+      if (document) {
+        documentPositionTracker.setPage(document.id, pageNum);
+      }
+
+      // Track position for tab restore
       if (tabId) {
         tabPositionTracker.updatePosition(tabId, {
           currentPage: pageNum,
@@ -677,132 +682,132 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       {/* Fixed Navigation Bar - absolute positioned at bottom */}
       <div className="absolute bottom-0 left-0 right-0 flex justify-center p-3 pointer-events-none">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 pointer-events-auto">
-        {/* Zoom Controls */}
-        <button
-          onClick={zoomOut}
-          disabled={zoomMode === 'manual' && manualZoom <= MIN_ZOOM}
-          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          title="Zoom out (Ctrl -)"
-        >
-          <ZoomOut size={16} />
-        </button>
-
-        {/* Zoom Dropdown */}
-        <div className="relative" ref={zoomDropdownRef}>
+          {/* Zoom Controls */}
           <button
-            onClick={() => setIsZoomDropdownOpen(!isZoomDropdownOpen)}
-            className="w-20 h-6 text-center text-[11px] border rounded bg-background text-foreground border-border hover:bg-tertiary transition-colors cursor-pointer flex items-center justify-center"
+            onClick={zoomOut}
+            disabled={zoomMode === 'manual' && manualZoom <= MIN_ZOOM}
+            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            title="Zoom out (Ctrl -)"
           >
-            {getZoomDisplayText()}
+            <ZoomOut size={16} />
           </button>
 
-          {/* Dropdown Menu (opens upward) */}
-          {isZoomDropdownOpen && (
-            <div
-              className="absolute bottom-full left-0 mb-2 rounded shadow-lg z-50"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border)',
-                minWidth: '120px',
-              }}
+          {/* Zoom Dropdown */}
+          <div className="relative" ref={zoomDropdownRef}>
+            <button
+              onClick={() => setIsZoomDropdownOpen(!isZoomDropdownOpen)}
+              className="w-20 h-6 text-center text-[11px] border rounded bg-background text-foreground border-border hover:bg-tertiary transition-colors cursor-pointer flex items-center justify-center"
             >
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    setZoomMode('fit-page');
-                    setNeedsRender(true);
-                    setIsZoomDropdownOpen(false);
-                  }}
-                  className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
-                  style={{
-                    backgroundColor: zoomMode === 'fit-page' ? 'var(--bg-active)' : 'transparent',
-                  }}
-                >
-                  <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Page</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setZoomMode('fit-width');
-                    setNeedsRender(true);
-                    setIsZoomDropdownOpen(false);
-                  }}
-                  className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
-                  style={{
-                    backgroundColor: zoomMode === 'fit-width' ? 'var(--bg-active)' : 'transparent',
-                  }}
-                >
-                  <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Width</span>
-                </button>
+              {getZoomDisplayText()}
+            </button>
 
-                <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '4px 0' }} />
-
-                {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((level) => (
+            {/* Dropdown Menu (opens upward) */}
+            {isZoomDropdownOpen && (
+              <div
+                className="absolute bottom-full left-0 mb-2 rounded shadow-lg z-50"
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  minWidth: '120px',
+                }}
+              >
+                <div className="py-1">
                   <button
-                    key={level}
                     onClick={() => {
-                      setZoomLevel(level);
+                      setZoomMode('fit-page');
+                      setNeedsRender(true);
                       setIsZoomDropdownOpen(false);
                     }}
                     className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
                     style={{
-                      backgroundColor: zoomMode === 'manual' && manualZoom === level ? 'var(--bg-active)' : 'transparent',
+                      backgroundColor: zoomMode === 'fit-page' ? 'var(--bg-active)' : 'transparent',
                     }}
                   >
-                    <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>{Math.round(level * 100)}%</span>
+                    <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Page</span>
                   </button>
-                ))}
+                  <button
+                    onClick={() => {
+                      setZoomMode('fit-width');
+                      setNeedsRender(true);
+                      setIsZoomDropdownOpen(false);
+                    }}
+                    className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
+                    style={{
+                      backgroundColor: zoomMode === 'fit-width' ? 'var(--bg-active)' : 'transparent',
+                    }}
+                  >
+                    <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>Fit Width</span>
+                  </button>
+
+                  <div style={{ height: '1px', backgroundColor: 'var(--border)', margin: '4px 0' }} />
+
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => {
+                        setZoomLevel(level);
+                        setIsZoomDropdownOpen(false);
+                      }}
+                      className="w-full px-3 py-1.5 text-center hover:bg-[var(--bg-active)] transition-colors"
+                      style={{
+                        backgroundColor: zoomMode === 'manual' && manualZoom === level ? 'var(--bg-active)' : 'transparent',
+                      }}
+                    >
+                      <span className="text-[11px]" style={{ color: 'var(--fg-primary)' }}>{Math.round(level * 100)}%</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <button
-          onClick={zoomIn}
-          disabled={zoomMode === 'manual' && manualZoom >= MAX_ZOOM}
-          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          title="Zoom in (Ctrl +)"
-        >
-          <ZoomIn size={16} />
-        </button>
+          <button
+            onClick={zoomIn}
+            disabled={zoomMode === 'manual' && manualZoom >= MAX_ZOOM}
+            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            title="Zoom in (Ctrl +)"
+          >
+            <ZoomIn size={16} />
+          </button>
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-border" />
+          {/* Divider */}
+          <div className="w-px h-5 bg-border" />
 
-        {/* Page Navigation */}
-        <button
-          onClick={goToPreviousPage}
-          disabled={currentPage <= 1}
-          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          title="Previous page (← or PageUp)"
-        >
-          <ChevronLeft size={18} />
-        </button>
+          {/* Page Navigation */}
+          <button
+            onClick={goToPreviousPage}
+            disabled={currentPage <= 1}
+            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            title="Previous page (← or PageUp)"
+          >
+            <ChevronLeft size={18} />
+          </button>
 
-        <div className="flex items-center gap-1">
-          <input
-            type="number"
-            min={1}
-            max={totalPages}
-            value={currentPage}
-            onChange={(e) => {
-              const page = parseInt(e.target.value);
-              if (!isNaN(page)) {
-                goToPage(page);
-              }
-            }}
-            className="w-10 h-6 mb-0.5 text-center text-[11px] border rounded bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <span className="text-[11px] text-muted-foreground">/ {totalPages}</span>
-        </div>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={currentPage}
+              onChange={(e) => {
+                const page = parseInt(e.target.value);
+                if (!isNaN(page)) {
+                  goToPage(page);
+                }
+              }}
+              className="w-10 h-6 mb-0.5 text-center text-[11px] border rounded bg-background text-foreground border-border focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <span className="text-[11px] text-muted-foreground">/ {totalPages}</span>
+          </div>
 
-        <button
-          onClick={goToNextPage}
-          disabled={currentPage >= totalPages}
-          className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          title="Next page (→ or PageDown)"
-        >
-          <ChevronRight size={18} />
-        </button>
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage >= totalPages}
+            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            title="Next page (→ or PageDown)"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
 import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { useSessionsContext } from '@/hooks';
-import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture, phasePersistenceService } from '@/services';
+import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture, phasePersistenceService, documentPositionTracker } from '@/services';
 import { tabStateService, type WorkspaceState, type TabState } from '@/services/tabState';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import { useTabStatePersistence } from '@/hooks/useTabStatePersistence';
@@ -101,16 +101,13 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
           let snapshot;
           if (shouldReset || !existingSnapshot) {
-            // Reset: create fresh snapshot but PRESERVE AI insights if they exist
+            // Reset: create fresh snapshot (clears all old data including AI insights)
             snapshot = contextService.buildSnapshot({
               activeSessionId: currentSession.id,
               sessionGoal: currentSession.goal,
             });
-
-            // Preserve AI insights from old snapshot (they don't change with activity)
-            if (existingSnapshot?.ai_insights) {
-              snapshot.ai_insights = existingSnapshot.ai_insights;
-            }
+            // NOTE: AI insights are intentionally NOT preserved
+            // They will be regenerated on next app close/activity threshold
           } else {
             // Preserve existing snapshot, will update/add activity below
             snapshot = existingSnapshot;
@@ -141,7 +138,9 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
               created_at: new Date().toISOString(),
             };
           } else if (eventType === 'pdf:page-change') {
-            const { documentId, pageNumber, documentTitle } = detail;
+            const { documentId, documentTitle } = detail;
+            // Read from centralized tracker (single source of truth, updated immediately by PDFViewer)
+            const pageNumber = documentPositionTracker.getPage(documentId) || detail.pageNumber || 1;
             snapshot.last_document = {
               document_id: documentId,
               document_title: documentTitle,
@@ -448,7 +447,16 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
         return;
       }
 
-
+      // Get context snapshot to use its page_number for document tabs
+      // This ensures consistency with WelcomeBackBanner
+      let snapshot: ContextSnapshot | null = null;
+      if (saved.sessionId) {
+        try {
+          snapshot = await contextService.getSnapshot(saved.sessionId);
+        } catch (error) {
+          console.warn('[TabRestore] Failed to load context snapshot:', error);
+        }
+      }
 
       try {
         const restoredTabs: Tab[] = [];
@@ -459,16 +467,31 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
             try {
               const doc = await documentService.getById(tabState.documentId);
               const tab = createDocumentTab(tabState.documentId, doc.title);
-              // Restore position data
-              tab.page = tabState.currentPage;
-              tab.scrollPosition = tabState.scrollPosition;
 
-              // Populate tracker immediately so it persists across refreshes
-              if (tabState.currentPage) {
+              // Use page_number from contextSnapshot if this is the last_document
+              // to ensure consistency with WelcomeBackBanner
+              const isLastDocument = snapshot?.last_document?.document_id === tabState.documentId;
+              if (isLastDocument && snapshot?.last_document?.page_number) {
+                tab.page = snapshot.last_document.page_number;
+                tab.scrollPosition = snapshot.last_document.scroll_position;
+
+                // Populate tracker with snapshot data
                 tabPositionTracker.updatePosition(tab.id, {
-                  currentPage: tabState.currentPage,
-                  scrollPosition: tabState.scrollPosition,
+                  currentPage: snapshot.last_document.page_number,
+                  scrollPosition: snapshot.last_document.scroll_position,
                 });
+              } else {
+                // Fallback to localStorage data for non-last documents
+                tab.page = tabState.currentPage;
+                tab.scrollPosition = tabState.scrollPosition;
+
+                // Populate tracker with localStorage data
+                if (tabState.currentPage) {
+                  tabPositionTracker.updatePosition(tab.id, {
+                    currentPage: tabState.currentPage,
+                    scrollPosition: tabState.scrollPosition,
+                  });
+                }
               }
 
               restoredTabs.push(tab);
