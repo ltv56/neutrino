@@ -182,12 +182,20 @@ fn get_current_clipboard() -> Result<Option<String>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            // When second instance is launched, show the main window
-            println!("[Single Instance] Another instance detected, showing main window");
+            // When second instance is launched, show the main window from tray
+            println!("[Single Instance] Another instance detected, restoring window from tray");
             if let Some(window) = app.get_webview_window("main") {
+                // Restore window visibility
+                let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
-                let _ = window.unminimize();
+                
+                // Flash taskbar to get user attention (Windows)
+                let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+                
+                println!("[Single Instance] Window restored successfully");
+            } else {
+                eprintln!("[Single Instance] Could not find main window!");
             }
         }))
         .plugin(

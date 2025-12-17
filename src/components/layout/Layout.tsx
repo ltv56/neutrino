@@ -300,7 +300,7 @@ const Layout: React.FC = () => {
         onUpdate={updateSession}
       />
 
-      <DebugOverlay />
+      {import.meta.env.DEV && <DebugOverlay />}
     </div>
   );
 };
