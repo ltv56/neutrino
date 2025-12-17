@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import type { NoteLink, LinkTarget, BacklinksResult, ParsedLink, LinkType } from '@/types';
 
 export const noteLinkService = {
