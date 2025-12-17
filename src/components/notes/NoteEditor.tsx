@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertCircle, Book, Edit, Palette } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import Tooltip from '@/components/common/Tooltip';
-import { noteService, documentService, type Note } from '@/services';
+import { noteService, documentService, noteLinkService, type Note } from '@/services';
 import { smartCaptureService } from '@/services/smartCapture';
 import { useToast } from '@/contexts/ToastContext';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
@@ -141,6 +141,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           // Update existing note
           await noteService.update(currentNoteId, newTitle, newContent);
           console.log('[NoteEditor] ✅ Note saved:', { noteId: currentNoteId, title: newTitle });
+
+          // Sync links after save
+          try {
+            const parsedLinks = noteLinkService.parseLinks(newContent);
+            if (parsedLinks.length > 0) {
+              await noteLinkService.syncLinks(currentNoteId, parsedLinks);
+              console.log('[NoteEditor] ✅ Synced', parsedLinks.length, 'links');
+            }
+          } catch (err) {
+            console.error('[NoteEditor] Failed to sync links:', err);
+          }
 
           // Dispatch note-saved event for snapshot tracking
           window.dispatchEvent(new CustomEvent('note-saved', {

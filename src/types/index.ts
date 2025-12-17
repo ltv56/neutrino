@@ -5,3 +5,4 @@ export * from './pdf';
 export * from './highlight';
 export * from './smartcapture';
 export * from './context';
+export * from './links';
