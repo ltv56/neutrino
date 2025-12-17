@@ -566,16 +566,53 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
         // Show banner if there's any meaningful context (document, note, or highlight)
         if (snapshot && (snapshot.last_document || snapshot.last_note || snapshot.last_highlight)) {
-          // Log AI insights for testing
-          if (snapshot.ai_insights) {
-            console.log('[WelcomeBanner] 📝 Summary:', snapshot.ai_insights.summary);
-            console.log('[WelcomeBanner] ⚠️ Struggle areas:', snapshot.ai_insights.struggle_areas);
-            console.log('[WelcomeBanner] 💡 Suggestions:', snapshot.ai_insights.suggestions);
-            console.log('[WelcomeBanner] 🧠 Learning pattern:', snapshot.ai_insights.learning_pattern);
-          }
-
+          // Show banner immediately (even without AI insights)
           setContextSnapshot(snapshot);
           setShowWelcomeBanner(true);
+
+          // Build content signature to detect if context changed
+          const buildSignature = (s: typeof snapshot) => {
+            const parts: string[] = [];
+            if (s.last_document) parts.push(`doc:${s.last_document.document_id}:${s.last_document.page_number}`);
+            if (s.last_highlight) parts.push(`hl:${s.last_highlight.id}`);
+            if (s.last_note) parts.push(`note:${s.last_note.id}`);
+            return parts.sort().join('|');
+          };
+
+          const currentSignature = buildSignature(snapshot);
+
+          // Check if we need to regenerate AI (new or context changed)
+          const existingSignature = (snapshot.ai_insights as any)?._context_signature;
+          const needsRegeneration = !snapshot.ai_insights || existingSignature !== currentSignature;
+
+          if (needsRegeneration) {
+            console.log('[WelcomeBanner] ⏳ Generating AI insights (context changed or missing)...');
+            console.log('[WelcomeBanner] Signature:', currentSignature);
+
+            // Import geminiAIService dynamically to avoid circular deps
+            import('@/services').then(async ({ geminiAIService }) => {
+              try {
+                const aiInsights = await geminiAIService.analyzeSession(snapshot);
+                if (aiInsights) {
+                  console.log('[WelcomeBanner] ✅ AI insights generated:', aiInsights.summary);
+
+                  // Store signature for future comparison
+                  (aiInsights as any)._context_signature = currentSignature;
+
+                  // Update snapshot with AI insights
+                  snapshot.ai_insights = aiInsights;
+                  await contextService.saveSnapshot(currentSession.id, snapshot);
+
+                  // Update banner to show AI insights
+                  setContextSnapshot({ ...snapshot });
+                }
+              } catch (error) {
+                console.error('[WelcomeBanner] ⚠️ Failed to generate AI insights:', error);
+              }
+            });
+          } else {
+            console.log('[WelcomeBanner] 📝 AI insights up-to-date, skipping regeneration');
+          }
         }
       } catch (error) {
         console.error('[WelcomeBanner] Failed to load snapshot:', error);

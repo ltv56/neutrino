@@ -140,6 +140,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         if (currentNoteId) {
           // Update existing note
           await noteService.update(currentNoteId, newTitle, newContent);
+          console.log('[NoteEditor] ✅ Note saved:', { noteId: currentNoteId, title: newTitle });
+
+          // Dispatch note-saved event for snapshot tracking
+          window.dispatchEvent(new CustomEvent('note-saved', {
+            detail: { noteId: currentNoteId, title: newTitle }
+          }));
 
           // Clear error on successful save
           if (titleError) {
