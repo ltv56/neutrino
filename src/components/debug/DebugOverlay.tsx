@@ -10,15 +10,17 @@ import ClipboardDebug from './ClipboardDebug';
 import GeminiDebug from './GeminiDebug';
 import TimeTrackingDebug from './TimeTrackingDebug';
 import SnapshotDebug from './SnapshotDebug';
+import AIContextDebug from './AIContextDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | 'ai' | 'time' | 'snapshot' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | 'ai' | 'time' | 'snapshot' | 'aicontext' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeOption, setActiveOption] = useState<DebugOption>(null);
 
   const debugOptions = [
+    { id: 'aicontext' as const, label: '🎨 AI Context', description: 'Full AI context + prompt' },
     { id: 'snapshot' as const, label: '📸 Snapshot', description: 'View current snapshot' },
     { id: 'time' as const, label: '⏱️ Time Track', description: 'Reading time tracking' },
     { id: 'ai' as const, label: '🧠 Gemini AI', description: 'Test AI connection' },
@@ -34,6 +36,8 @@ const DebugOverlay = () => {
 
   const renderActiveOption = () => {
     switch (activeOption) {
+      case 'aicontext':
+        return <AIContextDebug />;
       case 'snapshot':
         return <SnapshotDebug />;
       case 'time':

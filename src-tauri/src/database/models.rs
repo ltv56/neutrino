@@ -216,6 +216,22 @@ pub struct AIInsights {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OpenTabInfo {
+    #[serde(rename = "type")]
+    pub tab_type: String, // "document" | "note"
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PhaseDetectionResult {
+    pub phase: String, // "exploration" | "deep-dive" | "synthesis" | "validation"
+    pub confidence: f32, // 0-1
+    pub reasoning: String,
+    pub detected_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContextSnapshot {
     pub timestamp: DateTime<Utc>,
     pub active_session_id: Option<String>,
@@ -223,11 +239,17 @@ pub struct ContextSnapshot {
     pub last_document: Option<LastDocumentInfo>,
     pub last_highlight: Option<LastHighlightInfo>,
     pub last_note: Option<LastNoteInfo>,
+    pub last_activity_type: Option<String>, // "document" | "highlight" | "note"
     pub research_questions: Option<Vec<String>>,
     pub open_documents: Option<Vec<String>>,
     pub open_notes: Option<Vec<OpenNoteInfo>>,
+    pub open_tabs: Option<Vec<OpenTabInfo>>,
     pub reading_behavior: Option<ReadingBehavior>,
     pub struggle_signals: Option<StruggleSignals>,
     pub session_statistics: Option<SessionStatistics>,
     pub ai_insights: Option<AIInsights>,
+    pub research_phase: Option<PhaseDetectionResult>,
+    // Session activity history (last 5 of each type)
+    pub recent_highlights: Option<Vec<LastHighlightInfo>>,
+    pub recent_notes: Option<Vec<LastNoteInfo>>,
 }

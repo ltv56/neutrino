@@ -111,6 +111,14 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           } else {
             // Preserve existing snapshot, will update/add activity below
             snapshot = existingSnapshot;
+
+            // Initialize recent arrays from last_* if empty (for backward compatibility)
+            if (!snapshot.recent_notes?.length && snapshot.last_note) {
+              snapshot.recent_notes = [snapshot.last_note];
+            }
+            if (!snapshot.recent_highlights?.length && snapshot.last_highlight) {
+              snapshot.recent_highlights = [snapshot.last_highlight];
+            }
           }
 
           // Mark that we now have new activity
@@ -118,25 +126,47 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
           // Add the new activity data
           if (eventType === 'note-saved') {
-            const { noteId, title } = detail;
+            const { noteId } = detail;
             const note = await noteService.getById(noteId);
             if (note) {
-              snapshot.last_note = {
+              const noteInfo = {
                 id: note.id,
                 title: note.title,
-                content_preview: note.content.substring(0, 100),
+                // Store more content for AI analysis (2000 chars)
+                content_preview: note.content.substring(0, 2000),
                 created_at: note.created_at,
               };
+
+              // recent_notes is source of truth (keep last 5, avoid duplicates)
+              const recentNotes = snapshot.recent_notes || [];
+              const existingIndex = recentNotes.findIndex(n => n.id === note.id);
+              if (existingIndex >= 0) {
+                // Update existing and move to front
+                recentNotes.splice(existingIndex, 1);
+              }
+              recentNotes.unshift(noteInfo);
+              snapshot.recent_notes = recentNotes.slice(0, 5);
+
+              // last_note = first element of recent_notes
+              snapshot.last_note = snapshot.recent_notes[0];
             }
           } else if (eventType === 'highlight-created') {
             const { highlightId, pageNumber, content } = detail;
-            snapshot.last_highlight = {
+            const highlightInfo = {
               id: highlightId,
               content: content || '',
               note: '',
               page_number: pageNumber,
               created_at: new Date().toISOString(),
             };
+
+            // recent_highlights is source of truth (keep last 5)
+            const recentHighlights = snapshot.recent_highlights || [];
+            recentHighlights.unshift(highlightInfo);
+            snapshot.recent_highlights = recentHighlights.slice(0, 5);
+
+            // last_highlight = first element of recent_highlights
+            snapshot.last_highlight = snapshot.recent_highlights[0];
           } else if (eventType === 'pdf:page-change') {
             const { documentId, documentTitle } = detail;
             // Read from centralized tracker (single source of truth, updated immediately by PDFViewer)

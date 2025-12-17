@@ -113,10 +113,26 @@ export const geminiAIService = {
     }
 
     if (last_highlight && last_highlight.content) {
-      parts.push(`\nLast highlight: "${last_highlight.content.substring(0, 100)}..."`);
+      // Truncate highlight to 500 chars
+      const highlightPreview = last_highlight.content.length > 500
+        ? last_highlight.content.substring(0, 500) + '...'
+        : last_highlight.content;
+      parts.push(`\nLast highlight (page ${last_highlight.page_number}): "${highlightPreview}"`);
       if (!last_highlight.note) {
         parts.push('(No note added - may need clarification)');
+      } else {
+        parts.push(`Note: "${last_highlight.note.substring(0, 100)}"`);
       }
+    }
+
+    // Add last note content for context
+    if (last_note) {
+      parts.push(`\n## Last Note: "${last_note.title}"`);
+      // Truncate note content to 2000 chars
+      const notePreview = last_note.content_preview.length > 2000
+        ? last_note.content_preview.substring(0, 2000) + '...'
+        : last_note.content_preview;
+      parts.push(`Content: ${notePreview}`);
     }
 
     if (research_questions && research_questions.length > 0) {

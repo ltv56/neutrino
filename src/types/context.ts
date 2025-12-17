@@ -78,6 +78,10 @@ export interface ContextSnapshot {
   open_notes?: Array<{ id: string; title: string }>;
   open_tabs?: OpenTabInfo[];
 
+  // Session activity history (last 5 of each type in current session)
+  recent_highlights?: LastHighlightInfo[];
+  recent_notes?: LastNoteInfo[];
+
   // Enhanced context-aware fields
   reading_behavior?: ReadingBehavior;
   struggle_signals?: StruggleSignals;
