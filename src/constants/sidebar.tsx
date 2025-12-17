@@ -1,7 +1,7 @@
-import { FileText, BookOpen } from 'lucide-react';
+import { FileText, BookOpen, Link2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type SidebarTab = 'documents' | 'papers';
+export type SidebarTab = 'documents' | 'papers' | 'links';
 
 export interface SidebarTabConfig {
   id: SidebarTab;
@@ -25,11 +25,17 @@ export const SIDEBAR_TABS: SidebarTabConfig[] = [
     icon: BookOpen,
     title: 'Papers',
   },
+  {
+    id: 'links',
+    icon: Link2,
+    title: 'Links',
+  },
 ];
 
 export const SIDEBAR_HEADERS: Record<SidebarTab, string> = {
   documents: 'Documents',
   papers: 'Papers',
+  links: 'Links',
 };
 
 export const SIDEBAR_EMPTY_STATES: Record<SidebarTab, SidebarEmptyState> = {
@@ -40,5 +46,9 @@ export const SIDEBAR_EMPTY_STATES: Record<SidebarTab, SidebarEmptyState> = {
   papers: {
     title: 'No papers yet',
     subtitle: 'Create your first paper note',
+  },
+  links: {
+    title: 'No links yet',
+    subtitle: 'Create wiki links in your notes',
   },
 };

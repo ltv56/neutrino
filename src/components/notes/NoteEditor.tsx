@@ -87,6 +87,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setInvalidCharWarning(null);
         setTitleError(null);
         setErrorTitleRef(null);
+
+        // Dispatch note-activated event for links panel
+        window.dispatchEvent(new CustomEvent('note-activated', {
+          detail: { noteId: note.id, title: note.title }
+        }));
       }
     } catch (err) {
       console.error('Failed to load note:', err);
