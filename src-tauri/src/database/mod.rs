@@ -8,7 +8,7 @@ pub mod models;
 pub mod repositories;
 pub mod transactions;
 
-use repositories::{SessionRepository, DocumentRepository, NoteRepository, ReadingEventRepository, SessionDocumentRepository};
+use repositories::{SessionRepository, DocumentRepository, NoteRepository, ReadingEventRepository, SessionDocumentRepository, NoteLinkRepository};
 use transactions::*;
 
 #[derive(Clone)]
@@ -19,6 +19,7 @@ pub struct Database {
     notes: NoteRepository,
     reading_events: ReadingEventRepository,
     session_documents: SessionDocumentRepository,
+    note_links: NoteLinkRepository,
     transactions: TransactionService,
 }
 
@@ -85,6 +86,7 @@ impl Database {
             notes: NoteRepository::new(pool.clone()),
             reading_events: ReadingEventRepository::new(pool.clone()),
             session_documents: SessionDocumentRepository::new(pool.clone()),
+            note_links: NoteLinkRepository::new(pool.clone()),
             transactions: TransactionService::new(pool.clone()),
             pool,
         })
@@ -108,6 +110,10 @@ impl Database {
 
     pub fn session_documents(&self) -> &SessionDocumentRepository {
         &self.session_documents
+    }
+
+    pub fn note_links(&self) -> &NoteLinkRepository {
+        &self.note_links
     }
 
     pub fn transactions(&self) -> &TransactionService {

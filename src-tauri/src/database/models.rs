@@ -57,6 +57,50 @@ pub struct DocumentLink {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoteLink {
+    pub id: Uuid,
+    pub source_note_id: Uuid,
+    pub target_note_id: Option<Uuid>,
+    pub target_document_id: Option<Uuid>,
+    pub source_position: Option<String>, // JSON: line number, character offset
+    pub target_position: Option<String>, // JSON: page for docs, line for notes
+    pub link_type: String, // reference, quote, concept, contradicts, supports
+    pub link_text: String, // The [[text]] user typed
+    pub resolved: bool, // Whether target exists
+    pub context: Option<String>, // Surrounding text for context
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LinkTarget {
+    pub id: Uuid,
+    pub title: String,
+    pub target_type: String, // "note" | "document"
+    pub content_preview: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoteLinkWithSource {
+    pub link: NoteLink,
+    pub source_title: String,
+    pub source_content_preview: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NoteLinkWithTarget {
+    pub link: NoteLink,
+    pub target_title: Option<String>,
+    pub target_type: Option<String>, // "note" | "document" | "unresolved"
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BacklinksResult {
+    pub incoming: Vec<NoteLinkWithSource>,
+    pub outgoing: Vec<NoteLinkWithTarget>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Note {
     pub id: Uuid,
     pub session_id: Option<Uuid>,

@@ -305,6 +305,14 @@ pub fn run() {
             commands::delete_note,
             commands::search_notes,
 
+            // ========== Note Links (Bidirectional Linking) ==========
+            commands::create_note_link,
+            commands::resolve_note_link,
+            commands::get_backlinks,
+            commands::search_link_targets,
+            commands::sync_note_links,
+            commands::delete_note_link,
+
             // ========== Transactions ==========
             commands::create_session_with_documents,
 

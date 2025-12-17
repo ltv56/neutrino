@@ -6,6 +6,7 @@ mod pdf;
 mod reading_events;
 mod notes;
 mod ai;
+mod note_links;
 
 pub use sessions::*;
 pub use documents::*;
@@ -15,3 +16,4 @@ pub use pdf::*;
 pub use reading_events::*;
 pub use notes::*;
 pub use ai::*;
+pub use note_links::*;
