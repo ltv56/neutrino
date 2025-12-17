@@ -30,6 +30,10 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   const [tabs, setTabs] = useState<Tab[]>([WELCOME_TAB]);
   const [activeTabId, setActiveTabId] = useState('1');
 
+  // Split view state
+  const [secondaryTabs, setSecondaryTabs] = useState<Tab[]>([]);
+  const [activeSecondaryTabId, setActiveSecondaryTabId] = useState<string>('');
+
   // Welcome back banner
   const [contextSnapshot, setContextSnapshot] = useState<ContextSnapshot | null>(null);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
@@ -269,10 +273,6 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       clearTimeout(timer);
     };
   }, [currentSession]);
-
-  // Split view state
-  const [secondaryTabs, setSecondaryTabs] = useState<Tab[]>([]);
-  const [activeSecondaryTabId, setActiveSecondaryTabId] = useState<string>('');
 
   // Split view management
   const openInSplitView = useCallback((tab: Tab) => {
