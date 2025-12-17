@@ -57,9 +57,25 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           };
         }),
       activeTabId,
+      secondaryTabs: secondaryTabs
+        .filter(tab => tab.type !== undefined)
+        .map(tab => {
+          const position = tabPositionTracker.getPosition(tab.id);
+          return {
+            id: tab.id,
+            type: tab.type!,
+            title: tab.title,
+            documentId: tab.documentId,
+            noteId: tab.noteId,
+            currentPage: position?.currentPage,
+            scrollPosition: position?.scrollPosition,
+          };
+        }),
+      activeSecondaryTabId,
+      splitViewOpen,
       sessionId: currentSession?.id,
     };
-  }, [tabs, activeTabId, currentSession]);
+  }, [tabs, activeTabId, secondaryTabs, activeSecondaryTabId, splitViewOpen, currentSession]);
 
   const { saveNow } = useTabStatePersistence(getWorkspaceState);
 
@@ -255,28 +271,59 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   }, [currentSession]);
 
   // Split view state
-  const [secondaryTab, setSecondaryTab] = useState<Tab | null>(null);
+  const [secondaryTabs, setSecondaryTabs] = useState<Tab[]>([]);
+  const [activeSecondaryTabId, setActiveSecondaryTabId] = useState<string>('');
 
   // Split view management
   const openInSplitView = useCallback((tab: Tab) => {
-    setSecondaryTab(tab);
+    setSecondaryTabs(prevTabs => {
+      const exists = prevTabs.find(t => t.id === tab.id);
+      if (exists) {
+        setActiveSecondaryTabId(tab.id);
+        return prevTabs;
+      }
+      setActiveSecondaryTabId(tab.id);
+      return [...prevTabs, tab];
+    });
     onSplitViewChange(true);
   }, [onSplitViewChange]);
 
+  const closeSecondaryTab = useCallback((tabId: string) => {
+    setSecondaryTabs(prevTabs => {
+      const newTabs = prevTabs.filter(t => t.id !== tabId);
+
+      if (newTabs.length === 0) {
+        onSplitViewChange(false);
+        setActiveSecondaryTabId('');
+      } else if (activeSecondaryTabId === tabId) {
+        setActiveSecondaryTabId(newTabs[0].id);
+      }
+
+      return newTabs;
+    });
+  }, [activeSecondaryTabId, onSplitViewChange]);
+
   const closeSplitView = useCallback(() => {
     onSplitViewChange(false);
-    setSecondaryTab(null);
+    setSecondaryTabs([]);
+    setActiveSecondaryTabId('');
   }, [onSplitViewChange]);
 
   // Listen for note title changes
   useEffect(() => {
     const handleNoteTitleChange = (e: CustomEvent) => {
       const { noteId, title } = e.detail;
+      const truncatedTitle = title.length > 30 ? `${title.substring(0, 30)}...` : title;
+
       setTabs(prevTabs =>
         prevTabs.map(tab =>
-          tab.noteId === noteId
-            ? { ...tab, title: title.length > 30 ? `${title.substring(0, 30)}...` : title }
-            : tab
+          tab.noteId === noteId ? { ...tab, title: truncatedTitle } : tab
+        )
+      );
+
+      setSecondaryTabs(prevTabs =>
+        prevTabs.map(tab =>
+          tab.noteId === noteId ? { ...tab, title: truncatedTitle } : tab
         )
       );
     };
@@ -300,11 +347,29 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
         );
         return newTabs;
       });
+
+      setSecondaryTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.noteId === noteId);
+        if (!tabToClose) return prevTabs;
+
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+
+        if (newTabs.length === 0) {
+          onSplitViewChange(false);
+          setActiveSecondaryTabId('');
+        } else {
+          setActiveSecondaryTabId(prevActiveId =>
+            prevActiveId === tabToClose.id ? newTabs[0].id : prevActiveId
+          );
+        }
+
+        return newTabs;
+      });
     };
 
     window.addEventListener('note-deleted', handleNoteDeleted as EventListener);
     return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
-  }, []);
+  }, [onSplitViewChange]);
 
   // Track active document changes for behavior tracking
   useEffect(() => {
@@ -541,13 +606,50 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           const activeTab = restoredTabs.find(t => t.id === saved.activeTabId);
           setActiveTabId(activeTab ? saved.activeTabId : restoredTabs[0].id);
         }
+
+        // Restore secondary tabs if split view was open
+        if (saved.splitViewOpen && saved.secondaryTabs && saved.secondaryTabs.length > 0) {
+          const restoredSecondaryTabs: Tab[] = [];
+
+          for (const tabState of saved.secondaryTabs) {
+            if (tabState.type === 'document' && tabState.documentId) {
+              try {
+                const doc = await documentService.getById(tabState.documentId);
+                const tab = createDocumentTab(tabState.documentId, doc.title);
+                tab.page = tabState.currentPage;
+                tab.scrollPosition = tabState.scrollPosition;
+
+                if (tabState.currentPage) {
+                  tabPositionTracker.updatePosition(tab.id, {
+                    currentPage: tabState.currentPage,
+                    scrollPosition: tabState.scrollPosition,
+                  });
+                }
+
+                restoredSecondaryTabs.push(tab);
+              } catch (error) {
+                console.error('[TabRestore] Failed to restore secondary document:', tabState.documentId, error);
+              }
+            } else if (tabState.type === 'note' && tabState.noteId) {
+              const tab = createNoteTab(tabState.noteId, tabState.title);
+              restoredSecondaryTabs.push(tab);
+            }
+          }
+
+          if (restoredSecondaryTabs.length > 0) {
+            setSecondaryTabs(restoredSecondaryTabs);
+            const activeSecondaryTab = restoredSecondaryTabs.find(t => t.id === saved.activeSecondaryTabId);
+            setActiveSecondaryTabId(activeSecondaryTab ? saved.activeSecondaryTabId! : restoredSecondaryTabs[0].id);
+            onSplitViewChange(true);
+          }
+        }
       } catch (error) {
         console.error('[TabRestore] Failed to restore tabs:', error);
       }
     };
 
     restoreTabs();
-  }, []);
+  }, [onSplitViewChange]);
 
   // Expose manual save for debugging
   useEffect(() => {
@@ -744,7 +846,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       )}
 
       <div className="flex-1 min-h-0">
-        {splitViewOpen && secondaryTab ? (
+        {splitViewOpen && secondaryTabs.length > 0 ? (
           <SplitView
             primaryContent={
               <ContentPanel
@@ -757,8 +859,10 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
             }
             secondaryContent={
               <ContentPanel
-                singleTab={secondaryTab}
-                onCloseSingleTab={closeSplitView}
+                tabs={secondaryTabs}
+                activeTabId={activeSecondaryTabId}
+                onTabChange={setActiveSecondaryTabId}
+                onTabClose={closeSecondaryTab}
               />
             }
           />

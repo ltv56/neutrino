@@ -17,6 +17,10 @@ export interface TabState {
 export interface WorkspaceState {
   tabs: TabState[];
   activeTabId: string;
+  secondaryTabs: TabState[];
+  activeSecondaryTabId?: string;
+  splitViewOpen: boolean;
+  splitRatio?: number;
   sessionId?: string;
 }
 
