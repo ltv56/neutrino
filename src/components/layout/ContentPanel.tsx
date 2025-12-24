@@ -8,7 +8,10 @@ interface ContentPanelProps {
   activeTabId: string;
   onTabChange: (id: string) => void;
   onTabClose: (id: string) => void;
-  onTabAdd?: () => void; // Optional - hide add button for secondary panel
+  showCloseOnSingleTab?: boolean; // Optional - show close button even with single tab
+  isRightmost?: boolean; // Reserve space for toolbar buttons if rightmost panel
+  isFocused?: boolean; // Visual indicator for focused panel
+  onFocus?: () => void; // Callback when panel receives focus
 }
 
 /**
@@ -20,21 +23,30 @@ export const ContentPanel: React.FC<ContentPanelProps> = ({
   activeTabId,
   onTabChange,
   onTabClose,
-  onTabAdd,
+  showCloseOnSingleTab,
+  isRightmost = true,
+  isFocused = true,
+  onFocus,
 }) => {
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   return (
-    <div className="flex flex-col h-full w-full" style={{ minWidth: 0, overflow: 'hidden' }}>
+    <div
+      className="flex flex-col h-full w-full"
+      style={{ minWidth: 0, overflow: 'hidden' }}
+      onMouseDown={onFocus} // Track any click in this panel
+    >
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         onTabChange={onTabChange}
         onTabClose={onTabClose}
-        onTabAdd={onTabAdd}
+        showCloseOnSingleTab={showCloseOnSingleTab}
+        isRightmost={isRightmost}
+        isFocused={isFocused}
       />
       <div className="flex-1 min-h-0 relative" style={{ minWidth: 0 }}>
-        <MainContent activeTab={activeTab} />
+        <MainContent activeTab={activeTab} isFocused={isFocused} />
       </div>
     </div>
   );

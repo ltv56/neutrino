@@ -12,9 +12,10 @@ const PDFViewer = lazy(() => import('@/components/pdf/PDFViewer'));
 
 interface MainContentProps {
   activeTab?: Tab;
+  isFocused?: boolean;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
+const MainContent: React.FC<MainContentProps> = ({ activeTab, isFocused = true }) => {
   const location = useLocation();
   const { currentSession } = useSessionsContext();
 
@@ -85,7 +86,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
         borderRadius: '8px',
         borderWidth: '0 1px 1px 1px',
         borderStyle: 'solid',
-        borderColor: 'var(--border-light)',
+        borderColor: isFocused ? 'var(--accent)' : 'var(--border-light)',
       }}
     >
       <div className="flex-1 min-h-0">

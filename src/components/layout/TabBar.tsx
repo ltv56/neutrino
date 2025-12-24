@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Tooltip from '@/components/common/Tooltip';
 
 import './TabBar.css';
@@ -21,8 +21,9 @@ interface TabBarProps {
   activeTabId: string;
   onTabChange: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
-  onTabAdd?: () => void; // Optional - hide add button if not provided
   showCloseOnSingleTab?: boolean; // Optional - show close button even with single tab (for split view)
+  isRightmost?: boolean; // Reserve space for toolbar buttons if this is the rightmost panel
+  isFocused?: boolean; // Visual indicator for focused panel
 }
 
 const TabBar: React.FC<TabBarProps> = ({
@@ -30,8 +31,9 @@ const TabBar: React.FC<TabBarProps> = ({
   activeTabId,
   onTabChange,
   onTabClose,
-  onTabAdd,
   showCloseOnSingleTab = false,
+  isRightmost = true, // Default true for single panel
+  isFocused = true, // Default true for single panel
 }) => {
   const scrollContainerRef = useRef<HTMLUListElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -77,17 +79,24 @@ const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <nav
-      className="flex items-center relative"
+      className={`flex items-center relative ${isFocused ? 'tabbar-focused' : ''}`}
       style={{
         height: 'var(--tabbar-height)',
         paddingLeft: '8px',
-        paddingRight: '8px',
+        paddingRight: isRightmost ? '70px' : '8px', // Reserve space only if rightmost panel
         position: 'relative'
       }}
       aria-label="Tab navigation"
     >
-      {/* Border bottom */}
-      <div className="absolute bottom-0 left-2 right-2 h-px" style={{ backgroundColor: 'var(--border-light)', zIndex: 0 }} />
+      {/* Border bottom - accent if focused */}
+      <div
+        className="absolute bottom-0 left-2 right-2 h-px"
+        style={{
+          backgroundColor: isFocused ? 'var(--accent)' : 'var(--border-light)',
+          zIndex: 0,
+          transition: 'none', // Instant color change, no delay
+        }}
+      />
 
       {/* Left scroll button */}
       {canScrollLeft && (
@@ -186,19 +195,6 @@ const TabBar: React.FC<TabBarProps> = ({
         >
           <ChevronRight size={16} />
         </button>
-      )}
-
-      {/* Add tab button - only show if onTabAdd is provided */}
-      {onTabAdd && (
-        <Tooltip content="New Tab" placement='bottom-right'>
-          <button
-            onClick={onTabAdd}
-            className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
-            aria-label="Add new tab"
-          >
-            <Plus size={18} style={{ color: 'var(--fg-secondary)' }} />
-          </button>
-        </Tooltip>
       )}
     </nav>
   );

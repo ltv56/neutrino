@@ -11,3 +11,6 @@ export * from './sessions';
 
 // Tab State Persistence
 export { useTabStatePersistence } from './useTabStatePersistence';
+
+// Editor Preferences
+export { useToolbarPreference } from './useToolbarPreference';

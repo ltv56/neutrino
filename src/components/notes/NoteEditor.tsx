@@ -8,10 +8,14 @@ import { useToast } from '@/contexts/ToastContext';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { MarkdownToolbar } from '@/components/ui/MarkdownToolbar';
 import { useEditorInsert } from '@/hooks/useEditorInsert';
+import { useToolbarPreference } from '@/hooks';
 import NoteAutocomplete from './NoteAutocomplete';
 import SmartCaptureCard from '@/components/smartcapture/SmartCaptureCard';
 import type { ClipboardContent } from '@/types';
 import './markdown.css';
+
+// Global tracker for auto-focused notes (shared across all NoteEditor instances)
+const autoFocusedNotes = new Set<string>();
 
 interface NoteEditorProps {
   noteId?: string;
@@ -37,9 +41,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [titleError, setTitleError] = useState<string | null>(null);
   const [errorTitleRef, setErrorTitleRef] = useState<string | null>(null);
   const [invalidCharWarning, setInvalidCharWarning] = useState<string | null>(null);
-  const [showToolbar, setShowToolbar] = useState(true);
   const [readingMode, setReadingMode] = useState(false);
-  const [toolbarClosing, setToolbarClosing] = useState(false);
 
   // Smart capture state
   const [latestClipboard, setLatestClipboard] = useState<ClipboardContent | null>(null);
@@ -49,26 +51,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   // Refs
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const hasAutoFocusedRef = useRef(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const noteCreatedAtRef = useRef<string | null>(null);
 
   // Editor insert hook for toolbar
   const { editorViewRef, handleInsert } = useEditorInsert();
 
-  // Handle toolbar toggle with animation
-  const handleToolbarToggle = () => {
-    if (showToolbar) {
-      // Hide: set both states immediately for instant animation start
-      setShowToolbar(false);
-      setToolbarClosing(true);
-      setTimeout(() => {
-        setToolbarClosing(false);
-      }, 400); // Match animation duration
-    } else {
-      // Show: just set state
-      setShowToolbar(true);
-    }
-  };
+  // Toolbar preference (global, persisted in localStorage)
+  const { showToolbar, toolbarClosing, toggleToolbar, hasUserToggled } = useToolbarPreference();
 
   const loadNote = useCallback(async () => {
     if (!noteId) return;
@@ -81,6 +71,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setContent(note.content);
         setCurrentNoteId(note.id);
         setLastSavedTitle(note.title);
+        noteCreatedAtRef.current = note.created_at;
 
         // Clear warnings when loading note from DB
         // DB value is always valid (no special chars)
@@ -107,20 +98,56 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [noteId, loadNote]);
 
-
-
-  // Auto-focus and select title after loading (only once)
+  // Auto-focus and select title after loading (only for newly created notes)
   useEffect(() => {
-    if (!isLoading && title && title.startsWith('Untitled') && !hasAutoFocusedRef.current) {
-      hasAutoFocusedRef.current = true;
-      setTimeout(() => {
-        if (titleInputRef.current) {
-          titleInputRef.current.focus();
-          titleInputRef.current.select();
-        }
-      }, 100);
+    // Skip if already auto-focused this specific note (check global Set)
+    if (currentNoteId && autoFocusedNotes.has(currentNoteId)) {
+      return;
     }
-  }, [isLoading, title]);
+
+    if (!isLoading && title && title.startsWith('Untitled')) {
+      // Auto-focus for:
+      // 1. New unsaved notes (no noteId, no timestamp)
+      // 2. Newly created notes (noteId exists, created < 5 seconds ago)
+      // Skip for existing "Untitled" notes opened in split view (created > 5 seconds ago)
+
+      const isNewNote = !currentNoteId || !noteCreatedAtRef.current ||
+        (Date.now() - new Date(noteCreatedAtRef.current).getTime()) < 5000;
+
+      if (isNewNote) {
+        // Mark this note as auto-focused in global Set
+        if (currentNoteId) {
+          autoFocusedNotes.add(currentNoteId);
+        }
+
+        setTimeout(() => {
+          if (titleInputRef.current) {
+            titleInputRef.current.focus();
+            titleInputRef.current.select();
+          }
+        }, 100);
+      }
+    }
+  }, [isLoading, title, currentNoteId]);
+
+  // Listen for updates from other NoteEditor instances (split view sync)
+  useEffect(() => {
+    const handleNoteUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ noteId: string; title: string; content: string }>;
+      const { noteId: updatedNoteId, title: newTitle, content: newContent } = customEvent.detail;
+
+      // Only update if this is the same note but different instance
+      if (currentNoteId && updatedNoteId === currentNoteId) {
+        // Update state without triggering auto-save (already saved by other instance)
+        setTitle(newTitle);
+        setContent(newContent);
+        setLastSavedTitle(newTitle);
+      }
+    };
+
+    window.addEventListener('note-updated', handleNoteUpdate);
+    return () => window.removeEventListener('note-updated', handleNoteUpdate);
+  }, [currentNoteId]);
 
   // Auto-save with debounce
   const autoSave = useCallback(async (newTitle: string, newContent: string, titleChanged: boolean) => {
@@ -138,8 +165,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Debounce 500ms for title, 1s for content
-    const debounceTime = titleChanged ? 500 : 1000;
+    // Debounce 300ms for both title and content
+    const debounceTime = 300;
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         if (currentNoteId) {
@@ -161,6 +188,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           // Dispatch note-saved event for snapshot tracking
           window.dispatchEvent(new CustomEvent('note-saved', {
             detail: { noteId: currentNoteId, title: newTitle }
+          }));
+
+          // Dispatch note-updated event for syncing other instances
+          window.dispatchEvent(new CustomEvent('note-updated', {
+            detail: { noteId: currentNoteId, title: newTitle, content: newContent }
           }));
 
           // Clear error on successful save
@@ -404,7 +436,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
         <Tooltip content={showToolbar ? 'Hide Toolbar' : 'Show Toolbar'} placement="bottom-right">
           <button
-            onClick={handleToolbarToggle}
+            onClick={toggleToolbar}
             className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
             style={{ color: 'var(--fg-secondary)' }}
           >
@@ -438,9 +470,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               <div
                 style={{
                   overflow: 'hidden',
-                  animation: !showToolbar && toolbarClosing
-                    ? 'slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards'
-                    : showToolbar ? 'slideDown 0.4s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+                  animation: hasUserToggled
+                    ? (!showToolbar && toolbarClosing
+                      ? 'slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards'
+                      : showToolbar ? 'slideDown 0.4s cubic-bezier(0.22, 1, 0.36, 1)' : 'none')
+                    : 'none',
                   maxHeight: (showToolbar || toolbarClosing) ? '200px' : '0',
                   opacity: showToolbar ? 1 : 0,
                 }}

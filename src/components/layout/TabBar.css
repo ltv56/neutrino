@@ -19,8 +19,9 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-bottom: 2px solid var(--bg-secondary);
-  margin-bottom: -2px;
+  margin-bottom: -3px;
   z-index: 3;
+  transition: none; /* Disable any inherited transitions */
 }
 
 /* Curved corners configuration */
@@ -38,6 +39,7 @@
   height: var(--curve-size);
   background: var(--bg-secondary);
   z-index: -1;
+  transition: none;
 }
 
 .tab-active::before {
@@ -59,6 +61,7 @@
   background: var(--bg-background);
   z-index: 1;
   pointer-events: none;
+  transition: none;
 }
 
 .tab-active .tab-curve-left {
@@ -77,6 +80,21 @@
   border-left: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
   box-shadow: calc(-1 * var(--curve-size) / 2) 0 0 0 var(--bg-secondary);
+}
+
+/* Focused panel - accent borders */
+.tabbar-focused .tab-active {
+  border-color: var(--accent);
+}
+
+.tabbar-focused .tab-active .tab-curve-left {
+  border-right-color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tabbar-focused .tab-active .tab-curve-right {
+  border-left-color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 /* Close button */
@@ -116,4 +134,18 @@
   right: 0px;
   border-right: 1px solid var(--border-light);
   border-top-right-radius: 8px;
+}
+
+/* Focused panel - accent border for corner borders */
+.tabbar-focused+div .main-content-with-corner-borders::before,
+.tabbar-focused+div .main-content-with-corner-borders::after {
+  border-top-color: var(--accent);
+}
+
+.tabbar-focused+div .main-content-with-corner-borders::before {
+  border-left-color: var(--accent);
+}
+
+.tabbar-focused+div .main-content-with-corner-borders::after {
+  border-right-color: var(--accent);
 }
