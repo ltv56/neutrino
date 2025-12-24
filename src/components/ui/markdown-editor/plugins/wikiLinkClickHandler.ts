@@ -7,25 +7,34 @@ import { noteService } from '@/services';
  * Ctrl+Click (Cmd+Click on Mac): opens the linked note in split view
  */
 export const wikiLinkClickHandler = EditorView.domEventHandlers({
-    click: (event: MouseEvent, view: EditorView) => {
+    mousedown: (event: MouseEvent, view: EditorView) => {
         // Only handle Ctrl+Click (Windows/Linux) or Cmd+Click (Mac)
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const modifierPressed = isMac ? event.metaKey : event.ctrlKey;
 
         if (!modifierPressed) {
-            return false; // No modifier key, let normal click behavior happen
+            return false; // No modifier key, let normal behavior happen
         }
 
-        // Get clicked position
+        // Check if clicked element or parent has wiki link class
+        const target = event.target as HTMLElement;
+        const isWikiLink = target.classList.contains('cm-wikilink-text') ||
+                          target.classList.contains('cm-wikilink-editing') ||
+                          target.closest('.cm-wikilink-text') ||
+                          target.closest('.cm-wikilink-editing');
+
+        if (!isWikiLink) {
+            return false; // Not clicking on wiki link
+        }
+
+        // Get clicked position to find the link text
         const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
         if (pos === null) {
-            console.log('[WikiLink] Could not get position from click');
             return false;
         }
 
         const line = view.state.doc.lineAt(pos);
         const lineText = line.text;
-        console.log('[WikiLink] Ctrl+Click at pos:', pos, 'line:', lineText);
 
         // Find wiki links in this line
         const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
@@ -35,14 +44,11 @@ export const wikiLinkClickHandler = EditorView.domEventHandlers({
             const matchStart = line.from + match.index;
             const matchEnd = matchStart + match[0].length;
 
-            console.log('[WikiLink] Checking match:', match[0], 'range:', matchStart, '-', matchEnd, 'pos:', pos);
-
             // Check if clicked position is within this wiki link
             if (pos >= matchStart && pos <= matchEnd) {
                 const linkText = match[1];
-                console.log('[WikiLink] ✅ Match found! Link text:', linkText);
 
-                // Prevent default click behavior
+                // Prevent default behavior immediately
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -51,7 +57,6 @@ export const wikiLinkClickHandler = EditorView.domEventHandlers({
             }
         }
 
-        console.log('[WikiLink] No wiki link at this position');
         return false;
     }
 });
