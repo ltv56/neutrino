@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Plus, Columns2 } from 'lucide-react';
 import ContentPanel from '@/components/layout/ContentPanel';
 import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
@@ -9,6 +10,7 @@ import { tabStateService, type WorkspaceState, type TabState } from '@/services/
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import { useTabStatePersistence } from '@/hooks/useTabStatePersistence';
 import { useToast } from '@/contexts/ToastContext';
+import Tooltip from '@/components/common/Tooltip';
 import WelcomeBackBanner from '@/components/welcome/WelcomeBackBanner';
 import type { ContextSnapshot } from '@/types';
 
@@ -33,6 +35,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   // Split view state
   const [secondaryTabs, setSecondaryTabs] = useState<Tab[]>([]);
   const [activeSecondaryTabId, setActiveSecondaryTabId] = useState<string>('');
+  const [focusedPanel, setFocusedPanel] = useState<'primary' | 'secondary'>('primary');
 
   // Welcome back banner
   const [contextSnapshot, setContextSnapshot] = useState<ContextSnapshot | null>(null);
@@ -274,15 +277,37 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
   }, [currentSession]);
 
+  // Track focused panel
+  const handlePrimaryFocus = useCallback(() => {
+    setFocusedPanel('primary');
+  }, []);
+
+  const handleSecondaryFocus = useCallback(() => {
+    setFocusedPanel('secondary');
+  }, []);
+
+  // Wrapper to track focused panel when changing tabs
+  const handlePrimaryTabChange = useCallback((tabId: string) => {
+    setActiveTabId(tabId);
+    setFocusedPanel('primary');
+  }, []);
+
+  const handleSecondaryTabChange = useCallback((tabId: string) => {
+    setActiveSecondaryTabId(tabId);
+    setFocusedPanel('secondary');
+  }, []);
+
   // Split view management
   const openInSplitView = useCallback((tab: Tab) => {
     setSecondaryTabs(prevTabs => {
       const exists = prevTabs.find(t => t.id === tab.id);
       if (exists) {
         setActiveSecondaryTabId(tab.id);
+        setFocusedPanel('secondary');
         return prevTabs;
       }
       setActiveSecondaryTabId(tab.id);
+      setFocusedPanel('secondary');
       return [...prevTabs, tab];
     });
     onSplitViewChange(true);
@@ -404,11 +429,20 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
   }, [openInSplitView]);
 
-  const addNewTab = () => {
+  const addNewTab = useCallback(() => {
     const newTab = createNewChatTab();
-    setTabs([...tabs, newTab]);
-    setActiveTabId(newTab.id);
-  };
+
+    // Add to focused panel in split view
+    if (splitViewOpen && focusedPanel === 'secondary') {
+      setSecondaryTabs([...secondaryTabs, newTab]);
+      setActiveSecondaryTabId(newTab.id);
+    } else {
+      // Default: add to primary panel
+      setTabs([...tabs, newTab]);
+      setActiveTabId(newTab.id);
+      setFocusedPanel('primary');
+    }
+  }, [tabs, secondaryTabs, splitViewOpen, focusedPanel]);
 
   const closeTab = (tabId: string) => {
     if (tabs.length === 1) return;
@@ -424,34 +458,68 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   const openDocumentTab = useCallback((documentId: string, title: string) => {
     const tabId = `doc-${documentId}`;
 
-    setTabs(prevTabs => {
-      const existingTab = prevTabs.find(tab => tab.id === tabId);
-      if (existingTab) {
-        setActiveTabId(tabId);
-        return prevTabs;
-      }
+    // Open in focused panel when split view is active
+    if (splitViewOpen && focusedPanel === 'secondary') {
+      setSecondaryTabs(prevTabs => {
+        const existingTab = prevTabs.find(tab => tab.id === tabId);
+        if (existingTab) {
+          setActiveSecondaryTabId(tabId);
+          return prevTabs;
+        }
 
-      const newTab = createDocumentTab(documentId, title);
-      setActiveTabId(newTab.id);
-      return [...prevTabs, newTab];
-    });
-  }, []);
+        const newTab = createDocumentTab(documentId, title);
+        setActiveSecondaryTabId(newTab.id);
+        return [...prevTabs, newTab];
+      });
+    } else {
+      setTabs(prevTabs => {
+        const existingTab = prevTabs.find(tab => tab.id === tabId);
+        if (existingTab) {
+          setActiveTabId(tabId);
+          setFocusedPanel('primary');
+          return prevTabs;
+        }
+
+        const newTab = createDocumentTab(documentId, title);
+        setActiveTabId(newTab.id);
+        setFocusedPanel('primary');
+        return [...prevTabs, newTab];
+      });
+    }
+  }, [splitViewOpen, focusedPanel]);
 
   const openNoteTab = useCallback((noteId: string, title?: string) => {
     const tabId = `note-${noteId}`;
 
-    setTabs(prevTabs => {
-      const existingTab = prevTabs.find(tab => tab.id === tabId);
-      if (existingTab) {
-        setActiveTabId(tabId);
-        return prevTabs;
-      }
+    // Open in focused panel when split view is active
+    if (splitViewOpen && focusedPanel === 'secondary') {
+      setSecondaryTabs(prevTabs => {
+        const existingTab = prevTabs.find(tab => tab.id === tabId);
+        if (existingTab) {
+          setActiveSecondaryTabId(tabId);
+          return prevTabs;
+        }
 
-      const newTab = createNoteTab(noteId, title || 'Untitled');
-      setActiveTabId(newTab.id);
-      return [...prevTabs, newTab];
-    });
-  }, []);
+        const newTab = createNoteTab(noteId, title || 'Untitled');
+        setActiveSecondaryTabId(newTab.id);
+        return [...prevTabs, newTab];
+      });
+    } else {
+      setTabs(prevTabs => {
+        const existingTab = prevTabs.find(tab => tab.id === tabId);
+        if (existingTab) {
+          setActiveTabId(tabId);
+          setFocusedPanel('primary');
+          return prevTabs;
+        }
+
+        const newTab = createNoteTab(noteId, title || 'Untitled');
+        setActiveTabId(newTab.id);
+        setFocusedPanel('primary');
+        return [...prevTabs, newTab];
+      });
+    }
+  }, [splitViewOpen, focusedPanel]);
 
   const createNewNote = useCallback(async () => {
     try {
@@ -845,24 +913,73 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
         />
       )}
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
+        {/* Fixed Toolbar (like VS Code - top right of tabbar area) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            height: 'var(--tabbar-height, 32px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            paddingRight: '8px',
+            zIndex: 10,
+            pointerEvents: 'none', // Allow clicks to pass through to tabs
+          }}
+        >
+          {/* Split View button */}
+          <Tooltip content="Open in Split View" placement='bottom-right'>
+            <button
+              onClick={() => {
+                const activeTab = tabs.find(t => t.id === activeTabId);
+                if (activeTab) openInSplitView(activeTab);
+              }}
+              className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
+              aria-label="Open in split view"
+              style={{ pointerEvents: 'auto' }}
+            >
+              <Columns2 size={18} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+
+          {/* Add tab button */}
+          <Tooltip content="New Tab" placement='bottom-right'>
+            <button
+              onClick={addNewTab}
+              className="p-0.5 rounded hover:bg-[var(--bg-active)] transition-colors"
+              aria-label="Add new tab"
+              style={{ pointerEvents: 'auto' }}
+            >
+              <Plus size={18} style={{ color: 'var(--fg-secondary)' }} />
+            </button>
+          </Tooltip>
+        </div>
+
         {splitViewOpen && secondaryTabs.length > 0 ? (
           <SplitView
             primaryContent={
               <ContentPanel
                 tabs={tabs}
                 activeTabId={activeTabId}
-                onTabChange={setActiveTabId}
+                onTabChange={handlePrimaryTabChange}
                 onTabClose={closeTab}
-                onTabAdd={addNewTab}
+                isRightmost={false}
+                isFocused={focusedPanel === 'primary'}
+                onFocus={handlePrimaryFocus}
               />
             }
             secondaryContent={
               <ContentPanel
                 tabs={secondaryTabs}
                 activeTabId={activeSecondaryTabId}
-                onTabChange={setActiveSecondaryTabId}
+                onTabChange={handleSecondaryTabChange}
                 onTabClose={closeSecondaryTab}
+                showCloseOnSingleTab={true}
+                isRightmost={true}
+                isFocused={focusedPanel === 'secondary'}
+                onFocus={handleSecondaryFocus}
               />
             }
           />
@@ -870,9 +987,10 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           <ContentPanel
             tabs={tabs}
             activeTabId={activeTabId}
-            onTabChange={setActiveTabId}
+            onTabChange={handlePrimaryTabChange}
             onTabClose={closeTab}
-            onTabAdd={addNewTab}
+            isRightmost={true}
+            isFocused={true}
           />
         )}
       </div>
