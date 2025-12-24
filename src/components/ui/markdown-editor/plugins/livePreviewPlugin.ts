@@ -89,6 +89,35 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
           }
         }
 
+        // Wiki links: [[...]] - detect and style bidirectional links
+        const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+        let wikiMatch;
+        while ((wikiMatch = wikiLinkRegex.exec(text)) !== null) {
+          const fullMatch = wikiMatch[0];
+          const linkText = wikiMatch[1];
+          const matchStart = line.from + wikiMatch.index;
+          const matchEnd = matchStart + fullMatch.length;
+          const cursorInWikiLink = cursorPos >= matchStart && cursorPos <= matchEnd;
+
+          if (!cursorInWikiLink || isReadingMode) {
+            // Preview mode: hide [[ and ]] brackets, style link text
+            decorations.push(Decoration.replace({}).range(matchStart, matchStart + 2)); // Hide [[
+            decorations.push(Decoration.replace({}).range(matchEnd - 2, matchEnd)); // Hide ]]
+            decorations.push(
+              Decoration.mark({
+                class: 'cm-wikilink-text'
+              }).range(matchStart + 2, matchEnd - 2)
+            );
+          } else {
+            // Edit mode: style entire [[link]] with subtle highlight
+            decorations.push(
+              Decoration.mark({
+                class: 'cm-wikilink-editing'
+              }).range(matchStart, matchEnd)
+            );
+          }
+        }
+
         pos = line.to + 1;
       }
 

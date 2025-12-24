@@ -9,6 +9,7 @@ import { listKeymap } from './markdown-editor/config/listKeymap';
 import { blockKeymap } from './markdown-editor/config/blockKeymap';
 import { markdownTheme, highlightingExtension } from './markdown-editor/theme/editorTheme';
 import { livePreviewPlugin } from './markdown-editor/plugins/livePreviewPlugin';
+import { wikiLinkClickHandler } from './markdown-editor/plugins/wikiLinkClickHandler';
 
 interface MarkdownEditorProps {
   content: string;
@@ -52,6 +53,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       keymap.of([...blockKeymap, ...listKeymap, ...defaultKeymap, ...historyKeymap]),
       highlightingExtension,
       livePreviewPlugin,
+      wikiLinkClickHandler,
       editableCompartment.current.of(EditorView.editable.of(!readOnly)),
       EditorView.contentAttributes.of(readOnly ? { tabindex: '-1' } : {}),
       EditorView.updateListener.of((update: ViewUpdate) => {

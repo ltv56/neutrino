@@ -287,6 +287,18 @@ export const markdownTheme = EditorView.theme({
     fontFamily: '"Playfair Display", serif',
   },
 
+  // Wiki links - [[bidirectional links]]
+  '.cm-wikilink-text': {
+    color: 'var(--accent) !important',
+    textDecoration: 'underline !important',
+    cursor: 'pointer',
+  },
+  '.cm-wikilink-editing': {
+    backgroundColor: 'rgba(var(--accent-rgb, 99, 102, 241), 0.15) !important',
+    borderRadius: '3px !important',
+    color: 'var(--accent) !important',
+  },
+
   // Reading mode - hide all markdown syntax
   '.reading-mode .cm-heading-mark': {
     display: 'none !important',
