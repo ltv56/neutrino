@@ -48,6 +48,30 @@ export const FloatingNote: React.FC = () => {
     }, 300); // Match animation duration
   }, []);
 
+  // Sync theme with main app via localStorage
+  useEffect(() => {
+    const applyTheme = (theme: string | null) => {
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    };
+
+    // Apply saved theme on mount
+    const savedTheme = localStorage.getItem('neutrino-theme');
+    applyTheme(savedTheme);
+
+    // Listen for theme changes from main window
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'neutrino-theme') {
+        applyTheme(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Listen for context detection when floating note opens
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -320,11 +344,11 @@ export const FloatingNote: React.FC = () => {
               className="absolute left-0 right-0 border-t z-10"
               style={{
                 bottom: '47px', // Position above footer
-                background: 'linear-gradient(to top, rgba(32, 32, 32, 0.3) 0%, rgba(32, 32, 32, 0.5) 100%)',
-                borderColor: 'rgba(255, 255, 255, 0.08)',
+                background: 'var(--bg-glass, rgba(255, 255, 255, 0.7))',
+                borderColor: 'var(--border-light)',
                 backdropFilter: 'blur(12px) saturate(150%)',
                 WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-                boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.08)',
+                boxShadow: 'var(--shadow-glass, 0 -4px 12px rgba(0, 0, 0, 0.1))',
                 animation: bannerDismissing
                   ? 'slideDown 0.3s cubic-bezier(0.4, 0, 1, 1) forwards'
                   : 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -335,7 +359,7 @@ export const FloatingNote: React.FC = () => {
               <div
                 className="absolute top-0 left-0 right-0 overflow-hidden"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'var(--bg-tertiary)',
                   height: '2px',
                 }}
               >
@@ -352,21 +376,21 @@ export const FloatingNote: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 px-3 py-1.5 relative">
-                <span className="shrink-0" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))', fontSize: '16px' }}>
+                <span className="shrink-0" style={{ fontSize: '16px' }}>
                   {latestClipboard.content_type === 'Code' && '💻'}
                   {latestClipboard.content_type === 'Url' && '🔗'}
                   {latestClipboard.content_type === 'Text' && '📝'}
                   {latestClipboard.content_type === 'FilePath' && '📁'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate" style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: 400 }}>
+                  <div className="font-semibold truncate" style={{ color: 'var(--fg-primary)', fontSize: '11px', fontWeight: 400 }}>
                     {latestClipboard.context ? (
                       <>Copied from <strong style={{ color: 'var(--accent)' }}>{latestClipboard.context.app_name}</strong></>
                     ) : (
                       'New clipboard content'
                     )}
                   </div>
-                  <div className="truncate" style={{ color: 'var(--text-secondary)', opacity: 0.8, fontSize: '11px', fontWeight: 400 }}>
+                  <div className="truncate" style={{ color: 'var(--fg-secondary)', opacity: 0.8, fontSize: '11px', fontWeight: 400 }}>
                     {latestClipboard.content.substring(0, 50)}
                     {latestClipboard.content.length > 50 && '...'}
                   </div>
@@ -385,8 +409,8 @@ export const FloatingNote: React.FC = () => {
                 </button>
                 <button
                   onClick={dismissBanner}
-                  className="p-1 text-sm rounded transition-all hover:bg-white/10 hrink-0"
-                  style={{ color: 'var(--text-secondary)' }}
+                  className="p-1 text-sm rounded transition-all hover:bg-[var(--bg-active)] shrink-0"
+                  style={{ color: 'var(--fg-secondary)' }}
                   title="Dismiss"
                 >
                   ✕

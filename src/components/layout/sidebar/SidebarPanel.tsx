@@ -1,8 +1,7 @@
 import React from 'react';
-import { SIDEBAR_HEADERS, SIDEBAR_EMPTY_STATES, type SidebarTab } from '@/constants/sidebar';
+import { type SidebarTab } from '@/constants/sidebar';
 import { NotesList } from '@/components/notes/NotesList';
 import SessionDocumentsList from '@/components/sessions/SessionDocumentsList';
-import LinksPanel from '@/components/links/LinksPanel';
 import { useSessionsContext } from '@/hooks';
 
 interface SidebarPanelProps {
@@ -37,28 +36,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
             onNoteSelect={onNoteSelect}
             onCreateNote={onNewClick}
           />
-        );
-      case 'links':
-        return (
-          <LinksPanel
-            onNoteSelect={onNoteSelect}
-            onDocumentSelect={onDocumentSelect}
-          />
-        );
-      default:
-        return (
-          <div className="px-2 py-2">
-            <div className="space-y-1">
-              <div className="p-2 rounded text-sm cursor-pointer transition-colors text-secondary">
-                <div className="font-medium text-primary">
-                  {SIDEBAR_EMPTY_STATES[activeTab].title}
-                </div>
-                <div className="text-xs mt-1">
-                  {SIDEBAR_EMPTY_STATES[activeTab].subtitle}
-                </div>
-              </div>
-            </div>
-          </div>
         );
     }
   };

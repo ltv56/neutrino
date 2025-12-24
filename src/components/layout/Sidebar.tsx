@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Settings } from 'lucide-react';
+import { FolderOpen, Settings, Link2 } from 'lucide-react';
 import { type SidebarTab, SIDEBAR_TABS } from '@/constants/sidebar';
 import EdgeIndicator from './sidebar/EdgeIndicator';
 import SidebarBackdrop from './sidebar/SidebarBackdrop';
 import SidebarPanel from './sidebar/SidebarPanel';
+import LinksPanel from '@/components/links/LinksPanel';
 import VaultPanel from '@/components/vault/VaultPanel';
 import ThemeToggle from './titlebar/ThemeToggle';
 import Tooltip from '@/components/common/Tooltip';
@@ -59,21 +60,52 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // Links panel toggle
+  const [showLinksPanel, setShowLinksPanel] = useState(false);
+
   useEffect(() => {
-    // Check initial theme from document
-    const isDark = !document.documentElement.hasAttribute('data-theme');
-    setIsDarkMode(isDark);
+    // Check initial theme from localStorage first, then document
+    const savedTheme = localStorage.getItem('neutrino-theme');
+    if (savedTheme) {
+      const isDark = savedTheme === 'dark';
+      setIsDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    } else {
+      const isDark = !document.documentElement.hasAttribute('data-theme');
+      setIsDarkMode(isDark);
+    }
+
+    // Listen for theme changes from other windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'neutrino-theme' && e.newValue) {
+        const isDark = e.newValue === 'dark';
+        setIsDarkMode(isDark);
+        if (isDark) {
+          document.documentElement.removeAttribute('data-theme');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
     setIsDarkMode(newTheme);
 
-    // Apply theme to document root
+    // Apply theme to document root and persist to localStorage
     if (newTheme) {
       document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('neutrino-theme', 'dark');
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('neutrino-theme', 'light');
     }
   };
 
@@ -201,13 +233,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Content Panel */}
-                <SidebarPanel
-                  activeTab={activeTab}
-                  mode={mode}
-                  onNewClick={handleNewClick}
-                  onNoteSelect={onNoteSelect}
-                  onDocumentSelect={onOpenDocument}
-                />
+                {showLinksPanel ? (
+                  <LinksPanel
+                    onNoteSelect={onNoteSelect}
+                    onDocumentSelect={onOpenDocument}
+                  />
+                ) : (
+                  <SidebarPanel
+                    activeTab={activeTab}
+                    mode={mode}
+                    onNewClick={handleNewClick}
+                    onNoteSelect={onNoteSelect}
+                    onDocumentSelect={onOpenDocument}
+                  />
+                )}
 
                 {/* Footer: Vault + Theme + Settings */}
                 <div
@@ -226,6 +265,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </button>
 
                   <div className="flex items-center gap-1">
+                    <Tooltip content="Backlinks" placement="top">
+                      <button
+                        onClick={() => setShowLinksPanel(!showLinksPanel)}
+                        className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        style={{ color: showLinksPanel ? 'var(--accent)' : 'var(--fg-secondary)' }}
+                      >
+                        <Link2 size={18} />
+                      </button>
+                    </Tooltip>
                     <ThemeToggle isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
                     <Tooltip content="Settings" placement="top">
                       <button
