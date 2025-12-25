@@ -1,8 +1,7 @@
 import React from 'react';
-import { SIDEBAR_HEADERS, SIDEBAR_EMPTY_STATES, type SidebarTab } from '@/constants/sidebar';
+import { type SidebarTab } from '@/constants/sidebar';
 import { NotesList } from '@/components/notes/NotesList';
 import SessionDocumentsList from '@/components/sessions/SessionDocumentsList';
-import LinksPanel from '@/components/links/LinksPanel';
 import { useSessionsContext } from '@/hooks';
 
 interface SidebarPanelProps {
