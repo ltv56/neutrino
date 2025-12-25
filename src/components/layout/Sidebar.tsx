@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Settings, Link2 } from 'lucide-react';
+import { FolderOpen, Settings } from 'lucide-react';
 import { type SidebarTab, SIDEBAR_TABS } from '@/constants/sidebar';
 import EdgeIndicator from './sidebar/EdgeIndicator';
 import SidebarBackdrop from './sidebar/SidebarBackdrop';
 import SidebarPanel from './sidebar/SidebarPanel';
-import LinksPanel from '@/components/links/LinksPanel';
 import VaultPanel from '@/components/vault/VaultPanel';
 import ThemeToggle from './titlebar/ThemeToggle';
 import Tooltip from '@/components/common/Tooltip';
@@ -59,9 +58,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Theme management
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Links panel toggle
-  const [showLinksPanel, setShowLinksPanel] = useState(false);
 
   useEffect(() => {
     // Check initial theme from localStorage first, then document
@@ -233,20 +229,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Content Panel */}
-                {showLinksPanel ? (
-                  <LinksPanel
-                    onNoteSelect={onNoteSelect}
-                    onDocumentSelect={onOpenDocument}
-                  />
-                ) : (
-                  <SidebarPanel
-                    activeTab={activeTab}
-                    mode={mode}
-                    onNewClick={handleNewClick}
-                    onNoteSelect={onNoteSelect}
-                    onDocumentSelect={onOpenDocument}
-                  />
-                )}
+                <SidebarPanel
+                  activeTab={activeTab}
+                  mode={mode}
+                  onNewClick={handleNewClick}
+                  onNoteSelect={onNoteSelect}
+                  onDocumentSelect={onOpenDocument}
+                />
 
                 {/* Footer: Vault + Theme + Settings */}
                 <div
@@ -265,15 +254,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </button>
 
                   <div className="flex items-center gap-1">
-                    <Tooltip content="Backlinks" placement="top">
-                      <button
-                        onClick={() => setShowLinksPanel(!showLinksPanel)}
-                        className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        style={{ color: showLinksPanel ? 'var(--accent)' : 'var(--fg-secondary)' }}
-                      >
-                        <Link2 size={18} />
-                      </button>
-                    </Tooltip>
                     <ThemeToggle isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
                     <Tooltip content="Settings" placement="top">
                       <button

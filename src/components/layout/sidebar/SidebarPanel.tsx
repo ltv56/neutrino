@@ -37,13 +37,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
             onCreateNote={onNewClick}
           />
         );
-      case 'links':
-        return (
-          <LinksPanel
-            onNoteSelect={onNoteSelect}
-            onDocumentSelect={onDocumentSelect}
-          />
-        );
     }
   };
 

@@ -4,9 +4,10 @@ import { documentService, highlightService, documentPositionTracker } from '@/se
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import type { Document, Highlight, HighlightPosition } from '@/types';
 import { usePDFCache } from '@/contexts';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Link2 } from 'lucide-react';
 import HighlightOverlay from './HighlightOverlay';
 import HighlightNoteEditor from './HighlightNoteEditor';
+import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
 import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_HIGHLIGHT_OPACITY, MIN_SELECTION_SIZE } from '@/constants/highlight';
 
 // Configure PDF.js worker - use local worker from node_modules
@@ -61,6 +62,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
+  const [isBacklinksPanelOpen, setIsBacklinksPanelOpen] = useState(false);
 
   // PDF Cache
   const { getDocument: getCachedDocument, setDocument: cacheDocument, getPage: getCachedPage, setPage: cachePage } = usePDFCache();
@@ -183,6 +185,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       }
 
       setDocument(doc);
+
+      // Dispatch document activated event for LinksPanel
+      const eventDetail = { documentId: doc.id };
+      console.log('[PDFViewer] Dispatching document-activated event:', eventDetail);
+
+      // Set global state immediately (for LinksPanel to check on mount)
+      (window as any).__lastDocumentActivated = eventDetail;
+      (window as any).__lastNoteActivated = null;
+
+      window.dispatchEvent(new CustomEvent('document-activated', {
+        detail: eventDetail
+      }));
 
       // Dispatch document open event
       window.dispatchEvent(new CustomEvent('pdf:document-open', {
@@ -773,6 +787,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
           {/* Divider */}
           <div className="w-px h-5 bg-border" />
 
+          {/* Backlinks Button */}
+          <button
+            onClick={() => {
+              console.log('[PDFViewer] Backlinks button clicked, current state:', isBacklinksPanelOpen);
+              setIsBacklinksPanelOpen(!isBacklinksPanelOpen);
+            }}
+            className="p-1 rounded-full hover:bg-primary/10 transition-colors cursor-pointer"
+            title="Backlinks"
+            style={{ color: isBacklinksPanelOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
+          >
+            <Link2 size={16} />
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-border" />
+
           {/* Page Navigation */}
           <button
             onClick={goToPreviousPage}
@@ -821,6 +851,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
           currentScale={currentScale}
         />
       )}
+
+      {/* Backlinks Slide Panel */}
+      <BacklinksSlidePanel
+        isOpen={isBacklinksPanelOpen}
+        onClose={() => setIsBacklinksPanelOpen(false)}
+        onNoteSelect={(noteId, title) => {
+          window.dispatchEvent(new CustomEvent('open-note-split-view', {
+            detail: { noteId, title }
+          }));
+        }}
+        onDocumentSelect={(documentId, title) => {
+          window.dispatchEvent(new CustomEvent('open-document-split-view', {
+            detail: { documentId, title }
+          }));
+        }}
+      />
     </div>
   );
 };

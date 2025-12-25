@@ -406,7 +406,7 @@ impl NoteLinkRepository {
         Ok(results)
     }
 
-    /// Sync links for a note - delete old, insert new
+    /// Sync links for a note - delete old, insert new, and auto-resolve
     pub async fn sync_links_for_note(
         &self,
         note_id: Uuid,
@@ -418,9 +418,49 @@ impl NoteLinkRepository {
             .execute(&*self.pool)
             .await?;
 
-        // Insert new links
+        // Insert new links and auto-resolve
         for (link_text, link_type, context) in links {
-            self.create(note_id, link_text, link_type, None, context).await?;
+            let new_link = self.create(note_id, link_text.clone(), link_type, None, context).await?;
+
+            // Try to auto-resolve the link
+            self.auto_resolve_link(new_link.id, &link_text).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Auto-resolve a link by finding matching note/document by title
+    async fn auto_resolve_link(&self, link_id: Uuid, link_text: &str) -> Result<()> {
+        // Search for matching note
+        let note_rows = sqlx::query(
+            "SELECT id FROM notes WHERE LOWER(title) = LOWER(?) LIMIT 1"
+        )
+        .bind(link_text)
+        .fetch_all(&*self.pool)
+        .await?;
+
+        if !note_rows.is_empty() {
+            let note_id: String = note_rows[0].get("id");
+            if let Ok(note_uuid) = Uuid::parse_str(&note_id) {
+                self.resolve_link(link_id, Some(note_uuid), None).await?;
+                return Ok(());
+            }
+        }
+
+        // Search for matching document
+        let doc_rows = sqlx::query(
+            "SELECT id FROM documents WHERE LOWER(title) = LOWER(?) LIMIT 1"
+        )
+        .bind(link_text)
+        .fetch_all(&*self.pool)
+        .await?;
+
+        if !doc_rows.is_empty() {
+            let doc_id: String = doc_rows[0].get("id");
+            if let Ok(doc_uuid) = Uuid::parse_str(&doc_id) {
+                self.resolve_link(link_id, None, Some(doc_uuid)).await?;
+                return Ok(());
+            }
         }
 
         Ok(())

@@ -162,6 +162,24 @@
     scrollbar-width: none;
   }
 
+  /* Custom thin scrollbar for panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light);
+  }
+
   /* Resizable divider */
   .resize-handle {
     width: 4px;

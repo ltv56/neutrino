@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AlertCircle, Book, Edit, Palette } from 'lucide-react';
+import { AlertCircle, Book, Edit, Palette, Link2 } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import Tooltip from '@/components/common/Tooltip';
 import { noteService, documentService, noteLinkService, type Note } from '@/services';
@@ -11,6 +11,7 @@ import { useEditorInsert } from '@/hooks/useEditorInsert';
 import { useToolbarPreference } from '@/hooks';
 import NoteAutocomplete from './NoteAutocomplete';
 import SmartCaptureCard from '@/components/smartcapture/SmartCaptureCard';
+import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
 import type { ClipboardContent } from '@/types';
 import './markdown.css';
 
@@ -42,6 +43,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [errorTitleRef, setErrorTitleRef] = useState<string | null>(null);
   const [invalidCharWarning, setInvalidCharWarning] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
+  const [isBacklinksPanelOpen, setIsBacklinksPanelOpen] = useState(false);
 
   // Smart capture state
   const [latestClipboard, setLatestClipboard] = useState<ClipboardContent | null>(null);
@@ -80,8 +82,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setErrorTitleRef(null);
 
         // Dispatch note-activated event for links panel
+        const eventDetail = { noteId: note.id, title: note.title };
+        console.log('[NoteEditor] Dispatching note-activated event:', eventDetail);
+
+        // Set global state immediately (for LinksPanel to check on mount)
+        (window as any).__lastNoteActivated = eventDetail;
+        (window as any).__lastDocumentActivated = null;
+
         window.dispatchEvent(new CustomEvent('note-activated', {
-          detail: { noteId: note.id, title: note.title }
+          detail: eventDetail
         }));
       }
     } catch (err) {
@@ -453,6 +462,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             {readingMode ? <Edit size={14} /> : <Book size={14} />}
           </button>
         </Tooltip>
+
+        <Tooltip content="Backlinks" placement="bottom-right">
+          <button
+            onClick={() => {
+              console.log('[NoteEditor] Backlinks button clicked, current state:', isBacklinksPanelOpen);
+              setIsBacklinksPanelOpen(!isBacklinksPanelOpen);
+            }}
+            className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
+            style={{ color: isBacklinksPanelOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
+          >
+            <Link2 size={14} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Content */}
@@ -651,6 +673,22 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           onCollapse={restartDismissTimer}
         />
       )}
+
+      {/* Backlinks Slide Panel */}
+      <BacklinksSlidePanel
+        isOpen={isBacklinksPanelOpen}
+        onClose={() => setIsBacklinksPanelOpen(false)}
+        onNoteSelect={(noteId, title) => {
+          window.dispatchEvent(new CustomEvent('open-note-split-view', {
+            detail: { noteId, title }
+          }));
+        }}
+        onDocumentSelect={(documentId, title) => {
+          window.dispatchEvent(new CustomEvent('open-document-split-view', {
+            detail: { documentId, title }
+          }));
+        }}
+      />
     </div>
   );
 };
