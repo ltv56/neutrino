@@ -66,6 +66,21 @@ pub async fn get_backlinks(
 }
 
 #[tauri::command]
+pub async fn get_document_backlinks(
+    database: tauri::State<'_, Database>,
+    document_id: String,
+) -> Result<BacklinksResult, String> {
+    let document_uuid = Uuid::parse_str(&document_id)
+        .map_err(|e| format!("Invalid document_id: {}", e))?;
+
+    database
+        .note_links()
+        .get_document_backlinks(document_uuid)
+        .await
+        .map_err(|e| format!("Failed to get document backlinks: {}", e))
+}
+
+#[tauri::command]
 pub async fn search_link_targets(
     database: tauri::State<'_, Database>,
     query: String,

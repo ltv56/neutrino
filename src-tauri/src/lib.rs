@@ -309,6 +309,7 @@ pub fn run() {
             commands::create_note_link,
             commands::resolve_note_link,
             commands::get_backlinks,
+            commands::get_document_backlinks,
             commands::search_link_targets,
             commands::sync_note_links,
             commands::delete_note_link,

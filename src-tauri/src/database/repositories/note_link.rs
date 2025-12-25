@@ -151,6 +151,73 @@ impl NoteLinkRepository {
         Ok(results)
     }
 
+    /// Get all incoming links (backlinks) for a document
+    pub async fn find_document_backlinks(&self, document_id: Uuid) -> Result<Vec<NoteLinkWithSource>> {
+        let document_id_str = document_id.to_string();
+
+        let rows = sqlx::query(
+            "SELECT nl.id, nl.source_note_id, nl.target_note_id, nl.target_document_id,
+                    nl.source_position, nl.target_position, nl.link_type, nl.link_text,
+                    nl.resolved, nl.context, nl.created_at, nl.updated_at,
+                    n.title as source_title, n.content as source_content
+             FROM note_links nl
+             INNER JOIN notes n ON nl.source_note_id = n.id
+             WHERE nl.target_document_id = ? AND nl.resolved = 1
+             ORDER BY nl.created_at DESC"
+        )
+        .bind(&document_id_str)
+        .fetch_all(&*self.pool)
+        .await?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            let id: String = row.get("id");
+            let source_note_id: String = row.get("source_note_id");
+            let target_note_id: Option<String> = row.get("target_note_id");
+            let target_document_id: Option<String> = row.get("target_document_id");
+            let link_type: String = row.get("link_type");
+            let link_text: String = row.get("link_text");
+            let resolved: bool = row.get("resolved");
+            let created_at: String = row.get("created_at");
+            let updated_at: String = row.get("updated_at");
+            let source_title: String = row.get("source_title");
+            let source_content: String = row.get("source_content");
+
+            let preview: String = source_content
+                .trim()
+                .replace("\n", " ")
+                .chars()
+                .take(100)
+                .collect();
+            let content_preview = if source_content.len() > 100 {
+                format!("{}...", preview)
+            } else {
+                preview
+            };
+
+            results.push(NoteLinkWithSource {
+                link: NoteLink {
+                    id: Uuid::parse_str(&id)?,
+                    source_note_id: Uuid::parse_str(&source_note_id)?,
+                    target_note_id: target_note_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                    target_document_id: target_document_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                    source_position: row.get("source_position"),
+                    target_position: row.get("target_position"),
+                    link_type,
+                    link_text,
+                    resolved,
+                    context: row.get("context"),
+                    created_at: DateTime::parse_from_rfc3339(&created_at)?.with_timezone(&Utc),
+                    updated_at: DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&Utc),
+                },
+                source_title,
+                source_content_preview: content_preview,
+            });
+        }
+
+        Ok(results)
+    }
+
     /// Get all outgoing links from a note
     pub async fn find_outgoing_links(&self, note_id: Uuid) -> Result<Vec<NoteLinkWithTarget>> {
         let note_id_str = note_id.to_string();
@@ -373,6 +440,13 @@ impl NoteLinkRepository {
     pub async fn get_backlinks(&self, note_id: Uuid) -> Result<BacklinksResult> {
         let incoming = self.find_backlinks(note_id).await?;
         let outgoing = self.find_outgoing_links(note_id).await?;
+
+        Ok(BacklinksResult { incoming, outgoing })
+    }
+
+    pub async fn get_document_backlinks(&self, document_id: Uuid) -> Result<BacklinksResult> {
+        let incoming = self.find_document_backlinks(document_id).await?;
+        let outgoing = Vec::new(); // Documents don't have outgoing links
 
         Ok(BacklinksResult { incoming, outgoing })
     }

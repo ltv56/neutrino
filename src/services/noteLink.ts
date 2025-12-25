@@ -44,6 +44,13 @@ export const noteLinkService = {
   },
 
   /**
+   * Get incoming links for a document (notes that link to this document)
+   */
+  async getDocumentBacklinks(documentId: string): Promise<BacklinksResult> {
+    return invoke('get_document_backlinks', { documentId });
+  },
+
+  /**
    * Search for potential link targets by title
    */
   async searchTargets(query: string, sessionId?: string): Promise<LinkTarget[]> {
