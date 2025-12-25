@@ -604,6 +604,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 autoFocus={false}
                 readOnly={readingMode}
                 onEditorReady={(view) => { editorViewRef.current = view; }}
+                sessionId={sessionId}
+                noteId={currentNoteId}
               />
             </div>
           </div>

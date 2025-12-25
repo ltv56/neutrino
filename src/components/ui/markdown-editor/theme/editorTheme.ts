@@ -299,6 +299,57 @@ export const markdownTheme = EditorView.theme({
     color: 'var(--accent) !important',
   },
 
+  // Autocomplete panel styling
+  '.cm-tooltip.cm-tooltip-autocomplete': {
+    backgroundColor: 'var(--bg-secondary) !important',
+    border: '1px solid var(--border) !important',
+    borderRadius: '8px !important',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3) !important',
+    padding: '4px !important',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important',
+  },
+  '.cm-tooltip-autocomplete ul': {
+    maxHeight: '300px !important',
+    overflowY: 'auto !important',
+    margin: '0 !important',
+    padding: '0 !important',
+    listStyle: 'none !important',
+  },
+  '.cm-tooltip-autocomplete ul li': {
+    padding: '8px 12px !important',
+    cursor: 'pointer !important',
+    borderRadius: '4px !important',
+    margin: '2px 0 !important',
+    display: 'flex !important',
+    alignItems: 'center !important',
+    gap: '8px !important',
+    transition: 'background-color 0.15s ease !important',
+  },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': {
+    backgroundColor: 'var(--bg-active) !important',
+  },
+  '.cm-completionLabel': {
+    color: 'var(--fg-primary) !important',
+    fontSize: '13px !important',
+    fontWeight: '500 !important',
+    flex: '1 !important',
+  },
+  '.cm-completionDetail': {
+    color: 'var(--fg-tertiary) !important',
+    fontSize: '11px !important',
+    fontStyle: 'normal !important',
+    opacity: '0.8 !important',
+  },
+  '.cm-completionInfo': {
+    backgroundColor: 'var(--bg-tertiary) !important',
+    border: '1px solid var(--border-light) !important',
+    borderRadius: '6px !important',
+    padding: '8px !important',
+    color: 'var(--fg-secondary) !important',
+    fontSize: '12px !important',
+    maxWidth: '300px !important',
+  },
+
   // Reading mode - hide all markdown syntax
   '.reading-mode .cm-heading-mark': {
     display: 'none !important',

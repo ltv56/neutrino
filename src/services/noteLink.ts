@@ -55,8 +55,8 @@ export const noteLinkService = {
    */
   async syncLinks(noteId: string, links: ParsedLink[]): Promise<void> {
     const parsedLinks = links.map((link) => ({
-      linkText: link.text,
-      linkType: this.inferLinkType(link.text),
+      link_text: link.text,
+      link_type: this.inferLinkType(link.text),
       context: undefined,
     }));
 
