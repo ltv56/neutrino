@@ -254,7 +254,7 @@ export const geminiAIService = {
       );
     }
 
-    if (snapshot.struggle_signals?.highlights_without_notes > 3) {
+    if (snapshot.struggle_signals?.highlights_without_notes !== undefined && snapshot.struggle_signals.highlights_without_notes > 3) {
       struggleAreas.push('Many highlights without notes - may indicate confusion');
       suggestions.push('Review highlights and add notes to clarify understanding');
     }

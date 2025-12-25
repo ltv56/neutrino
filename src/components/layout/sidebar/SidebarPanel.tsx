@@ -45,21 +45,6 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
             onDocumentSelect={onDocumentSelect}
           />
         );
-      default:
-        return (
-          <div className="px-2 py-2">
-            <div className="space-y-1">
-              <div className="p-2 rounded text-sm cursor-pointer transition-colors text-secondary">
-                <div className="font-medium text-primary">
-                  {SIDEBAR_EMPTY_STATES[activeTab].title}
-                </div>
-                <div className="text-xs mt-1">
-                  {SIDEBAR_EMPTY_STATES[activeTab].subtitle}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
     }
   };
 
