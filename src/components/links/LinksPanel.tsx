@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ExternalLink, FileText, StickyNote } from 'lucide-react';
 import { noteLinkService } from '@/services';
 import type { BacklinksResult } from '@/types';
+import { SectionHeader } from './SectionHeader';
 
 interface LinksPanelProps {
   onNoteSelect?: (noteId: string, title: string) => void;
@@ -130,19 +131,7 @@ export const LinksPanel: React.FC<LinksPanelProps> = ({
       {/* Outgoing Links Section - Only for notes */}
       {isNote && (
         <div className="flex-1 flex flex-col min-h-0">
-          <div
-            className="px-3 py-1.5 font-medium"
-            style={{
-              color: 'var(--fg-primary)',
-              backgroundColor: 'var(--bg-secondary)',
-              borderBottom: '1px solid var(--border-light)',
-              boxShadow: '0 3px 20px rgba(0, 0, 0, 0.18)',
-              fontSize: '13px',
-              zIndex: 10
-            }}
-          >
-            Outgoing Links ({outgoingCount})
-          </div>
+          <SectionHeader title="Outgoing Links" count={outgoingCount} borderBottom />
           <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scrollbar">
             {outgoingCount === 0 ? (
               <div className="h-full flex items-center justify-center">
@@ -197,20 +186,7 @@ export const LinksPanel: React.FC<LinksPanelProps> = ({
 
       {/* Incoming Links (Backlinks) Section */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div
-          className="px-3 py-1.5 font-medium"
-          style={{
-            color: 'var(--fg-primary)',
-            backgroundColor: 'var(--bg-secondary)',
-            borderTop: '1px solid var(--border-light)',
-            borderBottom: '1px solid var(--border-light)',
-            boxShadow: '0 3px 20px rgba(0, 0, 0, 0.18)',
-            fontSize: '13px',
-            zIndex: 20
-          }}
-        >
-          Backlinks ({incomingCount})
-        </div>
+        <SectionHeader title="Backlinks" count={incomingCount} borderTop borderBottom />
         <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scrollbar">
           {incomingCount === 0 ? (
             <div className="h-full flex items-center justify-center">
