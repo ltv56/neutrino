@@ -55,6 +55,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const noteCreatedAtRef = useRef<string | null>(null);
+  const prevLinksRef = useRef<string>('[]'); // Track previous links as JSON string
 
   // Editor insert hook for toolbar
   const { editorViewRef, handleInsert } = useEditorInsert();
@@ -74,6 +75,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setCurrentNoteId(note.id);
         setLastSavedTitle(note.title);
         noteCreatedAtRef.current = note.created_at;
+
+        // Initialize prevLinks for tracking changes
+        const initialLinks = noteLinkService.parseLinks(note.content);
+        prevLinksRef.current = JSON.stringify(initialLinks.map(l => l.text).sort());
 
         // Clear warnings when loading note from DB
         // DB value is always valid (no special chars)
@@ -186,9 +191,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           // Sync links after save
           try {
             const parsedLinks = noteLinkService.parseLinks(newContent);
-            if (parsedLinks.length > 0) {
-              await noteLinkService.syncLinks(currentNoteId, parsedLinks);
-              console.log('[NoteEditor] ✅ Synced', parsedLinks.length, 'links');
+            const currentLinksJson = JSON.stringify(parsedLinks.map(l => l.text).sort());
+            const hasLinksChanged = currentLinksJson !== prevLinksRef.current;
+
+            await noteLinkService.syncLinks(currentNoteId, parsedLinks);
+
+            // Dispatch links-updated event if links changed
+            if (hasLinksChanged) {
+              prevLinksRef.current = currentLinksJson;
+              window.dispatchEvent(new CustomEvent('links-updated', {
+                detail: { noteId: currentNoteId }
+              }));
             }
           } catch (err) {
             console.error('[NoteEditor] Failed to sync links:', err);
@@ -465,10 +478,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
         <Tooltip content="Backlinks" placement="bottom-right">
           <button
-            onClick={() => {
-              console.log('[NoteEditor] Backlinks button clicked, current state:', isBacklinksPanelOpen);
-              setIsBacklinksPanelOpen(!isBacklinksPanelOpen);
-            }}
+            onClick={() => setIsBacklinksPanelOpen(!isBacklinksPanelOpen)}
             className="p-1 rounded hover:bg-[var(--bg-active)] transition-colors"
             style={{ color: isBacklinksPanelOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
           >

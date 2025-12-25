@@ -431,11 +431,18 @@ impl NoteLinkRepository {
 
     /// Auto-resolve a link by finding matching note/document by title
     async fn auto_resolve_link(&self, link_id: Uuid, link_text: &str) -> Result<()> {
+        // Strip .md extension for note matching (notes don't have .md in title)
+        let note_search_text = if link_text.to_lowercase().ends_with(".md") {
+            &link_text[..link_text.len() - 3]
+        } else {
+            link_text
+        };
+
         // Search for matching note
         let note_rows = sqlx::query(
             "SELECT id FROM notes WHERE LOWER(title) = LOWER(?) LIMIT 1"
         )
-        .bind(link_text)
+        .bind(note_search_text)
         .fetch_all(&*self.pool)
         .await?;
 

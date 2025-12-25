@@ -43,6 +43,9 @@ function wikiLinkCompletions(context: CompletionContext): CompletionResult | Pro
     searchQuery = fullQuery.substring(4);
   }
 
+  // Strip .md extension (including partial like .m or .) for consistent matching
+  searchQuery = searchQuery.replace(/\.m?d?$/, '');
+
   const createOptions = (targets: LinkTarget[]): Completion[] => {
     let filtered = targets;
 

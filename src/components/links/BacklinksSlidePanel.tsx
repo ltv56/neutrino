@@ -15,8 +15,6 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
   onNoteSelect,
   onDocumentSelect,
 }) => {
-  console.log('[BacklinksSlidePanel] Render - isOpen:', isOpen);
-
   const [width, setWidth] = React.useState(280); // Default width
   const [isResizing, setIsResizing] = React.useState(false);
   const prevIsOpenRef = React.useRef(isOpen);
@@ -56,11 +54,8 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
   }, [isResizing]);
 
   if (!isOpen) {
-    console.log('[BacklinksSlidePanel] Not rendering - isOpen is false');
     return null;
   }
-
-  console.log('[BacklinksSlidePanel] Rendering panel...');
 
   return (
     <>

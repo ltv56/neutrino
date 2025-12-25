@@ -789,10 +789,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
 
           {/* Backlinks Button */}
           <button
-            onClick={() => {
-              console.log('[PDFViewer] Backlinks button clicked, current state:', isBacklinksPanelOpen);
-              setIsBacklinksPanelOpen(!isBacklinksPanelOpen);
-            }}
+            onClick={() => setIsBacklinksPanelOpen(!isBacklinksPanelOpen)}
             className="p-1 rounded-full hover:bg-primary/10 transition-colors cursor-pointer"
             title="Backlinks"
             style={{ color: isBacklinksPanelOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}

@@ -111,6 +111,11 @@ export const noteLinkService = {
           cleanText = cleanText.substring(0, cleanText.lastIndexOf('#'));
         }
 
+        // Strip .md extension for consistency
+        if (cleanText.endsWith('.md')) {
+          cleanText = cleanText.slice(0, -3);
+        }
+
         links.push({
           text: cleanText,
           type,
@@ -163,6 +168,11 @@ export const noteLinkService = {
     const pageMatch = clean.match(/#\d+$/);
     if (pageMatch) {
       clean = clean.substring(0, clean.lastIndexOf('#'));
+    }
+
+    // Strip .md extension for consistency
+    if (clean.endsWith('.md')) {
+      clean = clean.slice(0, -3);
     }
 
     return clean.trim();
