@@ -990,7 +990,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
             onTabChange={handlePrimaryTabChange}
             onTabClose={closeTab}
             isRightmost={true}
-            isFocused={true}
+            isFocused={false}
           />
         )}
       </div>
