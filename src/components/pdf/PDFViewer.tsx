@@ -614,6 +614,24 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     containerRef.current.scrollTop = scrollTop;
   }, [initialScrollPosition]);
 
+  // Listen for jump-to-highlight events from LinksPanel
+  useEffect(() => {
+    const handleJumpToHighlight = (e: CustomEvent) => {
+      const { documentId: targetDocId, pageNumber, highlightId } = e.detail;
+
+      // Only handle if this is the target document
+      if (targetDocId === documentId) {
+        goToPage(pageNumber);
+      }
+    };
+
+    window.addEventListener('jump-to-highlight', handleJumpToHighlight as EventListener);
+
+    return () => {
+      window.removeEventListener('jump-to-highlight', handleJumpToHighlight as EventListener);
+    };
+  }, [documentId, goToPage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
