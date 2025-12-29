@@ -489,11 +489,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   // Handle note save
   const handleNoteSave = useCallback(async (highlightId: string, note: string) => {
     await highlightService.updateNote(highlightId, note);
-    // Update local state
-    setHighlights((prev) =>
-      prev.map((h) => (h.id === highlightId ? { ...h, note } : h))
-    );
-  }, []);
+    // Reload highlights to get updated linked_note_id
+    await loadHighlights();
+  }, [loadHighlights]);
 
   // Handle highlight delete (right-click)
   const handleHighlightDelete = useCallback(async (highlight: Highlight) => {

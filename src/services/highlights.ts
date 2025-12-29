@@ -96,4 +96,34 @@ export const highlightService = {
       metadata: h.metadata && typeof h.metadata === 'string' ? JSON.parse(h.metadata) : h.metadata,
     }));
   },
+
+  /**
+   * Link a highlight to a note
+   */
+  async linkToNote(highlightId: string, noteId: string): Promise<void> {
+    await invoke('link_highlight_to_note', { highlightId, noteId });
+  },
+
+  /**
+   * Unlink a highlight from a note
+   */
+  async unlinkFromNote(highlightId: string): Promise<void> {
+    await invoke('unlink_highlight_from_note', { highlightId });
+  },
+
+  /**
+   * Get all highlights linked to a note
+   */
+  async getByLinkedNote(noteId: string): Promise<Highlight[]> {
+    const results = await invoke<Highlight[]>('get_highlights_by_linked_note', {
+      noteId,
+    });
+
+    // Parse JSON fields for each highlight
+    return results.map((h) => ({
+      ...h,
+      position_data: typeof h.position_data === 'string' ? JSON.parse(h.position_data) : h.position_data,
+      metadata: h.metadata && typeof h.metadata === 'string' ? JSON.parse(h.metadata) : h.metadata,
+    }));
+  },
 };

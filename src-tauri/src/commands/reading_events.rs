@@ -95,3 +95,44 @@ pub async fn get_recent_highlights_by_session(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn link_highlight_to_note(
+    database: tauri::State<'_, Database>,
+    highlight_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let highlight_uuid = uuid::Uuid::parse_str(&highlight_id).map_err(|e| e.to_string())?;
+    let note_uuid = uuid::Uuid::parse_str(&note_id).map_err(|e| e.to_string())?;
+
+    database.reading_events()
+        .link_to_note(highlight_uuid, note_uuid)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn unlink_highlight_from_note(
+    database: tauri::State<'_, Database>,
+    highlight_id: String,
+) -> Result<(), String> {
+    let highlight_uuid = uuid::Uuid::parse_str(&highlight_id).map_err(|e| e.to_string())?;
+
+    database.reading_events()
+        .unlink_note(highlight_uuid)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_highlights_by_linked_note(
+    database: tauri::State<'_, Database>,
+    note_id: String,
+) -> Result<Vec<models::ReadingEvent>, String> {
+    let note_uuid = uuid::Uuid::parse_str(&note_id).map_err(|e| e.to_string())?;
+
+    database.reading_events()
+        .get_by_linked_note(note_uuid)
+        .await
+        .map_err(|e| e.to_string())
+}
