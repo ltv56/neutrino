@@ -317,6 +317,13 @@ pub fn run() {
             commands::sync_note_links,
             commands::delete_note_link,
 
+            // ========== Concepts & Cross-Reference ==========
+            commands::create_concept,
+            commands::link_concept_to_document,
+            commands::link_concept_to_note,
+            commands::get_cross_references,
+            commands::get_all_concepts,
+
             // ========== Transactions ==========
             commands::create_session_with_documents,
 

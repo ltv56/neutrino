@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT context_state FROM research_sessions WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "context_state",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "7b42aaf4ca308c565869350cf2c58aec3fb5d0ca8469035b0a442c348eb3a67c"
+}

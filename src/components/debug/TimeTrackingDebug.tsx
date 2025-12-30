@@ -133,13 +133,13 @@ const TimeTrackingDebug = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 bg-gray-900 p-4 rounded">
       {/* Header with Status */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-lg">📊 Session Analytics</h3>
+        <h3 className="font-semibold text-lg text-white">📊 Session Analytics</h3>
         <span className={`text-xs px-3 py-1 rounded-full font-medium ${metrics.isPaused
-          ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-          : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+          ? 'bg-amber-900/40 text-amber-300'
+          : 'bg-emerald-900/40 text-emerald-300'
           }`}>
           {metrics.isPaused ? '⏸ Idle' : '▶ Active'}
         </span>
@@ -147,24 +147,24 @@ const TimeTrackingDebug = () => {
 
       {/* Current Phase - Prominent Display */}
       {phaseDebug && (
-        <div className={`p-4 rounded-xl ${phaseColor[phaseDebug.currentPhase]} bg-opacity-10 dark:bg-opacity-20 border border-current border-opacity-20`}>
+        <div className={`p-4 rounded-xl ${phaseColor[phaseDebug.currentPhase]} bg-opacity-20 border border-current border-opacity-20`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{phaseEmoji[phaseDebug.currentPhase]}</span>
               <div>
-                <div className="font-bold text-lg capitalize">
+                <div className="font-bold text-lg capitalize text-white">
                   {phaseDebug.currentPhase.replace('-', ' ')}
                 </div>
-                <div className="text-xs opacity-70">Current Phase</div>
+                <div className="text-xs opacity-70 text-gray-300">Current Phase</div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">{Math.round(phaseDebug.confidence * 100)}%</div>
-              <div className="text-xs opacity-70">Confidence</div>
+              <div className="text-2xl font-bold text-white">{Math.round(phaseDebug.confidence * 100)}%</div>
+              <div className="text-xs opacity-70 text-gray-300">Confidence</div>
             </div>
           </div>
           {/* Confidence bar */}
-          <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-1.5">
+          <div className="w-full bg-white/10 rounded-full h-1.5">
             <div
               className={`${phaseColor[phaseDebug.currentPhase]} h-1.5 rounded-full transition-all duration-300`}
               style={{ width: `${phaseDebug.confidence * 100}%` }}
@@ -176,78 +176,78 @@ const TimeTrackingDebug = () => {
       {/* Metrics Grid - Compact 2 columns */}
       <div className="grid grid-cols-2 gap-4">
         {/* Time Metrics */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">⏱ Time</div>
+        <div className="p-4 bg-slate-800/50 rounded-xl border border-gray-700">
+          <div className="text-sm font-medium text-slate-400 mb-3">⏱ Time</div>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Session</span>
-              <span className="font-mono text-xs font-medium">{formatTime(metrics.totalTime)}</span>
+              <span className="text-xs text-slate-300">Session</span>
+              <span className="font-mono text-xs font-medium text-white">{formatTime(metrics.totalTime)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Document</span>
-              <span className="font-mono text-xs font-medium">{formatTime(metrics.documentTime)}</span>
+              <span className="text-xs text-slate-300">Document</span>
+              <span className="font-mono text-xs font-medium text-white">{formatTime(metrics.documentTime)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Page</span>
-              <span className="font-mono text-xs font-medium">{formatTime(metrics.pageTime)}</span>
+              <span className="text-xs text-slate-300">Page</span>
+              <span className="font-mono text-xs font-medium text-white">{formatTime(metrics.pageTime)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Avg/Page</span>
-              <span className="font-mono text-xs font-medium">{formatAvgTime(metrics.avgTimePerPage)}</span>
+              <span className="text-xs text-slate-300">Avg/Page</span>
+              <span className="font-mono text-xs font-medium text-white">{formatAvgTime(metrics.avgTimePerPage)}</span>
             </div>
           </div>
         </div>
 
         {/* Activity Stats */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">📈 Activity</div>
+        <div className="p-4 bg-slate-800/50 rounded-xl border border-gray-700">
+          <div className="text-sm font-medium text-slate-400 mb-3">📈 Activity</div>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Documents</span>
-              <span className="font-mono text-xs font-medium">{metrics.documentsOpened}</span>
+              <span className="text-xs text-slate-300">Documents</span>
+              <span className="font-mono text-xs font-medium text-white">{metrics.documentsOpened}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Pages</span>
-              <span className="font-mono text-xs font-medium">{metrics.pageChanges}</span>
+              <span className="text-xs text-slate-300">Pages</span>
+              <span className="font-mono text-xs font-medium text-white">{metrics.pageChanges}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Highlights</span>
-              <span className="font-mono text-xs font-medium">{metrics.highlightsCreated}</span>
+              <span className="text-xs text-slate-300">Highlights</span>
+              <span className="font-mono text-xs font-medium text-white">{metrics.highlightsCreated}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Notes</span>
-              <span className="font-mono text-xs font-medium">{metrics.notesCreated}</span>
+              <span className="text-xs text-slate-300">Notes</span>
+              <span className="font-mono text-xs font-medium text-white">{metrics.notesCreated}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Behavior Signals - Compact Tags */}
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-        <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">🧠 Behavior Signals</div>
+      <div className="p-4 bg-slate-800/50 rounded-xl border border-gray-700">
+        <div className="text-sm font-medium text-slate-400 mb-3">🧠 Behavior Signals</div>
         <div className="flex flex-wrap gap-2">
           <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.reReadingDetected
-            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
-            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            ? 'bg-green-900/40 text-green-300'
+            : 'bg-slate-700 text-slate-400'
             }`}>
             🔄 Re-reading {metrics.reReadingDetected ? '✓' : '✗'}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.rapidHighlighting
-            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            ? 'bg-amber-900/40 text-amber-300'
+            : 'bg-slate-700 text-slate-400'
             }`}>
             ⚡ Rapid HL {metrics.rapidHighlighting ? '✓' : '✗'}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${metrics.slowProgress
-            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+            ? 'bg-purple-900/40 text-purple-300'
+            : 'bg-slate-700 text-slate-400'
             }`}>
             🐢 Slow {metrics.slowProgress ? '✓' : '✗'}
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
             📝 HL w/o Notes: {metrics.highlightsWithoutNotes}
           </span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
             📊 Note Ratio: {metrics.highlightNoteRatio > 0 ? `${Math.round(metrics.highlightNoteRatio * 100)}%` : 'N/A'}
           </span>
         </div>
@@ -255,8 +255,8 @@ const TimeTrackingDebug = () => {
 
       {/* Phase Scores - Compact Bars */}
       {phaseDebug && (
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">🎯 Phase Scores</div>
+        <div className="p-4 bg-slate-800/50 rounded-xl border border-gray-700">
+          <div className="text-sm font-medium text-slate-400 mb-3">🎯 Phase Scores</div>
           <div className="space-y-2">
             {phaseDebug.scores.map((scoreData, index) => {
               const isWinner = scoreData.phase === phaseDebug.currentPhase;
@@ -265,17 +265,17 @@ const TimeTrackingDebug = () => {
 
               return (
                 <div key={scoreData.phase} className="flex items-center gap-2">
-                  <span className="w-16 text-xs truncate">
+                  <span className="w-16 text-xs truncate text-gray-300">
                     {phaseEmoji[scoreData.phase]} {scoreData.phase.split('-')[0]}
                   </span>
-                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                  <div className="flex-1 bg-slate-700 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all ${isWinner ? phaseColor[scoreData.phase] : 'bg-slate-400 dark:bg-slate-500'
+                      className={`h-2 rounded-full transition-all ${isWinner ? phaseColor[scoreData.phase] : 'bg-slate-500'
                         }`}
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <span className={`w-8 text-right font-mono text-xs ${isWinner ? 'font-bold' : 'text-slate-500'
+                  <span className={`w-8 text-right font-mono text-xs ${isWinner ? 'font-bold text-white' : 'text-slate-400'
                     }`}>
                     {scoreData.score}
                   </span>
@@ -285,8 +285,8 @@ const TimeTrackingDebug = () => {
             })}
           </div>
           {/* Reasoning */}
-          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-            <div className="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">
+          <div className="mt-3 pt-3 border-t border-slate-700">
+            <div className="text-xs text-slate-400 italic leading-relaxed">
               💡 {phaseDebug.reasoning}
             </div>
           </div>

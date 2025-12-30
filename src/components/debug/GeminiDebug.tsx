@@ -98,17 +98,17 @@ const GeminiDebug = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-gray-900 p-4 rounded">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">🧠 Gemini AI Test</h3>
+        <h3 className="text-lg font-medium text-white">🧠 Gemini AI Test</h3>
       </div>
 
       <div className="space-y-3">
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+        <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-800">
+          <p className="text-sm text-blue-200">
             <strong>Setup:</strong> Make sure <code>GEMINI_API_KEY</code> is set in <code>src-tauri/.env</code> file
           </p>
-          <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+          <p className="text-xs text-blue-300 mt-1">
             API key is stored securely in backend (Rust), not exposed to browser
           </p>
         </div>
@@ -121,8 +121,8 @@ const GeminiDebug = () => {
           {testing ? 'Testing Connection...' : 'Test Gemini Connection'}
         </button>
 
-        <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm font-medium mb-2">Test AI Context Capture:</p>
+        <div className="pt-3 border-t border-gray-700">
+          <p className="text-sm font-medium mb-2 text-white">Test AI Context Capture:</p>
           <button
             onClick={handleCaptureContext}
             disabled={capturing}
@@ -135,19 +135,19 @@ const GeminiDebug = () => {
         {result && (
           <div className={`p-4 rounded-lg ${
             result.success
-              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              ? 'bg-green-900/20 border border-green-800'
+              : 'bg-red-900/20 border border-red-800'
           }`}>
             <div className="flex items-start gap-2">
               <span className="text-2xl">{result.success ? '✅' : '❌'}</span>
               <div className="flex-1">
                 <h4 className={`font-medium ${
-                  result.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+                  result.success ? 'text-green-200' : 'text-red-200'
                 }`}>
                   {result.success ? 'Connection Successful!' : 'Connection Failed'}
                 </h4>
                 <p className={`text-sm mt-1 ${
-                  result.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                  result.success ? 'text-green-300' : 'text-red-300'
                 }`}>
                   {result.message}
                 </p>
@@ -157,14 +157,14 @@ const GeminiDebug = () => {
         )}
 
         {captureResult && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200">{captureResult}</p>
+          <div className="p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-200">{captureResult}</p>
           </div>
         )}
 
-        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <h4 className="text-sm font-medium mb-2">ℹ️ How it works:</h4>
-          <ol className="text-xs space-y-1 text-gray-700 dark:text-gray-300">
+        <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
+          <h4 className="text-sm font-medium mb-2 text-white">ℹ️ How it works:</h4>
+          <ol className="text-xs space-y-1 text-gray-300">
             <li>1. Frontend calls Tauri command: <code>test_gemini_connection</code></li>
             <li>2. Rust backend reads <code>GEMINI_API_KEY</code> from environment</li>
             <li>3. Sends REST request to Gemini API (gemini-2.5-flash)</li>
@@ -172,10 +172,10 @@ const GeminiDebug = () => {
           </ol>
         </div>
 
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          <p><strong>Model:</strong> gemini-2.5-flash</p>
-          <p><strong>Endpoint:</strong> generativelanguage.googleapis.com/v1beta</p>
-          <p><strong>Security:</strong> API key never exposed to browser</p>
+        <div className="text-xs text-gray-400">
+          <p className="text-gray-300"><strong>Model:</strong> gemini-2.5-flash</p>
+          <p className="text-gray-300"><strong>Endpoint:</strong> generativelanguage.googleapis.com/v1beta</p>
+          <p className="text-gray-300"><strong>Security:</strong> API key never exposed to browser</p>
         </div>
       </div>
     </div>

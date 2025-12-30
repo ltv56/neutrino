@@ -875,14 +875,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       <BacklinksSlidePanel
         isOpen={isBacklinksPanelOpen}
         onClose={() => setIsBacklinksPanelOpen(false)}
+        documentId={documentId}
         onNoteSelect={(noteId, title) => {
           window.dispatchEvent(new CustomEvent('open-note-split-view', {
             detail: { noteId, title }
           }));
         }}
-        onDocumentSelect={(documentId, title) => {
+        onDocumentSelect={(docId, title) => {
           window.dispatchEvent(new CustomEvent('open-document-split-view', {
-            detail: { documentId, title }
+            detail: { documentId: docId, title }
           }));
         }}
       />

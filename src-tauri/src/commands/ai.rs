@@ -50,12 +50,11 @@ struct GeminiCandidateContent {
     parts: Vec<GeminiPart>,
 }
 
-#[tauri::command]
-pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
-    let api_key = std::env::var("GEMINI_API_KEY")
-        .map_err(|_| "GEMINI_API_KEY not found in environment".to_string())?;
-
-    let model = "gemini-2.5-flash"; // Free tier: 15 req/min, 1500 req/day
+async fn try_gemini_model(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+) -> Result<String, String> {
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
         model
@@ -63,12 +62,12 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
 
     let request_body = GeminiRequest {
         contents: vec![GeminiContent {
-            parts: vec![GeminiPart { text: prompt }],
+            parts: vec![GeminiPart { text: prompt.to_string() }],
         }],
         generation_config: GenerationConfig {
             temperature: 0.3,
-            max_output_tokens: 2048, // Increased to prevent truncation
-            response_mime_type: "application/json".to_string(), // Force JSON response
+            max_output_tokens: 2048,
+            response_mime_type: "application/json".to_string(),
         },
     };
 
@@ -104,6 +103,47 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
         .ok_or_else(|| "No response text from Gemini".to_string())?;
 
     Ok(text)
+}
+
+#[tauri::command]
+pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
+    let api_key = std::env::var("GEMINI_API_KEY")
+        .map_err(|_| "GEMINI_API_KEY not found in environment".to_string())?;
+
+    // Fallback models in priority order
+    let models = vec![
+        ("gemini-2.5-flash", "Gemini 2.5 Flash"),
+        ("gemini-2.5-flash-8b", "Gemini 2.5 Flash-Lite"),
+        ("gemini-2.0-flash-exp", "Gemini 2.0 Flash"),
+    ];
+
+    let mut last_error = String::new();
+
+    for (model, model_name) in &models {
+        println!("[AI] Trying model: {}", model_name);
+
+        match try_gemini_model(&api_key, model, &prompt).await {
+            Ok(response) => {
+                println!("[AI] ✓ Success with {}", model_name);
+                return Ok(response);
+            }
+            Err(e) => {
+                println!("[AI] ✗ {} failed: {}", model_name, e);
+                last_error = format!("{} failed: {}", model_name, e);
+
+                // Check if it's a rate limit error (429) - try next model
+                if e.contains("429") || e.contains("rate limit") || e.contains("quota") {
+                    println!("[AI] Rate limit detected, trying next model...");
+                    continue;
+                }
+
+                // For other errors, also try next model
+                continue;
+            }
+        }
+    }
+
+    Err(format!("All Gemini models failed. Last error: {}", last_error))
 }
 
 #[tauri::command]

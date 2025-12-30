@@ -36,22 +36,22 @@ const AIContextDebug = () => {
     }, [loadAllData]);
 
     if (!currentSession) {
-        return <div className="text-gray-500 text-sm">No session selected</div>;
+        return <div className="text-gray-300 text-sm bg-gray-900 p-4">No session selected</div>;
     }
 
     return (
-        <div className="space-y-4 text-sm max-h-[60vh] overflow-y-auto">
+        <div className="space-y-4 text-sm max-h-[60vh] overflow-y-auto bg-gray-900 p-4">
             {/* Tab switcher */}
-            <div className="flex gap-2 border-b pb-2 dark:border-gray-600">
+            <div className="flex gap-2 border-b pb-2 border-gray-600">
                 <button
                     onClick={() => setActiveTab('data')}
-                    className={`px-3 py-1 rounded text-xs ${activeTab === 'data' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                    className={`px-3 py-1 rounded text-xs ${activeTab === 'data' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'}`}
                 >
                     📊 Context Data
                 </button>
                 <button
                     onClick={() => setActiveTab('prompt')}
-                    className={`px-3 py-1 rounded text-xs ${activeTab === 'prompt' ? 'bg-purple-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+                    className={`px-3 py-1 rounded text-xs ${activeTab === 'prompt' ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300'}`}
                 >
                     🤖 AI Prompt
                 </button>
@@ -70,11 +70,11 @@ const AIContextDebug = () => {
                     {/* Snapshot Data */}
                     <Section title="📷 Snapshot" status={!!snapshot}>
                         {snapshot ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
-                                <div><strong>Goal:</strong> {snapshot.session_goal || 'None'}</div>
-                                <div><strong>Last Doc:</strong> {snapshot.last_document?.document_title || 'None'} (p.{snapshot.last_document?.page_number || '-'})</div>
-                                <div><strong>Last Note:</strong> {snapshot.last_note?.title || 'None'}</div>
-                                <div><strong>Last Highlight:</strong> {snapshot.last_highlight?.content?.substring(0, 50) || 'None'}...</div>
+                            <div className="text-xs space-y-1 text-gray-300">
+                                <div><strong className="text-white">Goal:</strong> {snapshot.session_goal || 'None'}</div>
+                                <div><strong className="text-white">Last Doc:</strong> {snapshot.last_document?.document_title || 'None'} (p.{snapshot.last_document?.page_number || '-'})</div>
+                                <div><strong className="text-white">Last Note:</strong> {snapshot.last_note?.title || 'None'}</div>
+                                <div><strong className="text-white">Last Highlight:</strong> {snapshot.last_highlight?.content?.substring(0, 50) || 'None'}...</div>
                             </div>
                         ) : <div className="text-gray-400">No snapshot</div>}
                     </Section>
@@ -82,10 +82,10 @@ const AIContextDebug = () => {
                     {/* Reading Behavior */}
                     <Section title="📖 Reading Behavior" status={!!snapshot?.reading_behavior}>
                         {snapshot?.reading_behavior ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
-                                <div><strong>Total Time:</strong> {Math.floor(snapshot.reading_behavior.total_reading_time_ms / 60000)} mins</div>
-                                <div><strong>Page Changes:</strong> {snapshot.reading_behavior.page_changes_count}</div>
-                                <div><strong>Avg Per Page:</strong> {Math.floor((snapshot.reading_behavior.avg_time_per_page_ms || 0) / 1000)}s</div>
+                            <div className="text-xs space-y-1 text-gray-300">
+                                <div><strong className="text-white">Total Time:</strong> {Math.floor(snapshot.reading_behavior.total_reading_time_ms / 60000)} mins</div>
+                                <div><strong className="text-white">Page Changes:</strong> {snapshot.reading_behavior.page_changes_count}</div>
+                                <div><strong className="text-white">Avg Per Page:</strong> {Math.floor((snapshot.reading_behavior.avg_time_per_page_ms || 0) / 1000)}s</div>
                             </div>
                         ) : <div className="text-gray-400">No data</div>}
                     </Section>
@@ -93,7 +93,7 @@ const AIContextDebug = () => {
                     {/* Struggle Signals */}
                     <Section title="⚠️ Struggle Signals" status={!!snapshot?.struggle_signals}>
                         {snapshot?.struggle_signals ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                            <div className="text-xs space-y-1 text-gray-300">
                                 <div>Highlights w/o notes: {snapshot.struggle_signals.highlights_without_notes}</div>
                                 <div>Slow progress: {snapshot.struggle_signals.slow_progress ? '✅' : '❌'}</div>
                                 <div>Rapid highlighting: {snapshot.struggle_signals.rapid_highlighting ? '✅' : '❌'}</div>
@@ -105,7 +105,7 @@ const AIContextDebug = () => {
                     {/* Session Stats */}
                     <Section title="📊 Session Stats" status={!!snapshot?.session_statistics}>
                         {snapshot?.session_statistics ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                            <div className="text-xs space-y-1 text-gray-300">
                                 <div>Docs opened: {snapshot.session_statistics.documents_opened_count}</div>
                                 <div>Highlights: {snapshot.session_statistics.highlights_created_count}</div>
                                 <div>Notes: {snapshot.session_statistics.notes_created_count}</div>
@@ -117,7 +117,7 @@ const AIContextDebug = () => {
                     {/* Recent Highlights (5) - from session events */}
                     <Section title="✨ Recent Highlights" status={(snapshot?.recent_highlights?.length || 0) > 0}>
                         {snapshot?.recent_highlights && snapshot.recent_highlights.length > 0 ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                            <div className="text-xs space-y-1 text-gray-300">
                                 {snapshot.recent_highlights.map((h, i: number) => (
                                     <div key={i} className="border-l-2 border-yellow-400 pl-2 mb-1">
                                         <div>p.{h.page_number}: {h.content?.substring(0, 80)}...</div>
@@ -131,7 +131,7 @@ const AIContextDebug = () => {
                     {/* Recent Notes (5) - from session events */}
                     <Section title="📝 Recent Notes" status={(snapshot?.recent_notes?.length || 0) > 0}>
                         {snapshot?.recent_notes && snapshot.recent_notes.length > 0 ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                            <div className="text-xs space-y-1 text-gray-300">
                                 {snapshot.recent_notes.map((n, i: number) => (
                                     <div key={i} className="border-l-2 border-green-400 pl-2 mb-1">
                                         <div className="font-medium">{n.title}</div>
@@ -145,7 +145,7 @@ const AIContextDebug = () => {
                     {/* Research Questions */}
                     <Section title="❓ Research Questions" status={(snapshot?.research_questions?.length || 0) > 0}>
                         {snapshot?.research_questions && snapshot.research_questions.length > 0 ? (
-                            <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                            <div className="text-xs space-y-1 text-gray-300">
                                 {snapshot.research_questions.map((q, i: number) => (
                                     <div key={i}>• {q}</div>
                                 ))}
@@ -156,7 +156,7 @@ const AIContextDebug = () => {
                     {/* Research Phase */}
                     <Section title="🎯 Research Phase" status={!!snapshot?.research_phase}>
                         {snapshot?.research_phase ? (
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                            <div className="text-xs text-gray-300">
                                 <div><strong>Phase:</strong> {snapshot.research_phase.phase}</div>
                                 <div><strong>Confidence:</strong> {(snapshot.research_phase.confidence * 100).toFixed(0)}%</div>
                                 <div><strong>Reason:</strong> {snapshot.research_phase.reasoning}</div>
@@ -167,7 +167,7 @@ const AIContextDebug = () => {
                     {/* AI Insights */}
                     <Section title="🧠 AI Insights" status={!!snapshot?.ai_insights}>
                         {snapshot?.ai_insights ? (
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                            <div className="text-xs text-gray-300">
                                 <div><strong>Summary:</strong> {snapshot.ai_insights.summary}</div>
                                 <div><strong>Generated:</strong> {new Date(snapshot.ai_insights.generated_at).toLocaleString()}</div>
                             </div>
@@ -176,10 +176,10 @@ const AIContextDebug = () => {
                 </div>
             ) : (
                 <div className="space-y-2">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-400">
                         Prompt length: {aiPrompt.length} chars (~{Math.ceil(aiPrompt.length / 4)} tokens)
                     </div>
-                    <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-3 rounded overflow-auto max-h-[50vh] whitespace-pre-wrap">
+                    <pre className="text-xs bg-gray-800 text-gray-300 p-3 rounded overflow-auto max-h-[50vh] whitespace-pre-wrap">
                         {aiPrompt || 'No prompt generated'}
                     </pre>
                 </div>
@@ -190,10 +190,10 @@ const AIContextDebug = () => {
 
 // Helper component for sections
 const Section = ({ title, status, children }: { title: string; status: boolean; children: React.ReactNode }) => (
-    <div className="border rounded p-2 dark:border-gray-600">
-        <div className="font-medium text-xs flex items-center gap-2 mb-1">
+    <div className="border rounded p-2 border-gray-600 bg-gray-800">
+        <div className="font-medium text-xs flex items-center gap-2 mb-1 text-white">
             {title}
-            <span className={`w-2 h-2 rounded-full ${status ? 'bg-green-500' : 'bg-gray-300'}`} />
+            <span className={`w-2 h-2 rounded-full ${status ? 'bg-green-500' : 'bg-gray-500'}`} />
         </div>
         {children}
     </div>
