@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT cl.note_id, cl.relationship, n.title\n            FROM concept_links cl\n            JOIN notes n ON cl.note_id = n.id\n            WHERE cl.concept_id = ? AND cl.note_id IS NOT NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "note_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "relationship",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1910025c4d6c5b510c0738c00ffd1073788477ee4d78219f2a17f259fb3edef1"
+}

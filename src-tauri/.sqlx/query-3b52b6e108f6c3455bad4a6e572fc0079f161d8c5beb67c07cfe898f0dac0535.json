@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO concept_links (id, concept_id, document_id, note_id, position, relationship, confidence, created_at)\n        VALUES (?, ?, ?, NULL, NULL, ?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "3b52b6e108f6c3455bad4a6e572fc0079f161d8c5beb67c07cfe898f0dac0535"
+}

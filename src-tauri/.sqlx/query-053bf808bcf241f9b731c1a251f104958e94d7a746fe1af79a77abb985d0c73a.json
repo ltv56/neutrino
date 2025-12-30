@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO concepts (id, name, description, domain, evolution_data, created_at, updated_at)\n        VALUES (?, ?, ?, ?, NULL, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "053bf808bcf241f9b731c1a251f104958e94d7a746fe1af79a77abb985d0c73a"
+}
