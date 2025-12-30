@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, linked_note_id, created_at, updated_at\n            FROM reading_events\n            WHERE linked_note_id = ? AND event_type = 'highlight'\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "document_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "page_number",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "position_data",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "note",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "metadata",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "linked_note_id",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e7b25ea520a0371ba32e234caa5def7abf9e245e45c86146deccf75b27dfe04a"
+}

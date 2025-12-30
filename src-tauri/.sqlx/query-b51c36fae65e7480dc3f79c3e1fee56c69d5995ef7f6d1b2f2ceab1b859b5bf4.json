@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, created_at, updated_at\n             FROM reading_events WHERE document_id = ? ORDER BY page_number ASC, created_at ASC",
+  "query": "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, linked_note_id, created_at, updated_at\n             FROM reading_events WHERE document_id = ? AND page_number = ? ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "linked_note_id",
         "ordinal": 8,
         "type_info": "Text"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
@@ -66,9 +71,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "60b9cee06d20f08153fecdfcde106dffee59c3037be9db4b8d706dafb65c6360"
+  "hash": "b51c36fae65e7480dc3f79c3e1fee56c69d5995ef7f6d1b2f2ceab1b859b5bf4"
 }

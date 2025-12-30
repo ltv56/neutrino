@@ -11,9 +11,10 @@ import GeminiDebug from './GeminiDebug';
 import TimeTrackingDebug from './TimeTrackingDebug';
 import SnapshotDebug from './SnapshotDebug';
 import AIContextDebug from './AIContextDebug';
+import ConceptsDebug from './ConceptsDebug';
 import { Bug } from 'lucide-react';
 
-type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | 'ai' | 'time' | 'snapshot' | 'aicontext' | null;
+type DebugOption = 'database' | 'pdf' | 'notes' | 'integrity' | 'vault' | 'fts' | 'context' | 'clipboard' | 'ai' | 'time' | 'snapshot' | 'aicontext' | 'concepts' | null;
 
 const DebugOverlay = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +22,7 @@ const DebugOverlay = () => {
 
   const debugOptions = [
     { id: 'aicontext' as const, label: '🎨 AI Context', description: 'Full AI context + prompt' },
+    { id: 'concepts' as const, label: '🔗 Concepts', description: 'Cross-reference & concepts' },
     { id: 'snapshot' as const, label: '📸 Snapshot', description: 'View current snapshot' },
     { id: 'time' as const, label: '⏱️ Time Track', description: 'Reading time tracking' },
     { id: 'ai' as const, label: '🧠 Gemini AI', description: 'Test AI connection' },
@@ -38,6 +40,8 @@ const DebugOverlay = () => {
     switch (activeOption) {
       case 'aicontext':
         return <AIContextDebug />;
+      case 'concepts':
+        return <ConceptsDebug />;
       case 'snapshot':
         return <SnapshotDebug />;
       case 'time':
@@ -112,7 +116,7 @@ const DebugOverlay = () => {
       {/* Active option UI */}
       {activeOption && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-200">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl ${activeOption === 'concepts' ? 'max-w-4xl' : 'max-w-md'} w-full mx-4 max-h-[80vh] overflow-y-auto`}>
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 {debugOptions.find(opt => opt.id === activeOption)?.label}

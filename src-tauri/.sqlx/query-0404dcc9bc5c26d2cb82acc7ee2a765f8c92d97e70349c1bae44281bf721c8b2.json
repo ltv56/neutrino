@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE reading_events SET linked_note_id = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "0404dcc9bc5c26d2cb82acc7ee2a765f8c92d97e70349c1bae44281bf721c8b2"
+}

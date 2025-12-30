@@ -4,6 +4,7 @@ import { highlightService } from './highlights';
 import { noteService } from './notes';
 import { readingBehaviorTracker } from './readingBehaviorTracker';
 import { phaseDetectionService } from './phaseDetection';
+import { researchQuestionsService } from './researchQuestions';
 import type { ContextSnapshot } from '@/types';
 
 export const autoContextCapture = {
@@ -45,6 +46,10 @@ export const autoContextCapture = {
         '- Reasoning:', phaseDetection.reasoning,
         '- Idle:', behaviorData.is_paused);
 
+      // Extract research questions from notes
+      const researchQuestions = researchQuestionsService.extractQuestionsAsStrings(recentNotes);
+      console.log('[AutoCapture] Extracted research questions:', researchQuestions.length);
+
       // Build snapshot
       const snapshot = contextService.buildSnapshot({
         activeSessionId: sessionId,
@@ -53,6 +58,7 @@ export const autoContextCapture = {
         struggleSignals: behaviorData.struggle_signals,
         sessionStatistics: behaviorData.session_statistics,
         researchPhase: phaseDetection,
+        researchQuestions: researchQuestions.length > 0 ? researchQuestions : undefined,
         lastHighlight: lastHighlight ? {
           id: lastHighlight.id,
           content: lastHighlight.content || '',

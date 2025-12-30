@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import LinksPanel from './LinksPanel';
+import ResearchQuestionsPanel from '../research/ResearchQuestionsPanel';
+import CrossReferencesPanel from '../research/CrossReferencesPanel';
 
 interface BacklinksSlidePanelProps {
   isOpen: boolean;
   onClose: () => void;
+  documentId?: string;
   onNoteSelect?: (noteId: string, title: string) => void;
   onDocumentSelect?: (documentId: string, title: string) => void;
 }
@@ -12,6 +15,7 @@ interface BacklinksSlidePanelProps {
 const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
   isOpen,
   onClose,
+  documentId,
   onNoteSelect,
   onDocumentSelect,
 }) => {
@@ -61,7 +65,7 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
     <>
       {/* Slide Panel */}
       <div
-        className="absolute right-0 top-0 h-full z-50 select-none"
+        className="absolute right-0 top-0 h-full z-50 select-none flex flex-col"
         style={{
           width: `${width}px`,
           backgroundColor: 'var(--bg-secondary)',
@@ -92,7 +96,7 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
 
         {/* Header */}
         <div
-          className="flex items-center justify-between px-3 py-2"
+          className="flex items-center justify-between px-3 py-2 flex-shrink-0"
         >
           <h3 className="text-base font-semibold" style={{ color: 'var(--fg-primary)' }}>
             Links
@@ -107,7 +111,13 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
         </div>
 
         {/* Content */}
-        <div className="h-[calc(100%-57px)] overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <ResearchQuestionsPanel onNavigateToNote={onNoteSelect} />
+          <CrossReferencesPanel
+            documentId={documentId}
+            onNavigateToDocument={onDocumentSelect}
+            onNavigateToNote={onNoteSelect}
+          />
           <LinksPanel
             onNoteSelect={onNoteSelect}
             onDocumentSelect={onDocumentSelect}

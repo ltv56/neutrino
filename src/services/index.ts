@@ -13,6 +13,8 @@ export * from './phaseDetection';
 export * from './phasePersistence';
 export * from './documentPositionTracker';
 export * from './noteLink';
+export * from './researchQuestions';
+export * from './concepts';
 
 // Re-export for convenience
 export { sessionService } from './sessions';
@@ -30,5 +32,7 @@ export { phaseDetectionService } from './phaseDetection';
 export { phasePersistenceService } from './phasePersistence';
 export { documentPositionTracker } from './documentPositionTracker';
 export { noteLinkService } from './noteLink';
+export { researchQuestionsService } from './researchQuestions';
+export { conceptService } from './concepts';
 
 
