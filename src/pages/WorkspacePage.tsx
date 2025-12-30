@@ -396,6 +396,40 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
   }, [onSplitViewChange]);
 
+  // Listen for document deletion
+  useEffect(() => {
+    const handleDocumentDeleted = (e: CustomEvent) => {
+      const { documentId } = e.detail;
+
+      setTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.documentId === documentId);
+        if (!tabToClose || prevTabs.length === 1) return prevTabs;
+
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+        setActiveTabId(prevActiveId =>
+          prevActiveId === tabToClose.id ? newTabs[0].id : prevActiveId
+        );
+        return newTabs;
+      });
+
+      setSecondaryTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.documentId === documentId);
+        if (!tabToClose) return prevTabs;
+
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+        if (activeSecondaryTabId === tabToClose.id && newTabs.length > 0) {
+          setActiveSecondaryTabId(newTabs[0].id);
+        } else if (newTabs.length === 0) {
+          onSplitViewChange(false);
+        }
+        return newTabs;
+      });
+    };
+
+    window.addEventListener('document-deleted', handleDocumentDeleted as EventListener);
+    return () => window.removeEventListener('document-deleted', handleDocumentDeleted as EventListener);
+  }, [onSplitViewChange, activeSecondaryTabId]);
+
   // Track active document changes for behavior tracking
   useEffect(() => {
     const activeTab = tabs.find(tab => tab.id === activeTabId);

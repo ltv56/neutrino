@@ -53,7 +53,6 @@ export const Toast: React.FC<ToastProps> = ({
       style={{
         backgroundColor: 'var(--bg-secondary)',
         border: `1px solid ${getBorderColor()}`,
-        borderLeft: `3px solid ${getBorderColor()}`,
         minWidth: '300px',
         maxWidth: '400px',
         animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',

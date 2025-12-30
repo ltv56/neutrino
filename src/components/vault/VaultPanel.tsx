@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { FolderOpen, FileText, Upload, FolderPlus, ArrowUpDown, ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { FolderOpen, FileText, Upload, FolderPlus, ArrowUpDown, ChevronUp, ChevronDown, Check, Trash2 } from 'lucide-react';
 import { documentService, pdfService } from '@/services';
 import { useToast } from '@/contexts/ToastContext';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import Tooltip from '@/components/common/Tooltip';
 import type { Document } from '@/types';
 
@@ -25,6 +26,11 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
   const [isDragging, setIsDragging] = useState(false);
   const [draggedDoc, setDraggedDoc] = useState<Document | null>(null);
   const [dragPreviewPos, setDragPreviewPos] = useState<{ x: number; y: number } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    documentId: string;
+    documentTitle: string;
+  }>({ isOpen: false, documentId: '', documentTitle: '' });
   const sortButtonRef = useRef<HTMLButtonElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -69,6 +75,41 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`Failed to import PDF: ${errorMessage}`);
     }
+  };
+
+  const handleDeleteDocument = (e: React.MouseEvent, documentId: string, documentTitle: string) => {
+    e.stopPropagation();
+    setConfirmDialog({ isOpen: true, documentId, documentTitle });
+  };
+
+  const confirmDelete = async () => {
+    const { documentId } = confirmDialog;
+
+    try {
+      await documentService.delete(documentId);
+      await loadDocuments();
+
+      if (selectedDocId === documentId) {
+        setSelectedDocId(null);
+      }
+
+      // Notify to close the tab
+      window.dispatchEvent(new CustomEvent('document-deleted', {
+        detail: { documentId }
+      }));
+
+      setConfirmDialog({ isOpen: false, documentId: '', documentTitle: '' });
+      toast.success('Document deleted successfully');
+    } catch (err) {
+      console.error('Failed to delete document:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to delete document: ${errorMessage}`);
+      setConfirmDialog({ isOpen: false, documentId: '', documentTitle: '' });
+    }
+  };
+
+  const cancelDelete = () => {
+    setConfirmDialog({ isOpen: false, documentId: '', documentTitle: '' });
   };
 
   // Custom drag implementation using mouse events (workaround for Tauri WebView limitation)
@@ -414,6 +455,26 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
                       </div>
                     </DocTooltip>
                   </div>
+
+                  {/* Delete Button - visible on hover */}
+                  <button
+                    onClick={(e) => handleDeleteDocument(e, doc.id, doc.title)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+                    style={{
+                      color: 'var(--fg-tertiary)',
+                      pointerEvents: 'auto'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-active)';
+                      e.currentTarget.style.color = 'rgb(239, 68, 68)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--fg-tertiary)';
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -452,6 +513,18 @@ const VaultPanel: React.FC<VaultPanelProps> = ({ onOpenDocument, isDraggingFiles
           </span>
         </div>
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Document"
+        message={`Are you sure you want to delete "${confirmDialog.documentTitle}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        variant="danger"
+      />
     </>
   );
 };
