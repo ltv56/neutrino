@@ -555,7 +555,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     }
   }, [splitViewOpen, focusedPanel]);
 
-  const createNewNote = useCallback(async () => {
+  const createNewNote = useCallback(async (folderId?: string | null) => {
     try {
       let targetSession = currentSession;
 
@@ -586,6 +586,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       const newNote = await noteService.create(
         targetSession.id,
         null,
+        folderId || null, // Use passed folderId
         newTitle,
         '',
         'concept'
@@ -621,8 +622,9 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       openNoteTab(noteId, title);
     };
 
-    const handleCreateNote = () => {
-      createNewNote();
+    const handleCreateNote = (e: CustomEvent) => {
+      const { folderId } = e.detail || {};
+      createNewNote(folderId);
     };
 
     const handleCreateEmptyTab = () => {
@@ -639,14 +641,14 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
     window.addEventListener('workspace:open-document', handleOpenDocument as EventListener);
     window.addEventListener('workspace:open-note', handleOpenNote as EventListener);
-    window.addEventListener('workspace:create-note', handleCreateNote);
+    window.addEventListener('workspace:create-note', handleCreateNote as EventListener);
     window.addEventListener('workspace:create-empty-tab', handleCreateEmptyTab);
     window.addEventListener('workspace:close-current-tab', handleCloseCurrentTab);
 
     return () => {
       window.removeEventListener('workspace:open-document', handleOpenDocument as EventListener);
       window.removeEventListener('workspace:open-note', handleOpenNote as EventListener);
-      window.removeEventListener('workspace:create-note', handleCreateNote);
+      window.removeEventListener('workspace:create-note', handleCreateNote as EventListener);
       window.removeEventListener('workspace:create-empty-tab', handleCreateEmptyTab);
       window.removeEventListener('workspace:close-current-tab', handleCloseCurrentTab);
     };

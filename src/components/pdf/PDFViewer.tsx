@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { TextLayer } from 'pdfjs-dist';
 import { documentService, highlightService, documentPositionTracker } from '@/services';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
-import type { Document, Highlight, HighlightPosition } from '@/types';
+import type { Document, Highlight, HighlightPosition, HighlightRect } from '@/types';
 import { usePDFCache } from '@/contexts';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Link2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Link2, Highlighter, MousePointer2 } from 'lucide-react';
 import HighlightOverlay from './HighlightOverlay';
 import HighlightNoteEditor from './HighlightNoteEditor';
 import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
+import SelectionToolbar from './SelectionToolbar';
 import Tooltip from '@/components/common/Tooltip';
 import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_HIGHLIGHT_OPACITY, MIN_SELECTION_SIZE } from '@/constants/highlight';
 
@@ -43,6 +45,7 @@ interface PDFViewerProps {
 const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, initialScrollPosition }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
   const zoomDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,6 +67,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
   const [isBacklinksPanelOpen, setIsBacklinksPanelOpen] = useState(false);
+  const [toolMode, setToolMode] = useState<'select' | 'highlight'>('select');
+  const [textSelection, setTextSelection] = useState<{
+    text: string;
+    range: Range | null;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [isTextLayerReady, setIsTextLayerReady] = useState(false);
+
+  // Reset textLayer ready flag when page changes
+  useEffect(() => {
+    setIsTextLayerReady(false);
+  }, [currentPage]);
 
   // PDF Cache
   const { getDocument: getCachedDocument, setDocument: cacheDocument, getPage: getCachedPage, setPage: cachePage } = usePDFCache();
@@ -86,6 +101,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
 
     const canvas = canvasRef.current;
     const container = containerRef.current;
+    const textLayer = textLayerRef.current;
     if (!canvas || !container) return;
 
     const context = canvas.getContext('2d');
@@ -132,6 +148,64 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     try {
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
+
+      // Render text layer using PDF.js built-in TextLayer class
+      if (textLayer) {
+        try {
+          // Clear previous content and set dimensions to match viewport
+          textLayer.innerHTML = '';
+          textLayer.style.width = `${viewport.width}px`;
+          textLayer.style.height = `${viewport.height}px`;
+          textLayer.style.setProperty('--scale-factor', viewport.scale.toString());
+
+          const textContent = await page.getTextContent();
+
+          if (!textContent || !textContent.items || textContent.items.length === 0) {
+            console.warn('[PDFViewer] No text content available for this page');
+            return;
+          }
+
+          // Use PDF.js built-in TextLayer class
+          const pdfTextLayer = new TextLayer({
+            textContentSource: textContent,
+            viewport: viewport,
+            container: textLayer,
+          });
+
+          await pdfTextLayer.render();
+
+          // Set textLayer ready flag
+          setIsTextLayerReady(true);
+
+          // Debug: log span dimensions
+          const spans = Array.from(textLayer.querySelectorAll('span')).slice(0, 3);
+          console.log('[PDFViewer] Text layer rendered:', {
+            spanCount: textLayer.querySelectorAll('span').length,
+            firstThreeSpans: spans.map((span, i) => {
+              const el = span as HTMLElement;
+              return {
+                index: i,
+                text: span.textContent?.substring(0, 15),
+                styles: {
+                  left: el.style.left,
+                  top: el.style.top,
+                  width: el.style.width,
+                  height: el.style.height,
+                  fontSize: el.style.fontSize,
+                  transform: el.style.transform
+                },
+                computed: {
+                  width: el.offsetWidth,
+                  height: el.offsetHeight,
+                  boundingBox: el.getBoundingClientRect()
+                }
+              };
+            })
+          });
+        } catch (textLayerError) {
+          console.error('[PDFViewer] Text layer rendering error:', textLayerError);
+        }
+      }
     } catch (err: unknown) {
       // Ignore cancellation errors
       if (err && typeof err === 'object' && 'name' in err && err.name !== 'RenderingCancelledException') {
@@ -387,8 +461,87 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     }
   }, [documentId, currentPage]);
 
-  // Mouse drag selection handlers
+  // Handle text selection and create highlight
+  const handleTextSelectionHighlight = useCallback(async () => {
+    if (toolMode !== 'select') return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText || selectedText.length === 0) return;
+
+    try {
+      // Get the range of the selection
+      const range = selection.getRangeAt(0);
+      const rects = range.getClientRects();
+
+      if (rects.length === 0) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const canvasRect = canvas.getBoundingClientRect();
+
+      // Calculate bounding box for all selection rectangles
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+      for (let i = 0; i < rects.length; i++) {
+        const rect = rects[i];
+        const x = rect.left - canvasRect.left;
+        const y = rect.top - canvasRect.top;
+        const right = x + rect.width;
+        const bottom = y + rect.height;
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, right);
+        maxY = Math.max(maxY, bottom);
+      }
+
+      // Convert canvas coordinates to PDF coordinates
+      const pdfX = minX / currentScale;
+      const pdfY = minY / currentScale;
+      const pdfWidth = (maxX - minX) / currentScale;
+      const pdfHeight = (maxY - minY) / currentScale;
+
+      const position: HighlightPosition = {
+        x: pdfX,
+        y: pdfY,
+        width: pdfWidth,
+        height: pdfHeight,
+      };
+
+      const newHighlight = await highlightService.create(
+        documentId,
+        currentPage,
+        position,
+        selectedText,
+        DEFAULT_HIGHLIGHT_COLOR
+      );
+
+      setHighlights((prev) => [...prev, newHighlight]);
+
+      window.dispatchEvent(new CustomEvent('highlight-created', {
+        detail: {
+          highlightId: newHighlight.id,
+          documentId,
+          pageNumber: currentPage,
+          content: newHighlight.content
+        }
+      }));
+
+      // Clear selection
+      selection.removeAllRanges();
+    } catch (err) {
+      console.error('Failed to create highlight from text selection:', err);
+    }
+  }, [toolMode, documentId, currentPage, currentScale]);
+
+  // Mouse drag selection handlers (only active in highlight mode)
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (toolMode !== 'highlight') return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -399,7 +552,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     setIsSelecting(true);
     setSelectionStart({ x, y });
     setSelectionEnd({ x, y });
-  }, []);
+  }, [toolMode]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isSelecting) return;
@@ -415,7 +568,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   }, [isSelecting]);
 
   const handleMouseUp = useCallback(async () => {
-    if (!isSelecting || !selectionStart || !selectionEnd || !documentId) {
+    if (toolMode !== 'highlight' || !isSelecting || !selectionStart || !selectionEnd || !documentId) {
       setIsSelecting(false);
       setSelectionStart(null);
       setSelectionEnd(null);
@@ -479,7 +632,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [isSelecting, selectionStart, selectionEnd, documentId, currentPage, currentScale]);
+  }, [toolMode, isSelecting, selectionStart, selectionEnd, documentId, currentPage, currentScale]);
 
   // Handle highlight click - show note editor
   const handleHighlightClick = useCallback((highlight: Highlight) => {
@@ -504,6 +657,126 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       console.error('Failed to delete highlight:', err);
     }
   }, []);
+
+  // Create highlight from text selection
+  const handleCreateHighlightFromSelection = useCallback(async () => {
+    if (!textSelection || !textSelection.range || !documentId) return;
+
+    try {
+      const range = textSelection.range;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Get all rects for multi-line selections
+      const rects = range.getClientRects();
+      if (rects.length === 0) {
+        console.warn('[PDFViewer] No client rects found for selection');
+        return;
+      }
+
+      // Use first and last rect to get bounding box
+      const firstRect = rects[0];
+      const lastRect = rects[rects.length - 1];
+
+      const canvasRect = canvas.getBoundingClientRect();
+
+      // Calculate bounding box that covers all rects
+      const minX = Math.min(...Array.from(rects).map(r => r.left));
+      const minY = firstRect.top;
+      const maxX = Math.max(...Array.from(rects).map(r => r.right));
+      const maxY = lastRect.bottom;
+
+      // Group rects by line (Y position) for accurate multi-line highlighting
+      const lineGroups = new Map<number, DOMRect[]>();
+      const yTolerance = 2; // Pixels tolerance for same line
+
+      for (const rect of Array.from(rects)) {
+        let foundGroup = false;
+        for (const [groupY, group] of lineGroups.entries()) {
+          if (Math.abs(rect.top - groupY) < yTolerance) {
+            group.push(rect);
+            foundGroup = true;
+            break;
+          }
+        }
+        if (!foundGroup) {
+          lineGroups.set(rect.top, [rect]);
+        }
+      }
+
+      // Create rectangle for each line
+      const highlightRects: HighlightRect[] = [];
+      for (const group of lineGroups.values()) {
+        const minX = Math.min(...group.map(r => r.left));
+        const maxX = Math.max(...group.map(r => r.right));
+        const minY = Math.min(...group.map(r => r.top));
+        const maxY = Math.max(...group.map(r => r.bottom));
+
+        // Convert to canvas coordinates (relative to canvas)
+        const canvasX = minX - canvasRect.left;
+        const canvasY = minY - canvasRect.top;
+        const canvasWidth = maxX - minX;
+        const canvasHeight = maxY - minY;
+
+        // Convert to PDF coordinates (scale 1.0)
+        highlightRects.push({
+          x: canvasX / currentScale,
+          y: canvasY / currentScale,
+          width: canvasWidth / currentScale,
+          height: canvasHeight / currentScale,
+        });
+      }
+
+      console.log('[PDFViewer] Creating highlight from selection:', {
+        selectedText: textSelection.text.substring(0, 50) + '...',
+        textLength: textSelection.text.length,
+        totalRects: rects.length,
+        linesCount: lineGroups.size,
+        highlightRects,
+        scale: currentScale
+      });
+
+      const position: HighlightPosition = {
+        rects: highlightRects,
+      };
+
+      const newHighlight = await highlightService.create(
+        documentId,
+        currentPage,
+        position,
+        textSelection.text,
+        DEFAULT_HIGHLIGHT_COLOR
+      );
+
+      setHighlights((prev) => [...prev, newHighlight]);
+
+      // Dispatch event for context snapshot
+      window.dispatchEvent(new CustomEvent('highlight-created', {
+        detail: {
+          highlightId: newHighlight.id,
+          documentId,
+          pageNumber: currentPage,
+          content: textSelection.text
+        }
+      }));
+
+      // Clear selection and hide toolbar
+      window.getSelection()?.removeAllRanges();
+      setTextSelection(null);
+
+      console.log('[PDFViewer] Highlight created:', {
+        id: newHighlight.id,
+        textSent: textSelection.text,
+        textSentLength: textSelection.text.length,
+        textReceived: newHighlight.content,
+        textReceivedLength: newHighlight.content?.length,
+        page: currentPage
+      });
+    } catch (err) {
+      console.error('Failed to create highlight from selection:', err);
+    }
+  }, [textSelection, documentId, currentPage, currentScale]);
+
 
   // Zoom handlers
   const ZOOM_STEP = 0.25;
@@ -578,11 +851,84 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
         e.preventDefault();
         fitToPage();
       }
+
+      // Tool mode shortcuts
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setToolMode(prev => prev === 'select' ? 'highlight' : 'select');
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToPreviousPage, goToNextPage, zoomIn, zoomOut, fitToPage]);
+
+  // Track text selection and show toolbar
+  useEffect(() => {
+    // Only track selection in select mode
+    if (toolMode !== 'select') {
+      setTextSelection(null);
+      return;
+    }
+
+    // Don't setup listeners if refs aren't ready yet
+    if (!containerRef.current || !textLayerRef.current) {
+      return;
+    }
+
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setTextSelection(null);
+        return;
+      }
+
+      const selectedText = selection.toString().trim();
+      if (!selectedText) {
+        setTextSelection(null);
+        return;
+      }
+
+      // Get selection bounding rect
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Position toolbar relative to text layer
+      const textLayerElement = textLayerRef.current;
+      if (!textLayerElement) return;
+      const textLayerRect = textLayerElement.getBoundingClientRect();
+
+      const position = {
+        x: rect.right - textLayerRect.left, // Position to the right of selection
+        y: rect.top + rect.height / 2 - textLayerRect.top, // Center vertically with selection
+      };
+
+      setTextSelection({
+        text: selectedText,
+        range: range,
+        position,
+      });
+    };
+
+    // Listen for selection changes (use window.document to avoid naming conflict with state variable)
+    window.document.addEventListener('selectionchange', handleSelectionChange);
+
+    // Also listen for mouseup to show toolbar after selection
+    const textLayerElement = textLayerRef.current;
+    const handleMouseUp = () => {
+      handleSelectionChange();
+    };
+    textLayerElement.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.document.removeEventListener('selectionchange', handleSelectionChange);
+      // Safely remove listener (element guaranteed to exist if we got here)
+      textLayerElement.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [toolMode, currentPage, isTextLayerReady]); // Re-run when page changes or textLayer becomes ready
+
+  // Text selection in select mode should NOT create highlights
+  // User can select and copy text without creating highlights
 
   // Load highlights when page changes
   useEffect(() => {
@@ -661,7 +1007,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       <div ref={containerRef} className="h-full overflow-auto p-4 pb-20">
         <div className="min-h-full flex items-center">
           <div
-            style={{ position: 'relative', display: 'inline-block', cursor: 'crosshair', padding: '0 16px', margin: '0 auto' }}
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+              cursor: toolMode === 'highlight' ? 'crosshair' : 'default',
+              padding: '0 16px',
+              margin: '0 auto'
+            }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -669,7 +1021,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
             <canvas
               ref={canvasRef}
               className="shadow-lg"
-              style={{ backgroundColor: 'white', display: 'block' }}
+              style={{
+                backgroundColor: 'white',
+                display: 'block'
+              }}
+            />
+            {/* Text layer for text selection */}
+            <div
+              ref={textLayerRef}
+              className={`textLayer ${toolMode === 'select' ? 'text-selectable' : 'text-disabled'}`}
             />
             {/* Highlight overlay */}
             <HighlightOverlay
@@ -677,9 +1037,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
               canvasWidth={canvasDimensions.width}
               canvasHeight={canvasDimensions.height}
               currentScale={currentScale}
+              toolMode={toolMode}
               onHighlightClick={handleHighlightClick}
               onHighlightDelete={handleHighlightDelete}
             />
+
+            {/* Text selection toolbar */}
+            {textSelection && toolMode === 'select' && (
+              <SelectionToolbar
+                position={textSelection.position}
+                onHighlight={handleCreateHighlightFromSelection}
+              />
+            )}
             {/* Selection rectangle during drag */}
             {isSelecting && selectionStart && selectionEnd && (
               <svg
@@ -805,6 +1174,17 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
 
           {/* Divider */}
           <div className="w-px h-5 bg-border" />
+
+          {/* Tool Mode Toggle */}
+          <Tooltip content={toolMode === 'select' ? "Select text (H)" : "Highlight mode (H)"} placement="top">
+            <button
+              onClick={() => setToolMode(prev => prev === 'select' ? 'highlight' : 'select')}
+              className="p-1 rounded-full hover:bg-primary/10 transition-colors cursor-pointer"
+              style={{ color: toolMode === 'highlight' ? 'var(--accent)' : 'var(--fg-secondary)' }}
+            >
+              {toolMode === 'select' ? <MousePointer2 size={16} /> : <Highlighter size={16} />}
+            </button>
+          </Tooltip>
 
           {/* Backlinks Button */}
           <Tooltip content="Backlinks" placement="top">

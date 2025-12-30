@@ -19,6 +19,7 @@ impl NoteRepository {
         &self,
         session_id: Option<Uuid>,
         document_id: Option<Uuid>,
+        folder_id: Option<Uuid>,
         title: String,
         content: String,
         note_type: String,
@@ -30,15 +31,17 @@ impl NoteRepository {
         let note_id_str = note_id.to_string();
         let session_id_str = session_id.map(|id| id.to_string());
         let document_id_str = document_id.map(|id| id.to_string());
+        let folder_id_str = folder_id.map(|id| id.to_string());
 
         sqlx::query!(
             r#"
-            INSERT INTO notes (id, session_id, document_id, title, content, note_type, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            INSERT INTO notes (id, session_id, document_id, folder_id, title, content, note_type, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             "#,
             note_id_str,
             session_id_str,
             document_id_str,
+            folder_id_str,
             title,
             content,
             note_type,
@@ -52,6 +55,7 @@ impl NoteRepository {
             id: note_id,
             session_id,
             document_id,
+            folder_id,
             title,
             content,
             note_type,
@@ -66,7 +70,7 @@ impl NoteRepository {
         let session_id_str = session_id.to_string();
         let rows = sqlx::query_as!(
             NoteRow,
-            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+            "SELECT id, session_id, document_id, folder_id, title, content, note_type, position, tags, created_at, updated_at
              FROM notes WHERE session_id = ? ORDER BY created_at DESC",
             session_id_str
         )
@@ -111,6 +115,14 @@ impl NoteRepository {
                             .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
                     })
                     .transpose()?,
+                folder_id: row
+                    .folder_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                    })
+                    .transpose()?,
                 title: row.title.ok_or_else(|| DatabaseError::InternalError {
                     message: "Missing title".to_string(),
                 })?,
@@ -143,7 +155,7 @@ impl NoteRepository {
         let id_str = id.to_string();
         let row = sqlx::query_as!(
             NoteRow,
-            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+            "SELECT id, session_id, document_id, folder_id, title, content, note_type, position, tags, created_at, updated_at
              FROM notes WHERE id = ?",
             id_str
         )
@@ -184,6 +196,14 @@ impl NoteRepository {
                         .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
                 })
                 .transpose()?,
+            folder_id: row
+                .folder_id
+                .as_ref()
+                .map(|s| {
+                    Uuid::parse_str(s)
+                        .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                })
+                .transpose()?,
             title: row.title.ok_or_else(|| DatabaseError::InternalError {
                 message: "Missing title".to_string(),
             })?,
@@ -213,7 +233,7 @@ impl NoteRepository {
     pub async fn find_all(&self) -> DbResult<Vec<Note>> {
         let rows = sqlx::query_as!(
             NoteRow,
-            "SELECT id, session_id, document_id, title, content, note_type, position, tags, created_at, updated_at
+            "SELECT id, session_id, document_id, folder_id, title, content, note_type, position, tags, created_at, updated_at
              FROM notes ORDER BY updated_at DESC"
         )
         .fetch_all(&*self.pool)
@@ -251,6 +271,14 @@ impl NoteRepository {
                     .transpose()?,
                 document_id: row
                     .document_id
+                    .as_ref()
+                    .map(|s| {
+                        Uuid::parse_str(s)
+                            .map_err(|_| DatabaseError::InvalidUuid { value: s.to_string() })
+                    })
+                    .transpose()?,
+                folder_id: row
+                    .folder_id
                     .as_ref()
                     .map(|s| {
                         Uuid::parse_str(s)
@@ -546,6 +574,7 @@ struct NoteRow {
     pub id: Option<String>,
     pub session_id: Option<String>,
     pub document_id: Option<String>,
+    pub folder_id: Option<String>,
     pub title: Option<String>,
     pub content: Option<String>,
     pub note_type: Option<String>,

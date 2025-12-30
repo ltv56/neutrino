@@ -22,7 +22,7 @@ export { documentService } from './documents';
 export { debugService } from './debug';
 export { pdfService } from './pdf';
 export { highlightService } from './highlights';
-export { noteService } from './notes';
+export { noteService, folderService } from './notes';
 export { tabStateService } from './tabState';
 export { contextService } from './context';
 export { readingBehaviorTracker } from './readingBehaviorTracker';

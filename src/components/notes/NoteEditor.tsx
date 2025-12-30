@@ -244,6 +244,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           const newNote = await noteService.create(
             sessionId || null,
             documentId || null,
+            null, // folder_id - will be added in future
             newTitle || 'Untitled',
             newContent,
             'concept'

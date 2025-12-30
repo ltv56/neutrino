@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "pdfjs-dist/web/pdf_viewer.css";
 
 :root {
   --bg-primary: #141414;
@@ -341,5 +342,75 @@
     height: 28px;
     background-color: var(--border);
     margin: 0 8px;
+  }
+
+  /* PDF.js text layer - based on Mozilla's official implementation */
+  .textLayer {
+    /* Positioning */
+    position: absolute !important;
+    left: 16px !important; /* Match parent padding-left */
+    top: 0 !important;
+    text-align: initial !important;
+
+    /* Layout - use 'clip' for better text selection (Mozilla recommendation) */
+    overflow: clip !important;
+    opacity: 0.25 !important;
+    line-height: 1 !important;
+
+    /* Text rendering */
+    -webkit-text-size-adjust: none !important;
+    -moz-text-size-adjust: none !important;
+    text-size-adjust: none !important;
+    forced-color-adjust: none !important;
+
+    /* Transform */
+    transform-origin: 0 0 !important;
+    caret-color: CanvasText !important;
+
+    /* Layering */
+    z-index: 2 !important; /* Above canvas (1), below highlights (3) */
+  }
+
+  .textLayer :is(span, br) {
+    color: transparent !important;
+    position: absolute !important;
+    white-space: pre !important;
+    cursor: text !important;
+    transform-origin: 0% 0% !important;
+  }
+
+  /* Enable text selection in select mode */
+  .textLayer.text-selectable {
+    pointer-events: auto !important;
+    user-select: text !important;
+  }
+
+  /* Disable text selection in highlight mode */
+  .textLayer.text-disabled {
+    pointer-events: none !important;
+    user-select: none !important;
+  }
+
+  .textLayer ::selection {
+    background: rgba(0, 102, 204, 0.85) !important; /* Blue selection highlight - very dark for better visibility */
+    color: transparent !important;
+  }
+
+  /* Chrome fix for line break selection artifacts (Mozilla issue #13840) */
+  .textLayer br::selection {
+    background: transparent !important;
+  }
+
+  /* Prevent selection artifacts at layer boundaries */
+  .textLayer .endOfContent {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    cursor: default;
+    user-select: none;
   }
 }

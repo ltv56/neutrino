@@ -6,7 +6,16 @@ export interface Note {
   content: string;
   session_id?: string;
   document_id?: string;
+  folder_id?: string;
   note_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  parent_folder_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +45,7 @@ export const noteService = {
   async create(
     sessionId: string | null,
     documentId: string | null,
+    folderId: string | null,
     title: string,
     content: string,
     noteType: string = 'concept'
@@ -43,6 +53,7 @@ export const noteService = {
     return await invoke('create_note', {
       sessionId,
       documentId,
+      folderId,
       title,
       content,
       noteType,
@@ -135,4 +146,44 @@ export const noteService = {
     });
   },
 
+};
+
+export const folderService = {
+  /**
+   * Create a new folder
+   */
+  async create(name: string, parentFolderId?: string | null): Promise<Folder> {
+    return await invoke('create_folder', {
+      name,
+      parentFolderId: parentFolderId || null,
+    });
+  },
+
+  /**
+   * Get all folders
+   */
+  async getAll(): Promise<Folder[]> {
+    return await invoke('get_folders');
+  },
+
+  /**
+   * Get folder by ID
+   */
+  async getById(folderId: string): Promise<Folder | null> {
+    return await invoke('get_folder', { folderId });
+  },
+
+  /**
+   * Update folder name
+   */
+  async update(folderId: string, name: string): Promise<void> {
+    return await invoke('update_folder', { folderId, name });
+  },
+
+  /**
+   * Delete folder
+   */
+  async delete(folderId: string): Promise<boolean> {
+    return await invoke('delete_folder', { folderId });
+  },
 };

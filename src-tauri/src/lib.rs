@@ -308,6 +308,13 @@ pub fn run() {
             commands::delete_note,
             commands::search_notes,
 
+            // ========== Folder Management ==========
+            commands::create_folder,
+            commands::get_folders,
+            commands::get_folder,
+            commands::update_folder,
+            commands::delete_folder,
+
             // ========== Note Links (Bidirectional Linking) ==========
             commands::create_note_link,
             commands::resolve_note_link,

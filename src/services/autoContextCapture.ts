@@ -7,12 +7,20 @@ import { phaseDetectionService } from './phaseDetection';
 import { researchQuestionsService } from './researchQuestions';
 import type { ContextSnapshot } from '@/types';
 
+// DISABLE AI auto-capture (set to false to stop Gemini from running on every hot reload)
+const ENABLE_AUTO_CAPTURE = false;
+
 export const autoContextCapture = {
   /**
    * Auto-capture context with AI insights on app close
    * This is the primary method for Smart Resume feature
    */
   async captureOnClose(sessionId: string, sessionGoal?: string): Promise<boolean> {
+    if (!ENABLE_AUTO_CAPTURE) {
+      console.log('[AutoCapture] Auto-capture is disabled');
+      return false;
+    }
+
     try {
       console.log('[AutoCapture] Starting auto-capture on app close...');
 
@@ -119,6 +127,10 @@ export const autoContextCapture = {
     highlightCount: number,
     noteCount: number
   ): Promise<boolean> {
+    if (!ENABLE_AUTO_CAPTURE) {
+      return false;
+    }
+
     const HIGHLIGHT_THRESHOLD = 10;
     const NOTE_THRESHOLD = 5;
 

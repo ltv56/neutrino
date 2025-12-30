@@ -61,13 +61,13 @@ impl TransactionService {
 
             // Create initial notes for document
             for note in session_data.notes.get(&document.id).unwrap_or(&vec![]) {
-                self.create_note_tx(&mut tx, &session.id, Some(&document.id), note.clone()).await?;
+                self.create_note_tx(&mut tx, &session.id, Some(&document.id), None, note.clone()).await?;
             }
         }
 
         // Create session-level notes
         for note in session_data.session_notes {
-            self.create_note_tx(&mut tx, &session.id, None, note).await?;
+            self.create_note_tx(&mut tx, &session.id, None, None, note).await?;
         }
 
         tx.commit().await.map_err(|e| DatabaseError::TransactionFailed {
@@ -184,6 +184,7 @@ impl TransactionService {
         tx: &mut Transaction<'_, Sqlite>,
         session_id: &Uuid,
         document_id: Option<&Uuid>,
+        folder_id: Option<&Uuid>,
         note_req: CreateNoteRequest,
     ) -> DbResult<Note> {
         let note_id = Uuid::new_v4();
@@ -193,15 +194,17 @@ impl TransactionService {
         let note_id_str = note_id.to_string();
         let session_id_str = session_id.to_string();
         let document_id_str = document_id.map(|id| id.to_string());
+        let folder_id_str = folder_id.map(|id| id.to_string());
 
         sqlx::query!(
             r#"
-            INSERT INTO notes (id, session_id, document_id, title, content, note_type, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            INSERT INTO notes (id, session_id, document_id, folder_id, title, content, note_type, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             "#,
             note_id_str,
             session_id_str,
             document_id_str,
+            folder_id_str,
             note_req.title,
             note_req.content,
             note_req.note_type,
@@ -215,6 +218,7 @@ impl TransactionService {
             id: note_id,
             session_id: Some(*session_id),
             document_id: document_id.copied(),
+            folder_id: folder_id.copied(),
             title: note_req.title,
             content: note_req.content,
             note_type: note_req.note_type,

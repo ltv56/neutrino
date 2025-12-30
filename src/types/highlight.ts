@@ -12,11 +12,22 @@ export interface Highlight {
   updated_at: string;
 }
 
+export interface HighlightRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface HighlightPosition {
-  x: number; // X coordinate on PDF page (PDF coordinates)
-  y: number; // Y coordinate on PDF page (PDF coordinates)
-  width: number; // Width in PDF coordinates
-  height: number; // Height in PDF coordinates
+  // Single rect format (backward compatible - deprecated)
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+
+  // Multi-rect format (new - for accurate multi-line highlights)
+  rects?: HighlightRect[];
 }
 
 export interface HighlightMetadata {

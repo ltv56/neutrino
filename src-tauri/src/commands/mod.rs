@@ -8,6 +8,7 @@ mod notes;
 mod ai;
 mod note_links;
 mod concepts;
+mod folders;
 
 pub use sessions::*;
 pub use documents::*;
@@ -19,3 +20,4 @@ pub use notes::*;
 pub use ai::*;
 pub use note_links::*;
 pub use concepts::*;
+pub use folders::*;

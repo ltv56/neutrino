@@ -224,6 +224,7 @@ const NoteTest = () => {
       const note = await noteService.create(
         currentSession?.id || null, // use current session if available
         null, // no document
+        null, // no folder
         'Markdown Syntax Test',
         MARKDOWN_TEST_CONTENT,
         'concept'
@@ -250,6 +251,7 @@ const NoteTest = () => {
       const note = await noteService.create(
         currentSession?.id || null,
         null,
+        null, // no folder
         'Simple Test Note',
         '# Simple Note\n\nThis is a **simple** test note with minimal content.\n\n- Item 1\n- Item 2\n- Item 3',
         'concept'
@@ -275,6 +277,7 @@ const NoteTest = () => {
       const note = await noteService.create(
         currentSession?.id || null,
         null,
+        null, // no folder
         'Empty Note Test',
         '',
         'concept'

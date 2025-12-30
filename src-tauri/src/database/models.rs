@@ -105,11 +105,21 @@ pub struct Note {
     pub id: Uuid,
     pub session_id: Option<Uuid>,
     pub document_id: Option<Uuid>,
+    pub folder_id: Option<Uuid>,
     pub title: String,
     pub content: String,
     pub note_type: String, // concept, insight, question, quote
     pub position: Option<String>, // JSON: document position if linked
     pub tags: Option<String>, // JSON array of tags
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Folder {
+    pub id: Uuid,
+    pub name: String,
+    pub parent_folder_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

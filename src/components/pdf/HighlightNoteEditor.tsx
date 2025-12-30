@@ -40,55 +40,72 @@ const HighlightNoteEditor: React.FC<HighlightNoteEditorProps> = ({
   useEffect(() => {
     if (!popoverRef.current) return;
 
-    // Convert PDF coordinates to canvas coordinates
+    // Convert PDF coordinates to canvas coordinates (support multi-rect format)
     const pdfPos = highlight.position_data;
-    const canvasX = pdfPos.x * currentScale;
-    const canvasY = pdfPos.y * currentScale;
-    const canvasWidth = pdfPos.width * currentScale;
-    const canvasHeight = pdfPos.height * currentScale;
+    const rects = pdfPos.rects || [{ x: pdfPos.x!, y: pdfPos.y!, width: pdfPos.width!, height: pdfPos.height! }];
+
+    const canvasRects = rects.map(r => ({
+      x: r.x * currentScale,
+      y: r.y * currentScale,
+      width: r.width * currentScale,
+      height: r.height * currentScale,
+    }));
+
+    // Calculate bounding box
+    const minX = Math.min(...canvasRects.map(r => r.x));
+    const minY = Math.min(...canvasRects.map(r => r.y));
+    const maxX = Math.max(...canvasRects.map(r => r.x + r.width));
+    const maxY = Math.max(...canvasRects.map(r => r.y + r.height));
+    const lastRect = canvasRects[canvasRects.length - 1];
 
     const popoverRect = popoverRef.current.getBoundingClientRect();
     const popoverWidth = 320; // Fixed width
     const popoverHeight = popoverRect.height || 200;
-    const gap = 12; // Gap between highlight and popover
+    const gap = 8; // Gap between buttons and popover
     const arrowSize = 8;
+    const buttonWidth = 40; // Width of button area (icon + padding)
+    const canvasOffset = 16; // SVG overlay has left: 16px to match parent padding
 
-    // Highlight absolute position on screen
-    const highlightScreenX = canvasRect.left + canvasX;
-    const highlightScreenY = canvasRect.top + canvasY;
-    const highlightScreenRight = highlightScreenX + canvasWidth;
-    const highlightScreenBottom = highlightScreenY + canvasHeight;
+    // Highlight absolute position on screen (use bounding box)
+    const highlightScreenX = canvasRect.left + canvasOffset + minX;
+    const highlightScreenY = canvasRect.top + minY;
+    const highlightScreenRight = canvasRect.left + canvasOffset + maxX;
+    const highlightScreenBottom = canvasRect.top + maxY;
 
-    // Available space in each direction
-    const spaceRight = window.innerWidth - highlightScreenRight;
-    const spaceLeft = highlightScreenX;
-    const spaceBottom = window.innerHeight - highlightScreenBottom;
-    const spaceTop = highlightScreenY;
+    // Position for buttons (rightmost edge + button width)
+    const buttonsScreenX = canvasRect.left + canvasOffset + maxX + buttonWidth;
+    const buttonsScreenY = canvasRect.top + minY; // Align with top of highlight instead of center
+
+    // Available space in each direction from buttons
+    const spaceRight = window.innerWidth - buttonsScreenX;
+    const spaceLeft = buttonsScreenX;
+    const spaceBottom = window.innerHeight - buttonsScreenY;
+    const spaceTop = buttonsScreenY;
 
     let finalPlacement: 'right' | 'left' | 'top' | 'bottom' = 'right';
     let top = 0;
     let left = 0;
 
-    // Smart positioning: prioritize right, then left, then bottom, then top
+    // Smart positioning: prioritize right (next to buttons), then left, then bottom, then top
     if (spaceRight >= popoverWidth + gap) {
-      // Place on right
+      // Place on right of buttons
       finalPlacement = 'right';
-      left = highlightScreenRight + gap + arrowSize;
-      top = highlightScreenY + canvasHeight / 2 - popoverHeight / 2;
+      left = buttonsScreenX + gap;
+      top = buttonsScreenY; // Align top with buttons
     } else if (spaceLeft >= popoverWidth + gap) {
-      // Place on left
+      // Place on left of highlight
       finalPlacement = 'left';
       left = highlightScreenX - popoverWidth - gap - arrowSize;
-      top = highlightScreenY + canvasHeight / 2 - popoverHeight / 2;
+      top = buttonsScreenY; // Align top with buttons
     } else if (spaceBottom >= popoverHeight + gap) {
-      // Place below
+      // Place below highlight
       finalPlacement = 'bottom';
-      left = highlightScreenX + canvasWidth / 2 - popoverWidth / 2;
+      left = highlightScreenX + (maxX - minX) / 2 - popoverWidth / 2;
       top = highlightScreenBottom + gap + arrowSize;
     } else {
-      // Place above
+      // Place above highlight
       finalPlacement = 'top';
-      left = highlightScreenX + canvasWidth / 2 - popoverWidth / 2;
+      left = highlightScreenX + (maxX - minX) / 2 - popoverWidth / 2;
       top = highlightScreenY - popoverHeight - gap - arrowSize;
     }
 

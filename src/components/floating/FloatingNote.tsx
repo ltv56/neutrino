@@ -193,6 +193,7 @@ export const FloatingNote: React.FC = () => {
       await noteService.create(
         quickNotesSession.id,
         null,
+        null, // folder_id - quick capture notes don't use folders
         title,
         content,
         'quick-capture'

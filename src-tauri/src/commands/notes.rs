@@ -5,6 +5,7 @@ pub async fn create_note(
     database: tauri::State<'_, Database>,
     session_id: Option<String>,
     document_id: Option<String>,
+    folder_id: Option<String>,
     title: String,
     content: String,
     note_type: String,
@@ -19,8 +20,13 @@ pub async fn create_note(
         None => None,
     };
 
+    let folder_uuid = match folder_id {
+        Some(id) => Some(uuid::Uuid::parse_str(&id).map_err(|e| e.to_string())?),
+        None => None,
+    };
+
     database.notes()
-        .create(session_uuid, document_uuid, title, content, note_type)
+        .create(session_uuid, document_uuid, folder_uuid, title, content, note_type)
         .await
         .map_err(|e| e.to_string())
 }

@@ -109,7 +109,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
            onClick={onClose} />
       <div className="command-palette-content fixed top-24 left-1/2 z-50 w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden"
-           style={{ transform: 'translateX(-50%)', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+           style={{ transform: 'translateX(-50%) translateY(0) scale(1)', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 px-4 py-3 relative" style={{ borderBottom: '1px solid var(--border)' }}>
           <Search size={20} style={{ color: isSearching ? 'var(--accent)' : 'var(--fg-secondary)' }}
                   className={isSearching ? 'animate-pulse' : ''} />
