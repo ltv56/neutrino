@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view';
-import { noteService } from '@/services';
+import { noteService, documentService } from '@/services';
 
 /**
  * Extension to handle Ctrl+Click on wiki links [[...]]
@@ -85,45 +85,57 @@ async function handleWikiLinkClick(linkText: string): Promise<void> {
             pageNumber = parseInt(pageMatch[2], 10);
         }
 
-        // Strip .md suffix
-        if (targetTitle.endsWith('.md')) {
+        // Auto-detect document by file extension
+        if (!isDocument && (targetTitle.endsWith('.pdf') || targetTitle.endsWith('.docx') || targetTitle.endsWith('.txt'))) {
+            isDocument = true;
+        }
+
+        // Strip .md suffix for notes
+        if (!isDocument && targetTitle.endsWith('.md')) {
             targetTitle = targetTitle.slice(0, -3);
         }
 
         if (isDocument) {
-            // TODO: Search for document by title and open in split view
-            console.log('[WikiLink] Opening document:', targetTitle, 'page:', pageNumber);
-            // Document search would need documentService.searchByTitle to be implemented
-        } else {
-            // Search for note by title (exact match first, then partial)
-            const notes = await noteService.search(targetTitle);
+            const documents = await documentService.getAll();
 
-            // Find exact match (case-insensitive)
-            const exactMatch = notes.find(
-                (n) => n.title.toLowerCase() === targetTitle.toLowerCase()
-            );
+            let match = documents.find((d) => d.title.toLowerCase() === targetTitle.toLowerCase());
+
+            if (!match) {
+                const titleWithoutExt = targetTitle.replace(/\.(pdf|docx|txt)$/i, '');
+                match = documents.find((d) => d.title.toLowerCase() === titleWithoutExt.toLowerCase());
+            }
+
+            if (!match && !targetTitle.endsWith('.pdf')) {
+                match = documents.find((d) => d.title.toLowerCase() === (targetTitle + '.pdf').toLowerCase());
+            }
+
+            if (match) {
+                window.dispatchEvent(
+                    new CustomEvent('open-document-split-view', {
+                        detail: {
+                            documentId: match.id,
+                            title: match.title,
+                            page: pageNumber
+                        },
+                    })
+                );
+            }
+        } else {
+            const notes = await noteService.search(targetTitle);
+            const exactMatch = notes.find((n) => n.title.toLowerCase() === targetTitle.toLowerCase());
 
             if (exactMatch) {
-                // Open in split view
                 window.dispatchEvent(
                     new CustomEvent('open-note-split-view', {
                         detail: { noteId: exactMatch.id, title: exactMatch.title },
                     })
                 );
-                console.log('[WikiLink] ✅ Opening note in split view:', exactMatch.title);
             } else if (notes.length > 0) {
-                // No exact match, but have partial matches - open first one
-                const firstMatch = notes[0];
                 window.dispatchEvent(
                     new CustomEvent('open-note-split-view', {
-                        detail: { noteId: firstMatch.id, title: firstMatch.title },
+                        detail: { noteId: notes[0].id, title: notes[0].title },
                     })
                 );
-                console.log('[WikiLink] ✅ Opening partial match:', firstMatch.title);
-            } else {
-                // No matching note found
-                console.log('[WikiLink] ⚠️ Note not found:', targetTitle);
-                // Could optionally create the note or show a toast
             }
         }
     } catch (error) {

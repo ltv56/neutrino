@@ -167,6 +167,7 @@ pub struct ReadingEvent {
     pub content: Option<String>, // Highlighted text or bookmark label
     pub note: Option<String>, // User's note/comment
     pub metadata: Option<String>, // JSON: color, etc.
+    pub linked_note_id: Option<Uuid>, // Linked note for bi-directional linking
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

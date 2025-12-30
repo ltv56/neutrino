@@ -97,7 +97,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
           const linkText = wikiMatch[1];
           const matchStart = line.from + wikiMatch.index;
           const matchEnd = matchStart + fullMatch.length;
-          const cursorInWikiLink = cursorPos >= matchStart && cursorPos <= matchEnd;
+          const cursorInWikiLink = cursorPos >= matchStart && cursorPos < matchEnd;
 
           if (!cursorInWikiLink || isReadingMode) {
             // Preview mode: hide [[ and ]] brackets, style link text

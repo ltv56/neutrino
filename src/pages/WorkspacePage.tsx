@@ -416,8 +416,8 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     };
 
     const handleOpenDocumentSplitView = (e: CustomEvent) => {
-      const { documentId, title } = e.detail;
-      openInSplitView(createDocumentTab(documentId, title));
+      const { documentId, title, page } = e.detail;
+      openInSplitView(createDocumentTab(documentId, title, page));
     };
 
     window.addEventListener('open-note-split-view', handleOpenNoteSplitView as EventListener);

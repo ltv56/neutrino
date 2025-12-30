@@ -61,6 +61,7 @@ impl ReadingEventRepository {
             content,
             note,
             metadata,
+            linked_note_id: None,
             created_at: now,
             updated_at: now,
         })
@@ -76,7 +77,7 @@ impl ReadingEventRepository {
 
         let rows = sqlx::query_as!(
             ReadingEventRow,
-            "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, created_at, updated_at
+            "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, linked_note_id, created_at, updated_at
              FROM reading_events WHERE document_id = ? AND page_number = ? ORDER BY created_at ASC",
             document_id_str,
             page_number_i64
@@ -92,7 +93,7 @@ impl ReadingEventRepository {
 
         let rows = sqlx::query_as!(
             ReadingEventRow,
-            "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, created_at, updated_at
+            "SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, linked_note_id, created_at, updated_at
              FROM reading_events WHERE document_id = ? ORDER BY page_number ASC, created_at ASC",
             document_id_str
         )
@@ -133,6 +134,69 @@ impl ReadingEventRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    pub async fn link_to_note(&self, id: Uuid, note_id: Uuid) -> DbResult<()> {
+        let now_str = Utc::now().to_rfc3339();
+        let id_str = id.to_string();
+        let note_id_str = note_id.to_string();
+
+        let result = sqlx::query!(
+            "UPDATE reading_events SET linked_note_id = ?, updated_at = ? WHERE id = ?",
+            note_id_str,
+            now_str,
+            id_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::InternalError {
+                message: format!("Reading event not found: {}", id),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn unlink_note(&self, id: Uuid) -> DbResult<()> {
+        let now_str = Utc::now().to_rfc3339();
+        let id_str = id.to_string();
+
+        let result = sqlx::query!(
+            "UPDATE reading_events SET linked_note_id = NULL, updated_at = ? WHERE id = ?",
+            now_str,
+            id_str
+        )
+        .execute(&*self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::InternalError {
+                message: format!("Reading event not found: {}", id),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_by_linked_note(&self, note_id: Uuid) -> DbResult<Vec<ReadingEvent>> {
+        let note_id_str = note_id.to_string();
+
+        let rows = sqlx::query_as!(
+            ReadingEventRow,
+            r#"
+            SELECT id, document_id, event_type, page_number, position_data, content, note, metadata, linked_note_id, created_at, updated_at
+            FROM reading_events
+            WHERE linked_note_id = ? AND event_type = 'highlight'
+            ORDER BY created_at DESC
+            "#,
+            note_id_str
+        )
+        .fetch_all(&*self.pool)
+        .await?;
+
+        self.parse_reading_event_rows(rows)
+    }
+
     pub async fn get_recent_by_session(
         &self,
         session_id: Uuid,
@@ -145,7 +209,7 @@ impl ReadingEventRepository {
             ReadingEventRow,
             r#"
             SELECT DISTINCT re.id, re.document_id, re.event_type, re.page_number,
-                   re.position_data, re.content, re.note, re.metadata,
+                   re.position_data, re.content, re.note, re.metadata, re.linked_note_id,
                    re.created_at, re.updated_at
             FROM reading_events re
             INNER JOIN session_documents sd ON re.document_id = sd.document_id
@@ -205,6 +269,10 @@ impl ReadingEventRepository {
                         value: "null".to_string(),
                     })?;
 
+            let linked_note_id = row.linked_note_id
+                .as_ref()
+                .and_then(|s| Uuid::parse_str(s).ok());
+
             let event = ReadingEvent {
                 id: Uuid::parse_str(event_id).map_err(|_| DatabaseError::InvalidUuid {
                     value: event_id.clone(),
@@ -222,6 +290,7 @@ impl ReadingEventRepository {
                 content: row.content,
                 note: row.note,
                 metadata: row.metadata,
+                linked_note_id,
                 created_at: self.parse_sqlite_datetime(created_at_str)?,
                 updated_at: self.parse_sqlite_datetime(updated_at_str)?,
             };
@@ -243,6 +312,7 @@ struct ReadingEventRow {
     pub content: Option<String>,
     pub note: Option<String>,
     pub metadata: Option<String>,
+    pub linked_note_id: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }

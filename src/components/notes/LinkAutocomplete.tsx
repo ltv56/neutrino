@@ -7,7 +7,7 @@ import { useSessionsContext } from '@/hooks';
 interface LinkAutocompleteProps {
   query: string;
   position: { top: number; left: number };
-  onSelect: (target: LinkTarget) => void;
+  onSelect: (linkText: string) => void;
   onClose: () => void;
 }
 
@@ -21,19 +21,39 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
   const [targets, setTargets] = useState<LinkTarget[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [filterType, setFilterType] = useState<'all' | 'note' | 'doc'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Parse query for prefix (note:, doc:)
   useEffect(() => {
-    if (query.length === 0) {
-      setTargets([]);
-      return;
+    let parsedQuery = query;
+    let type: 'all' | 'note' | 'doc' = 'all';
+
+    if (query.startsWith('note:')) {
+      type = 'note';
+      parsedQuery = query.substring(5);
+    } else if (query.startsWith('doc:')) {
+      type = 'doc';
+      parsedQuery = query.substring(4);
     }
 
+    setFilterType(type);
+    setSearchQuery(parsedQuery);
+  }, [query]);
+
+  useEffect(() => {
     const search = async () => {
       setLoading(true);
       try {
-        const results = await noteLinkService.searchTargets(query, currentSession?.id);
-        setTargets(results);
+        const results = await noteLinkService.searchTargets(searchQuery || '', currentSession?.id);
+
+        // Filter by type
+        const filtered = filterType === 'all'
+          ? results
+          : results.filter(r => r.target_type === filterType);
+
+        setTargets(filtered);
         setSelectedIndex(0); // Reset selection when results change
       } catch (err) {
         console.error('[LinkAutocomplete] Failed to search:', err);
@@ -43,10 +63,26 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
       }
     };
 
-    // Debounce search
+    // Debounce search - show all if empty query
+    if (searchQuery.length === 0 && filterType === 'all') {
+      setTargets([]);
+      setLoading(false);
+      return;
+    }
+
     const timer = setTimeout(search, 150);
     return () => clearTimeout(timer);
-  }, [query, currentSession?.id]);
+  }, [searchQuery, filterType, currentSession?.id]);
+
+  const handleSelect = (target: LinkTarget) => {
+    const isDoc = target.target_type === 'doc';
+    const prefix = filterType === 'note' ? 'note:' : (filterType === 'doc' ? 'doc:' : '');
+
+    // Format: [[prefix:Title]] or [[Title]]
+    // For documents, user can add #page after selecting
+    const linkText = prefix + target.title;
+    onSelect(linkText);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -59,7 +95,10 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         if (targets[selectedIndex]) {
-          onSelect(targets[selectedIndex]);
+          handleSelect(targets[selectedIndex]);
+        } else if (query.length > 0) {
+          // No selection, just use the typed query
+          onSelect(query);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -69,21 +108,28 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [targets, selectedIndex, onSelect, onClose]);
+  }, [targets, selectedIndex, query, onSelect, onClose]);
 
   // Scroll selected item into view
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && targets.length > 0) {
       const selected = containerRef.current.children[selectedIndex] as HTMLElement;
       if (selected) {
         selected.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, targets.length]);
 
   if (query.length === 0) {
     return null;
   }
+
+  // Helper text based on filter type
+  const getHelperText = () => {
+    if (filterType === 'note') return 'Type to search notes...';
+    if (filterType === 'doc') return 'Type to search documents... (add #page after selecting)';
+    return 'Type to search notes & documents... (use "note:" or "doc:" to filter)';
+  };
 
   return (
     <div
@@ -109,7 +155,11 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
         </div>
       ) : targets.length === 0 ? (
         <div className="p-3 text-xs" style={{ color: 'var(--fg-tertiary)' }}>
-          No matches found. Press Enter to create "[[{query}]]"
+          {searchQuery.length === 0 ? (
+            <div>{getHelperText()}</div>
+          ) : (
+            <div>No matches found. Press Enter to use &quot;{query}&quot;</div>
+          )}
         </div>
       ) : (
         targets.map((target, index) => {
@@ -119,7 +169,7 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
           return (
             <div
               key={target.id}
-              onClick={() => onSelect(target)}
+              onClick={() => handleSelect(target)}
               className={`p-3 cursor-pointer transition-colors ${
                 isSelected ? 'bg-active' : 'hover:bg-tertiary'
               }`}
@@ -148,7 +198,7 @@ export const LinkAutocomplete: React.FC<LinkAutocompleteProps> = ({
                     {target.title}
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--fg-tertiary)' }}>
-                    {isNote ? 'Note' : 'Document'}
+                    {isNote ? 'Note' : 'Document' + (filterType === 'doc' ? ' (add #page after)' : '')}
                   </div>
                   {target.content_preview && (
                     <div

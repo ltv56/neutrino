@@ -7,6 +7,7 @@ export interface Highlight {
   content?: string; // Highlighted text
   note?: string;
   metadata?: HighlightMetadata;
+  linked_note_id?: string; // Linked note for bi-directional linking
   created_at: string;
   updated_at: string;
 }

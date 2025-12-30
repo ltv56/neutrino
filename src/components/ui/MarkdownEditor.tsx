@@ -10,6 +10,7 @@ import { blockKeymap } from './markdown-editor/config/blockKeymap';
 import { markdownTheme, highlightingExtension } from './markdown-editor/theme/editorTheme';
 import { livePreviewPlugin } from './markdown-editor/plugins/livePreviewPlugin';
 import { wikiLinkClickHandler } from './markdown-editor/plugins/wikiLinkClickHandler';
+import { wikiLinkAutocomplete, setWikiLinkSession, setCurrentNote } from './markdown-editor/plugins/wikiLinkAutocomplete';
 
 interface MarkdownEditorProps {
   content: string;
@@ -18,6 +19,8 @@ interface MarkdownEditorProps {
   autoFocus?: boolean;
   readOnly?: boolean;
   onEditorReady?: (view: EditorView) => void;
+  sessionId?: string; // For wiki link autocomplete
+  noteId?: string; // Current note ID to exclude from suggestions
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
@@ -27,6 +30,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   autoFocus = false,
   readOnly = false,
   onEditorReady,
+  sessionId,
+  noteId,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -39,6 +44,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  // Update wiki link autocomplete session and current note
+  useEffect(() => {
+    setWikiLinkSession(sessionId);
+  }, [sessionId]);
+
+  useEffect(() => {
+    setCurrentNote(noteId);
+  }, [noteId]);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -54,6 +68,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       highlightingExtension,
       livePreviewPlugin,
       wikiLinkClickHandler,
+      wikiLinkAutocomplete,
       editableCompartment.current.of(EditorView.editable.of(!readOnly)),
       EditorView.contentAttributes.of(readOnly ? { tabindex: '-1' } : {}),
       EditorView.updateListener.of((update: ViewUpdate) => {

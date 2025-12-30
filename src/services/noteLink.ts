@@ -44,6 +44,13 @@ export const noteLinkService = {
   },
 
   /**
+   * Get incoming links for a document (notes that link to this document)
+   */
+  async getDocumentBacklinks(documentId: string): Promise<BacklinksResult> {
+    return invoke('get_document_backlinks', { documentId });
+  },
+
+  /**
    * Search for potential link targets by title
    */
   async searchTargets(query: string, sessionId?: string): Promise<LinkTarget[]> {
@@ -55,8 +62,8 @@ export const noteLinkService = {
    */
   async syncLinks(noteId: string, links: ParsedLink[]): Promise<void> {
     const parsedLinks = links.map((link) => ({
-      linkText: link.text,
-      linkType: this.inferLinkType(link.text),
+      link_text: link.text,
+      link_type: this.inferLinkType(link.text),
       context: undefined,
     }));
 
@@ -102,6 +109,11 @@ export const noteLinkService = {
         if (pageMatch) {
           page = parseInt(pageMatch[1]);
           cleanText = cleanText.substring(0, cleanText.lastIndexOf('#'));
+        }
+
+        // Strip .md extension for consistency
+        if (cleanText.endsWith('.md')) {
+          cleanText = cleanText.slice(0, -3);
         }
 
         links.push({
@@ -156,6 +168,11 @@ export const noteLinkService = {
     const pageMatch = clean.match(/#\d+$/);
     if (pageMatch) {
       clean = clean.substring(0, clean.lastIndexOf('#'));
+    }
+
+    // Strip .md extension for consistency
+    if (clean.endsWith('.md')) {
+      clean = clean.slice(0, -3);
     }
 
     return clean.trim();

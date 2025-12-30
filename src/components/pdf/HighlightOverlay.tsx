@@ -52,6 +52,7 @@ const HighlightOverlay: React.FC<HighlightOverlayProps> = ({
 
           const color = highlight.metadata?.color || DEFAULT_HIGHLIGHT_COLOR;
           const hasNote = Boolean(highlight.note);
+          const hasLinkedNote = Boolean(highlight.linked_note_id);
 
           return (
             <g key={highlight.id}>
@@ -81,7 +82,35 @@ const HighlightOverlay: React.FC<HighlightOverlayProps> = ({
                 onMouseLeave={() => setHoveredHighlight(null)}
               />
 
-              {/* Note indicator icon */}
+              {/* Linked note indicator icon (top-left) */}
+              {hasLinkedNote && (
+                <g>
+                  {/* Icon background circle */}
+                  <circle
+                    cx={canvasX + 8}
+                    cy={canvasY + 8}
+                    r="7"
+                    fill="var(--accent)"
+                    stroke="var(--bg-secondary)"
+                    strokeWidth="1.5"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* Link icon */}
+                  <text
+                    x={canvasX + 8}
+                    y={canvasY + 8}
+                    fontSize="9"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="white"
+                    style={{ pointerEvents: 'none', userSelect: 'none', fontWeight: 'bold' }}
+                  >
+                    🔗
+                  </text>
+                </g>
+              )}
+
+              {/* Note indicator icon (top-right) */}
               {hasNote && (
                 <g>
                   {/* Icon background circle */}

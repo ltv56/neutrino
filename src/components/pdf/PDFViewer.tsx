@@ -4,9 +4,11 @@ import { documentService, highlightService, documentPositionTracker } from '@/se
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import type { Document, Highlight, HighlightPosition } from '@/types';
 import { usePDFCache } from '@/contexts';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Link2 } from 'lucide-react';
 import HighlightOverlay from './HighlightOverlay';
 import HighlightNoteEditor from './HighlightNoteEditor';
+import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
+import Tooltip from '@/components/common/Tooltip';
 import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_HIGHLIGHT_OPACITY, MIN_SELECTION_SIZE } from '@/constants/highlight';
 
 // Configure PDF.js worker - use local worker from node_modules
@@ -61,6 +63,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
+  const [isBacklinksPanelOpen, setIsBacklinksPanelOpen] = useState(false);
 
   // PDF Cache
   const { getDocument: getCachedDocument, setDocument: cacheDocument, getPage: getCachedPage, setPage: cachePage } = usePDFCache();
@@ -183,6 +186,18 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       }
 
       setDocument(doc);
+
+      // Dispatch document activated event for LinksPanel
+      const eventDetail = { documentId: doc.id };
+      console.log('[PDFViewer] Dispatching document-activated event:', eventDetail);
+
+      // Set global state immediately (for LinksPanel to check on mount)
+      (window as any).__lastDocumentActivated = eventDetail;
+      (window as any).__lastNoteActivated = null;
+
+      window.dispatchEvent(new CustomEvent('document-activated', {
+        detail: eventDetail
+      }));
 
       // Dispatch document open event
       window.dispatchEvent(new CustomEvent('pdf:document-open', {
@@ -474,11 +489,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
   // Handle note save
   const handleNoteSave = useCallback(async (highlightId: string, note: string) => {
     await highlightService.updateNote(highlightId, note);
-    // Update local state
-    setHighlights((prev) =>
-      prev.map((h) => (h.id === highlightId ? { ...h, note } : h))
-    );
-  }, []);
+    // Reload highlights to get updated linked_note_id
+    await loadHighlights();
+  }, [loadHighlights]);
 
   // Handle highlight delete (right-click)
   const handleHighlightDelete = useCallback(async (highlight: Highlight) => {
@@ -601,6 +614,24 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     containerRef.current.scrollTop = scrollTop;
   }, [initialScrollPosition]);
 
+  // Listen for jump-to-highlight events from LinksPanel
+  useEffect(() => {
+    const handleJumpToHighlight = (e: CustomEvent) => {
+      const { documentId: targetDocId, pageNumber, highlightId } = e.detail;
+
+      // Only handle if this is the target document
+      if (targetDocId === documentId) {
+        goToPage(pageNumber);
+      }
+    };
+
+    window.addEventListener('jump-to-highlight', handleJumpToHighlight as EventListener);
+
+    return () => {
+      window.removeEventListener('jump-to-highlight', handleJumpToHighlight as EventListener);
+    };
+  }, [documentId, goToPage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -683,14 +714,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       <div className="absolute bottom-0 left-0 right-0 flex justify-center p-3 pointer-events-none">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg bg-secondary border border-[var(--border)] z-10 pointer-events-auto">
           {/* Zoom Controls */}
-          <button
-            onClick={zoomOut}
-            disabled={zoomMode === 'manual' && manualZoom <= MIN_ZOOM}
-            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            title="Zoom out (Ctrl -)"
-          >
-            <ZoomOut size={16} />
-          </button>
+          <Tooltip content="Zoom out (Ctrl -)">
+            <button
+              onClick={zoomOut}
+              disabled={zoomMode === 'manual' && manualZoom <= MIN_ZOOM}
+              className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <ZoomOut size={16} />
+            </button>
+          </Tooltip>
 
           {/* Zoom Dropdown */}
           <div className="relative" ref={zoomDropdownRef}>
@@ -761,27 +793,43 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
             )}
           </div>
 
-          <button
-            onClick={zoomIn}
-            disabled={zoomMode === 'manual' && manualZoom >= MAX_ZOOM}
-            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            title="Zoom in (Ctrl +)"
-          >
-            <ZoomIn size={16} />
-          </button>
+          <Tooltip content="Zoom in (Ctrl +)">
+            <button
+              onClick={zoomIn}
+              disabled={zoomMode === 'manual' && manualZoom >= MAX_ZOOM}
+              className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <ZoomIn size={16} />
+            </button>
+          </Tooltip>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-border" />
+
+          {/* Backlinks Button */}
+          <Tooltip content="Backlinks" placement="top">
+            <button
+              onClick={() => setIsBacklinksPanelOpen(!isBacklinksPanelOpen)}
+              className="p-1 rounded-full hover:bg-primary/10 transition-colors cursor-pointer"
+              style={{ color: isBacklinksPanelOpen ? 'var(--accent)' : 'var(--fg-secondary)' }}
+            >
+              <Link2 size={16} />
+            </button>
+          </Tooltip>
 
           {/* Divider */}
           <div className="w-px h-5 bg-border" />
 
           {/* Page Navigation */}
-          <button
-            onClick={goToPreviousPage}
-            disabled={currentPage <= 1}
-            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            title="Previous page (← or PageUp)"
-          >
-            <ChevronLeft size={18} />
-          </button>
+          <Tooltip content="Previous page (← or PageUp)">
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage <= 1}
+              className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </Tooltip>
 
           <div className="flex items-center gap-1">
             <input
@@ -800,14 +848,15 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
             <span className="text-[11px] text-muted-foreground">/ {totalPages}</span>
           </div>
 
-          <button
-            onClick={goToNextPage}
-            disabled={currentPage >= totalPages}
-            className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            title="Next page (→ or PageDown)"
-          >
-            <ChevronRight size={18} />
-          </button>
+          <Tooltip content="Next page (→ or PageDown)">
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage >= totalPages}
+              className="p-1 rounded-full hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -821,6 +870,22 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
           currentScale={currentScale}
         />
       )}
+
+      {/* Backlinks Slide Panel */}
+      <BacklinksSlidePanel
+        isOpen={isBacklinksPanelOpen}
+        onClose={() => setIsBacklinksPanelOpen(false)}
+        onNoteSelect={(noteId, title) => {
+          window.dispatchEvent(new CustomEvent('open-note-split-view', {
+            detail: { noteId, title }
+          }));
+        }}
+        onDocumentSelect={(documentId, title) => {
+          window.dispatchEvent(new CustomEvent('open-document-split-view', {
+            detail: { documentId, title }
+          }));
+        }}
+      />
     </div>
   );
 };
