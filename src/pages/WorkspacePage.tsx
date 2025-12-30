@@ -3,7 +3,7 @@ import { Plus, Columns2 } from 'lucide-react';
 import ContentPanel from '@/components/layout/ContentPanel';
 import SplitView from '@/components/layout/SplitView';
 import type { Tab } from '@/components/layout/TabBar';
-import { WELCOME_TAB, createNewChatTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
+import { WELCOME_TAB, createEmptyTab, createDocumentTab, createNoteTab } from '@/constants/tabs';
 import { useSessionsContext } from '@/hooks';
 import { noteService, sessionService, documentService, contextService, highlightService, readingBehaviorTracker, autoContextCapture, phasePersistenceService, documentPositionTracker } from '@/services';
 import { tabStateService, type WorkspaceState, type TabState } from '@/services/tabState';
@@ -396,6 +396,40 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     return () => window.removeEventListener('note-deleted', handleNoteDeleted as EventListener);
   }, [onSplitViewChange]);
 
+  // Listen for document deletion
+  useEffect(() => {
+    const handleDocumentDeleted = (e: CustomEvent) => {
+      const { documentId } = e.detail;
+
+      setTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.documentId === documentId);
+        if (!tabToClose || prevTabs.length === 1) return prevTabs;
+
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+        setActiveTabId(prevActiveId =>
+          prevActiveId === tabToClose.id ? newTabs[0].id : prevActiveId
+        );
+        return newTabs;
+      });
+
+      setSecondaryTabs(prevTabs => {
+        const tabToClose = prevTabs.find(tab => tab.documentId === documentId);
+        if (!tabToClose) return prevTabs;
+
+        const newTabs = prevTabs.filter(tab => tab.id !== tabToClose.id);
+        if (activeSecondaryTabId === tabToClose.id && newTabs.length > 0) {
+          setActiveSecondaryTabId(newTabs[0].id);
+        } else if (newTabs.length === 0) {
+          onSplitViewChange(false);
+        }
+        return newTabs;
+      });
+    };
+
+    window.addEventListener('document-deleted', handleDocumentDeleted as EventListener);
+    return () => window.removeEventListener('document-deleted', handleDocumentDeleted as EventListener);
+  }, [onSplitViewChange, activeSecondaryTabId]);
+
   // Track active document changes for behavior tracking
   useEffect(() => {
     const activeTab = tabs.find(tab => tab.id === activeTabId);
@@ -430,7 +464,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
   }, [openInSplitView]);
 
   const addNewTab = useCallback(() => {
-    const newTab = createNewChatTab();
+    const newTab = createEmptyTab();
 
     // Add to focused panel in split view
     if (splitViewOpen && focusedPanel === 'secondary') {
@@ -591,16 +625,32 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
       createNewNote();
     };
 
+    const handleCreateEmptyTab = () => {
+      addNewTab();
+    };
+
+    const handleCloseCurrentTab = () => {
+      if (focusedPanel === 'secondary' && activeSecondaryTabId) {
+        closeSecondaryTab(activeSecondaryTabId);
+      } else if (activeTabId) {
+        closeTab(activeTabId);
+      }
+    };
+
     window.addEventListener('workspace:open-document', handleOpenDocument as EventListener);
     window.addEventListener('workspace:open-note', handleOpenNote as EventListener);
     window.addEventListener('workspace:create-note', handleCreateNote);
+    window.addEventListener('workspace:create-empty-tab', handleCreateEmptyTab);
+    window.addEventListener('workspace:close-current-tab', handleCloseCurrentTab);
 
     return () => {
       window.removeEventListener('workspace:open-document', handleOpenDocument as EventListener);
       window.removeEventListener('workspace:open-note', handleOpenNote as EventListener);
       window.removeEventListener('workspace:create-note', handleCreateNote);
+      window.removeEventListener('workspace:create-empty-tab', handleCreateEmptyTab);
+      window.removeEventListener('workspace:close-current-tab', handleCloseCurrentTab);
     };
-  }, [openDocumentTab, openNoteTab, createNewNote]);
+  }, [openDocumentTab, openNoteTab, createNewNote, addNewTab, activeTabId, activeSecondaryTabId, focusedPanel]);
 
   // Restore tabs from localStorage on mount
   useEffect(() => {
@@ -990,7 +1040,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
             onTabChange={handlePrimaryTabChange}
             onTabClose={closeTab}
             isRightmost={true}
-            isFocused={true}
+            isFocused={false}
           />
         )}
       </div>

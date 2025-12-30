@@ -104,8 +104,16 @@ const Layout: React.FC = () => {
       }
     };
 
+    const handleCommandPaletteToggle = () => {
+      setCommandPaletteOpen(prev => !prev);
+    };
+
     window.addEventListener('vault:request-open', handleVaultOpenRequest);
-    return () => window.removeEventListener('vault:request-open', handleVaultOpenRequest);
+    window.addEventListener('command-palette:toggle', handleCommandPaletteToggle);
+    return () => {
+      window.removeEventListener('vault:request-open', handleVaultOpenRequest);
+      window.removeEventListener('command-palette:toggle', handleCommandPaletteToggle);
+    };
   }, [isVaultOpen]);
 
 

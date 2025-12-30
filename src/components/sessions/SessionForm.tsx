@@ -43,7 +43,7 @@ export const SessionForm: React.FC<SessionFormProps> = ({
         toast.success('Session updated successfully');
       } else {
         await onCreate(title, goal || undefined);
-        toast.success('Session created successfully');
+        // Toast handled by Layout.tsx with session name
       }
       onClose();
     } catch (err) {
