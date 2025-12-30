@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Tab } from '@/components/layout/TabBar';
+import EmptyTab from '@/components/welcome/EmptyTab';
 
 export const WELCOME_TAB: Tab = {
   id: '1',
@@ -7,29 +8,33 @@ export const WELCOME_TAB: Tab = {
   type: 'welcome',
   content: (
     <div className="flex items-center justify-center h-full">
-      <div className="text-center max-w-md">
+      <div className="text-center max-w-md space-y-4">
         <h1 className="text-3xl font-bold mb-4 text-accent">
           Welcome to Neutrino
         </h1>
         <p className="mb-6 text-secondary">
           Context-Aware Research Intelligence Platform for Academic Workflows
         </p>
-        <button className="btn">Get Started</button>
+        <div className="flex gap-2 justify-center">
+          <button
+            className="btn"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('workspace:create-empty-tab'));
+            }}
+          >
+            Get Started
+          </button>
+        </div>
       </div>
     </div>
   ),
 };
 
-export const createNewChatTab = (): Tab => ({
-  id: Date.now().toString(),
-  title: 'New Chat',
-  type: 'chat',
-  content: (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">New Chat Session</h2>
-      <p className="text-secondary">Start typing to begin...</p>
-    </div>
-  ),
+export const createEmptyTab = (): Tab => ({
+  id: `empty-${Date.now()}`,
+  title: 'New Tab',
+  type: 'welcome',
+  content: <EmptyTab />,
 });
 
 export const createDocumentTab = (documentId: string, title: string, page?: number): Tab => ({
