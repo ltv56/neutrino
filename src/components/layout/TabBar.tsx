@@ -90,7 +90,7 @@ const TabBar: React.FC<TabBarProps> = ({
     >
       {/* Border bottom - accent if focused */}
       <div
-        className="absolute bottom-0 left-2 right-2 h-px"
+        className="absolute bottom-0 left-2 right-2 h-[0.5px]"
         style={{
           backgroundColor: isFocused ? 'var(--accent)' : 'var(--border-light)',
           zIndex: 0,

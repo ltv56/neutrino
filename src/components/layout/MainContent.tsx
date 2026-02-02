@@ -45,9 +45,8 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab, isFocused = true }
       return (
         <NoteEditor
           noteId={activeTab.noteId}
-          tabId={activeTab.id}
           sessionId={currentSession?.id}
-          onClose={() => {}} // User can close via TabBar X button
+          onClose={() => { }} // User can close via TabBar X button
           onSave={(noteId) => {
             // Note saved successfully
             console.log('Note saved:', noteId);

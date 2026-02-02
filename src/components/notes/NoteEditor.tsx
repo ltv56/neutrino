@@ -56,6 +56,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const noteCreatedAtRef = useRef<string | null>(null);
   const prevLinksRef = useRef<string>('[]'); // Track previous links as JSON string
+  const instanceIdRef = useRef(Math.random().toString(36).substr(2, 9)); // Unique instance ID
 
   // Editor insert hook for toolbar
   const { editorViewRef, handleInsert } = useEditorInsert();
@@ -147,8 +148,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   // Listen for updates from other NoteEditor instances (split view sync)
   useEffect(() => {
     const handleNoteUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ noteId: string; title: string; content: string }>;
-      const { noteId: updatedNoteId, title: newTitle, content: newContent } = customEvent.detail;
+      const customEvent = event as CustomEvent<{ noteId: string; title: string; content: string; instanceId?: string }>;
+      const { noteId: updatedNoteId, title: newTitle, content: newContent, instanceId } = customEvent.detail;
+
+      // Ignore if this event came from this same instance
+      if (instanceId === instanceIdRef.current) {
+        return;
+      }
 
       // Only update if this is the same note but different instance
       if (currentNoteId && updatedNoteId === currentNoteId) {
@@ -214,7 +220,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
           // Dispatch note-updated event for syncing other instances
           window.dispatchEvent(new CustomEvent('note-updated', {
-            detail: { noteId: currentNoteId, title: newTitle, content: newContent }
+            detail: { noteId: currentNoteId, title: newTitle, content: newContent, instanceId: instanceIdRef.current }
           }));
 
           // Clear error on successful save

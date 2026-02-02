@@ -18,10 +18,11 @@
   height: 100%;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-bottom: 2px solid var(--bg-secondary);
-  margin-bottom: -3px;
+  border-bottom: 1px solid var(--bg-secondary);
+  margin-bottom: -2px;
   z-index: 3;
-  transition: none; /* Disable any inherited transitions */
+  transition: none;
+  /* Disable any inherited transitions */
 }
 
 /* Curved corners configuration */
@@ -117,7 +118,7 @@
 .main-content-with-corner-borders::after {
   content: "";
   position: absolute;
-  top: -1px;
+  top: -0.5px;
   width: 8px;
   height: 8px;
   border-top: 1px solid var(--border-light);
