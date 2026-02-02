@@ -1,0 +1,93 @@
+================================================================================
+                    NEUTRINO - INSTALLATION AND SETUP GUIDE
+================================================================================
+
+1. SYSTEM REQUIREMENTS
+--------------------------------------------------------------------------------
+   - Node.js version 18 or higher
+   - Rust (install via https://rustup.rs/)
+   - Visual Studio Build Tools (Windows) or Xcode (macOS)
+   - Git
+
+2. INSTALLING REQUIRED TOOLS
+--------------------------------------------------------------------------------
+
+   Step 1: Install Node.js
+   - Download from: https://nodejs.org/
+   - Choose LTS (Long Term Support) version
+   - Follow the installation wizard
+
+   Step 2: Install Rust
+   - Windows: Download and run rustup-init.exe from https://rustup.rs/
+   - macOS/Linux: Run in terminal:
+     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+   Step 3: (Windows Only) Install Visual Studio Build Tools
+   - Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Select "Desktop development with C++"
+
+3. PROJECT SETUP
+--------------------------------------------------------------------------------
+
+   Step 1: Extract or clone the project to your machine
+
+   Step 2: Open terminal/command prompt, navigate to the project folder:
+   cd path-to-folder/neutrino
+
+   Step 3: Install dependencies:
+   npm install
+
+4. API KEY CONFIGURATION (OPTIONAL - FOR AI FEATURES)
+--------------------------------------------------------------------------------
+   To use AI features (Smart Resume, AI Insights):
+   
+   Step 1: Create a .env file in the src-tauri folder
+   
+   Step 2: Add the following content:
+   GEMINI_API_KEY=your_api_key_here
+   
+   Step 3: Get a free API key at:
+   https://aistudio.google.com/app/apikey
+
+   NOTE: The application works normally without an API key,
+         only AI features will be unavailable.
+
+5. RUNNING THE APPLICATION
+--------------------------------------------------------------------------------
+
+   Development mode (with hot-reload):
+   npm run tauri:dev
+
+   Build for Production:
+   npm run tauri:build
+
+   Installation files after build will be located at:
+   src-tauri/target/release/bundle/
+
+6. USEFUL COMMANDS
+--------------------------------------------------------------------------------
+   npm run tauri:dev       - Run application in development mode
+   npm run tauri:build     - Build application installer
+   npm run dev             - Run web frontend only (without Tauri)
+   npm run build           - Build web frontend
+
+7. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+   Error: "rustc not found" or "cargo not found"
+   -> Solution: Restart terminal after installing Rust, 
+                or run: source ~/.cargo/env
+
+   Error: Build fails on Windows
+   -> Solution: Ensure Visual Studio Build Tools with C++ tools is installed
+
+   Error: "npm not found"
+   -> Solution: Install Node.js and restart terminal
+
+   Error: Port 1420 is already in use
+   -> Solution: Close other applications using port 1420, 
+                or change the port in vite.config.ts
+
+================================================================================
+                              GOOD LUCK!
+================================================================================
