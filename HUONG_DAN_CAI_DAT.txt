@@ -1,0 +1,93 @@
+================================================================================
+                    HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY ỨNG DỤNG NEUTRINO
+================================================================================
+
+1. YÊU CẦU HỆ THỐNG
+--------------------------------------------------------------------------------
+   - Node.js phiên bản 18 trở lên
+   - Rust (cài đặt qua https://rustup.rs/)
+   - Visual Studio Build Tools (Windows) hoặc Xcode (macOS)
+   - Git
+
+2. CÀI ĐẶT CÁC CÔNG CỤ CẦN THIẾT
+--------------------------------------------------------------------------------
+
+   Bước 1: Cài đặt Node.js
+   - Tải từ: https://nodejs.org/
+   - Chọn phiên bản LTS (Long Term Support)
+   - Cài đặt theo hướng dẫn
+
+   Bước 2: Cài đặt Rust
+   - Windows: Tải và chạy rustup-init.exe từ https://rustup.rs/
+   - macOS/Linux: Chạy lệnh trong terminal:
+     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+   Bước 3: (Windows) Cài đặt Visual Studio Build Tools
+   - Tải từ: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Chọn "Desktop development with C++"
+
+3. CÀI ĐẶT DỰ ÁN
+--------------------------------------------------------------------------------
+
+   Bước 1: Giải nén hoặc clone dự án về máy
+
+   Bước 2: Mở terminal/command prompt, di chuyển vào thư mục dự án:
+   cd duong-dan-den-thu-muc/neutrino
+
+   Bước 3: Cài đặt các dependencies:
+   npm install
+
+4. CẤU HÌNH API KEY (TÙY CHỌN - CHO TÍNH NĂNG AI)
+--------------------------------------------------------------------------------
+   Nếu muốn sử dụng tính năng AI (Smart Resume, AI Insights):
+   
+   Bước 1: Tạo file .env trong thư mục src-tauri
+   
+   Bước 2: Thêm nội dung sau vào file:
+   GEMINI_API_KEY=your_api_key_here
+   
+   Bước 3: Lấy API key miễn phí tại:
+   https://aistudio.google.com/app/apikey
+
+   LƯU Ý: Ứng dụng vẫn hoạt động bình thường nếu không có API key,
+          chỉ các tính năng AI sẽ không khả dụng.
+
+5. CHẠY ỨNG DỤNG
+--------------------------------------------------------------------------------
+
+   Chế độ Development (có hot-reload):
+   npm run tauri:dev
+
+   Build bản Production:
+   npm run tauri:build
+
+   File cài đặt sau khi build sẽ nằm tại:
+   src-tauri/target/release/bundle/
+
+6. CÁC LỆNH HỮU ÍCH
+--------------------------------------------------------------------------------
+   npm run tauri:dev       - Chạy ứng dụng ở chế độ development
+   npm run tauri:build     - Build ứng dụng thành file cài đặt
+   npm run dev             - Chạy web frontend (không có Tauri)
+   npm run build           - Build web frontend
+
+7. XỬ LÝ LỖI THƯỜNG GẶP
+--------------------------------------------------------------------------------
+
+   Lỗi: "rustc not found" hoặc "cargo not found"
+   -> Giải pháp: Khởi động lại terminal sau khi cài Rust, 
+                 hoặc chạy lệnh: source ~/.cargo/env
+
+   Lỗi: Build thất bại trên Windows
+   -> Giải pháp: Đảm bảo đã cài Visual Studio Build Tools với C++ tools
+
+   Lỗi: "npm not found"
+   -> Giải pháp: Cài đặt Node.js và khởi động lại terminal
+
+   Lỗi: Port 1420 đang được sử dụng
+   -> Giải pháp: Đóng ứng dụng khác đang sử dụng port 1420, 
+                 hoặc thay đổi port trong vite.config.ts
+
+================================================================================
+                              CHÚC BẠN THÀNH CÔNG!
+================================================================================
