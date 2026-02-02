@@ -94,6 +94,7 @@ async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
         .resizable(true)
         .decorations(false)
         .visible(false)
+        .always_on_top(true)
         .build()
         .map_err(|e| e.to_string())?;
 

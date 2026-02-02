@@ -851,12 +851,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
         e.preventDefault();
         fitToPage();
       }
-
-      // Tool mode shortcuts
-      if (e.key === 'h' || e.key === 'H') {
-        e.preventDefault();
-        setToolMode(prev => prev === 'select' ? 'highlight' : 'select');
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

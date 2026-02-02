@@ -23,6 +23,35 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
   const [isResizing, setIsResizing] = React.useState(false);
   const prevIsOpenRef = React.useRef(isOpen);
   const [shouldAnimate, setShouldAnimate] = React.useState(false);
+  const [activeEntityType, setActiveEntityType] = React.useState<'note' | 'document' | null>(null);
+
+  // Track active entity type
+  useEffect(() => {
+    const handleNoteActivated = () => {
+      setActiveEntityType('note');
+    };
+
+    const handleDocumentActivated = () => {
+      setActiveEntityType('document');
+    };
+
+    const lastNoteEvent = (window as any).__lastNoteActivated;
+    const lastDocEvent = (window as any).__lastDocumentActivated;
+
+    if (lastNoteEvent) {
+      setActiveEntityType('note');
+    } else if (lastDocEvent) {
+      setActiveEntityType('document');
+    }
+
+    window.addEventListener('note-activated', handleNoteActivated);
+    window.addEventListener('document-activated', handleDocumentActivated);
+
+    return () => {
+      window.removeEventListener('note-activated', handleNoteActivated);
+      window.removeEventListener('document-activated', handleDocumentActivated);
+    };
+  }, []);
 
   // Track open/close transitions for animation
   useEffect(() => {
@@ -112,7 +141,9 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <ResearchQuestionsPanel onNavigateToNote={onNoteSelect} />
+          {activeEntityType === 'note' && (
+            <ResearchQuestionsPanel onNavigateToNote={onNoteSelect} />
+          )}
           <CrossReferencesPanel
             documentId={documentId}
             onNavigateToDocument={onDocumentSelect}
