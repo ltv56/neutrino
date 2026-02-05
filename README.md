@@ -28,19 +28,59 @@ Neutrino is a desktop application designed to eliminate information overload in 
 ### 🔍 Built-in Contextual Search
 - In-app search with context awareness
 - Results ranked by research session relevance
-- Integrated web search with academic focus
+- Full-text search with FTS5
 
-## Development
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, TypeScript, Vite, TailwindCSS |
+| Backend | Rust, Tauri 2.0 |
+| Database | SQLite with FTS5 (Full-Text Search) |
+| AI | Google Gemini API |
+| Editor | CodeMirror 6 |
+| PDF | PDF.js, react-pdf |
+
+## System Requirements
+
+- Node.js 18+
+- Rust (install via https://rustup.rs/)
+- Visual Studio Build Tools (Windows) or Xcode (macOS)
+
+## Installation & Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Start development server
-npm run dev
+# Start development server (desktop app)
+npm run tauri:dev
 
 # Build for production
-npm run build
+npm run tauri:build
+```
+
+### API Configuration (Optional)
+
+To enable AI features, create `src-tauri/.env`:
+```
+GEMINI_API_KEY=your_api_key_here
+```
+Get a free API key at: https://aistudio.google.com/app/apikey
+
+## Project Structure
+
+```
+neutrino/
+├── src/                    # React frontend
+│   ├── components/         # UI components
+│   ├── pages/              # Page components
+│   ├── services/           # Business logic
+│   └── hooks/              # Custom React hooks
+├── src-tauri/              # Rust backend
+│   ├── src/                # Rust source code
+│   └── migrations/         # Database migrations
+└── public/                 # Static assets
 ```
 
 ## Target Users
@@ -49,3 +89,7 @@ npm run build
 - STEM researchers
 - Professionals requiring deep technical learning
 - Anyone working with large document collections
+
+## License
+
+This project is developed for educational purposes.
