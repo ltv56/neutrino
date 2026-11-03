@@ -25,6 +25,12 @@
    Step 3: (Windows Only) Install Visual Studio Build Tools
    - Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
    - Select "Desktop development with C++"
+   - WebView2 runtime is required (preinstalled on Windows 11; for Windows 10
+     download from https://developer.microsoft.com/microsoft-edge/webview2/)
+
+   Step 4: (Linux Only) Install system libraries
+   - See https://v2.tauri.app/start/prerequisites/#linux for the package list
+     (webkit2gtk, libappindicator, etc.)
 
 3. PROJECT SETUP
 --------------------------------------------------------------------------------
@@ -52,6 +58,10 @@
    NOTE: The application works normally without an API key,
          only AI features will be unavailable.
 
+   NOTE: The .env file is only picked up in development (npm run tauri:dev).
+         For an installed/built app, set GEMINI_API_KEY as a system
+         environment variable instead, then restart the app.
+
 5. RUNNING THE APPLICATION
 --------------------------------------------------------------------------------
 
@@ -64,12 +74,21 @@
    Installation files after build will be located at:
    src-tauri/target/release/bundle/
 
+   Your data (SQLite database neutrino.db) is stored in the OS app data
+   folder, e.g. %APPDATA%\com.neutrino.desktop on Windows.
+
+   Global shortcuts (work even when the window is hidden):
+   Ctrl+Alt+N      - show/hide the main window
+   Ctrl+Shift+F    - show/hide the floating note
+
 6. USEFUL COMMANDS
 --------------------------------------------------------------------------------
    npm run tauri:dev       - Run application in development mode
    npm run tauri:build     - Build application installer
    npm run dev             - Run web frontend only (without Tauri)
    npm run build           - Build web frontend
+   npm run lint            - TypeScript type check
+   npm run db:migrate      - Run migrations (needs sqlx-cli, developers only)
 
 7. TROUBLESHOOTING
 --------------------------------------------------------------------------------
@@ -84,9 +103,14 @@
    Error: "npm not found"
    -> Solution: Install Node.js and restart terminal
 
-   Error: Port 1420 is already in use
-   -> Solution: Close other applications using port 1420, 
-                or change the port in vite.config.ts
+   Error: Port 3000 is already in use
+   -> Solution: Close other applications using port 3000,
+                or change the port in vite.config.ts and devUrl in
+                src-tauri/tauri.conf.json
+
+   Error: AI features say GEMINI_API_KEY not found
+   -> Solution: Check src-tauri/.env (dev) or set the GEMINI_API_KEY
+                system environment variable (installed app)
 
 ================================================================================
                               GOOD LUCK!
