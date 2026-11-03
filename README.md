@@ -68,6 +68,17 @@ GEMINI_API_KEY=your_api_key_here
 ```
 Get a free API key at: https://aistudio.google.com/app/apikey
 
+The `.env` file is only read in development. For a built/installed app, set `GEMINI_API_KEY` as a system environment variable.
+
+See [INSTALLATION_GUIDE.txt](INSTALLATION_GUIDE.txt) for detailed setup and troubleshooting.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Alt+N` | Show/hide the main window (global) |
+| `Ctrl+Shift+F` | Show/hide the floating note (global) |
+
 ## Project Structure
 
 ```
@@ -80,6 +91,7 @@ neutrino/
 ├── src-tauri/              # Rust backend
 │   ├── src/                # Rust source code
 │   └── migrations/         # Database migrations
+├── INSTALLATION_GUIDE.txt  # Detailed setup guide
 └── public/                 # Static assets
 ```
 
