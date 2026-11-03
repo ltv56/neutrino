@@ -568,7 +568,7 @@ fn transform_to_fts5_query(query: &str) -> String {
         .join(" ")
 }
 
-// Row structs để SQLx có thể map đúng kiểu - tất cả TEXT fields đều là Option<String>
+// Row structs so SQLx maps types correctly: all TEXT fields are Option<String>
 #[derive(Debug)]
 struct NoteRow {
     pub id: Option<String>,

@@ -30,7 +30,7 @@
   --curve-size: 8px;
 }
 
-/* Lớp 1: Tạo khối màu nền của tab mở rộng ra 2 bên */
+/* Layer 1: background block that extends the active tab to both sides */
 .tab-active::before,
 .tab-active::after {
   content: "";
@@ -51,7 +51,7 @@
   right: calc(-1 * var(--curve-size));
 }
 
-/* Lớp 2: Che phủ bằng màu nền container và dùng border-radius để "lộ" phần cong */
+/* Layer 2: cover with the container background; border-radius reveals the curve */
 .tab-active .tab-curve-left,
 .tab-active .tab-curve-right {
   content: "";
@@ -113,7 +113,7 @@
   background-color: var(--bg-tertiary);
 }
 
-/* MainContent corner borders - chỉ vẽ border cho 2 góc bo */
+/* MainContent corner borders - only draw borders for the 2 rounded corners */
 .main-content-with-corner-borders::before,
 .main-content-with-corner-borders::after {
   content: "";

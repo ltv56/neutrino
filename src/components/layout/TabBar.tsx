@@ -154,7 +154,7 @@ const TabBar: React.FC<TabBarProps> = ({
               aria-controls={`tabpanel-${tab.id}`}
               id={`tab-${tab.id}`}
             >
-              {/* Thêm curve elements cho active tab */}
+              {/* Curve elements for the active tab */}
               {isActive && (
                 <>
                   <span className="tab-curve-left" />

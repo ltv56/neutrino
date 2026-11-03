@@ -301,7 +301,7 @@ impl ReadingEventRepository {
     }
 }
 
-// Row structs để SQLx có thể map đúng kiểu - tất cả TEXT fields đều là Option<String>
+// Row structs so SQLx maps types correctly: all TEXT fields are Option<String>
 #[derive(Debug)]
 struct ReadingEventRow {
     pub id: Option<String>,

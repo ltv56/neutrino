@@ -63,7 +63,7 @@ impl SessionRepository {
             return Ok(None);
         };
 
-        // Extract values trước khi sử dụng để tránh ownership issues
+        // Extract values first to avoid ownership issues
         let id_value = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
             value: "null".to_string(),
         })?;
@@ -108,7 +108,7 @@ impl SessionRepository {
 
         let mut sessions = Vec::new();
         for row in rows {
-            // Extract values trước khi sử dụng để tránh ownership issues
+            // Extract values first to avoid ownership issues
             let id_value = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
                 value: "null".to_string(),
             })?;
@@ -262,7 +262,7 @@ impl SessionRepository {
     }
 }
 
-// Row structs để SQLx có thể map đúng kiểu - tất cả TEXT fields đều là Option<String>
+// Row structs so SQLx maps types correctly: all TEXT fields are Option<String>
 #[derive(Debug)]
 struct ResearchSessionRow {
     pub id: Option<String>,
