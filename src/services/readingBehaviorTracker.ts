@@ -3,6 +3,7 @@ import type {
   StruggleSignals,
   SessionStatistics,
 } from '@/types';
+import { log } from '../lib/logger';
 
 interface PageVisit {
   pageNumber: number;
@@ -182,7 +183,7 @@ export class ReadingBehaviorTracker {
   changePage(pageNumber: number) {
     // Ignore duplicate consecutive page changes (prevents StrictMode double-counting)
     if (this.currentPageNumber === pageNumber && this.currentPageStartTime) {
-      console.log(`[ReadingBehavior] Ignoring duplicate page change to page ${pageNumber}`);
+      log.debug(`[ReadingBehavior] Ignoring duplicate page change to page ${pageNumber}`);
       return;
     }
 

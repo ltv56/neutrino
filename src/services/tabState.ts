@@ -2,6 +2,7 @@
  * Simple tab state persistence using localStorage
  * Similar to VSCode/Obsidian approach
  */
+import { log } from '../lib/logger';
 
 export interface TabState {
   id: string;
@@ -33,7 +34,7 @@ export const tabStateService = {
   saveState(state: WorkspaceState): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      console.log('[TabState] Saved', state.tabs.length, 'tabs');
+      log.debug('[TabState] Saved', state.tabs.length, 'tabs');
     } catch (error) {
       console.error('[TabState] Failed to save state:', error);
     }
@@ -48,7 +49,7 @@ export const tabStateService = {
       if (!saved) return null;
 
       const state = JSON.parse(saved) as WorkspaceState;
-      console.log('[TabState] Loaded', state.tabs.length, 'tabs');
+      log.debug('[TabState] Loaded', state.tabs.length, 'tabs');
       return state;
     } catch (error) {
       console.error('[TabState] Failed to load state:', error);
@@ -62,7 +63,7 @@ export const tabStateService = {
   clearState(): void {
     try {
       localStorage.removeItem(STORAGE_KEY);
-      console.log('[TabState] Cleared workspace state');
+      log.debug('[TabState] Cleared workspace state');
     } catch (error) {
       console.error('[TabState] Failed to clear state:', error);
     }

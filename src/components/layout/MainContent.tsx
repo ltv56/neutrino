@@ -6,6 +6,7 @@ import { ROUTES } from '@/constants/routes';
 import { NoteEditor } from '@/components/notes/NoteEditor';
 import { useSessionsContext } from '@/hooks';
 import './TabBar.css';
+import { log } from '../../lib/logger';
 
 // Lazy load PDF viewer - only loads when needed
 const PDFViewer = lazy(() => import('@/components/pdf/PDFViewer'));
@@ -49,7 +50,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab, isFocused = true }
           onClose={() => { }} // User can close via TabBar X button
           onSave={(noteId) => {
             // Note saved successfully
-            console.log('Note saved:', noteId);
+            log.debug('Note saved:', noteId);
           }}
         />
       );

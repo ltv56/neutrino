@@ -14,6 +14,7 @@ import SmartCaptureCard from '@/components/smartcapture/SmartCaptureCard';
 import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
 import type { ClipboardContent } from '@/types';
 import './markdown.css';
+import { log } from '../../lib/logger';
 
 // Global tracker for auto-focused notes (shared across all NoteEditor instances)
 const autoFocusedNotes = new Set<string>();
@@ -89,7 +90,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
         // Dispatch note-activated event for links panel
         const eventDetail = { noteId: note.id, title: note.title };
-        console.log('[NoteEditor] Dispatching note-activated event:', eventDetail);
+        log.debug('[NoteEditor] Dispatching note-activated event:', eventDetail);
 
         // Set global state immediately (for LinksPanel to check on mount)
         (window as any).__lastNoteActivated = eventDetail;
@@ -192,7 +193,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         if (currentNoteId) {
           // Update existing note
           await noteService.update(currentNoteId, newTitle, newContent);
-          console.log('[NoteEditor] ✅ Note saved:', { noteId: currentNoteId, title: newTitle });
+          log.debug('[NoteEditor] ✅ Note saved:', { noteId: currentNoteId, title: newTitle });
 
           // Sync links after save
           try {

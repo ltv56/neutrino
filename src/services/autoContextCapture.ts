@@ -6,6 +6,7 @@ import { readingBehaviorTracker } from './readingBehaviorTracker';
 import { phaseDetectionService } from './phaseDetection';
 import { researchQuestionsService } from './researchQuestions';
 import type { ContextSnapshot } from '@/types';
+import { log } from '../lib/logger';
 
 // DISABLE AI auto-capture (set to false to stop Gemini from running on every hot reload)
 const ENABLE_AUTO_CAPTURE = false;
@@ -17,12 +18,12 @@ export const autoContextCapture = {
    */
   async captureOnClose(sessionId: string, sessionGoal?: string): Promise<boolean> {
     if (!ENABLE_AUTO_CAPTURE) {
-      console.log('[AutoCapture] Auto-capture is disabled');
+      log.debug('[AutoCapture] Auto-capture is disabled');
       return false;
     }
 
     try {
-      console.log('[AutoCapture] Starting auto-capture on app close...');
+      log.debug('[AutoCapture] Starting auto-capture on app close...');
 
       // Get existing snapshot to preserve last_document
       const existingSnapshot = await contextService.getSnapshot(sessionId).catch(() => null);
@@ -49,14 +50,14 @@ export const autoContextCapture = {
         behaviorData.session_statistics,
         behaviorData.is_paused // Pass idle state
       );
-      console.log('[AutoCapture] Phase detected:', phaseDetection.phase,
+      log.debug('[AutoCapture] Phase detected:', phaseDetection.phase,
         `(${Math.round(phaseDetection.confidence * 100)}% confidence)`,
         '- Reasoning:', phaseDetection.reasoning,
         '- Idle:', behaviorData.is_paused);
 
       // Extract research questions from notes
       const researchQuestions = researchQuestionsService.extractQuestionsAsStrings(recentNotes);
-      console.log('[AutoCapture] Extracted research questions:', researchQuestions.length);
+      log.debug('[AutoCapture] Extracted research questions:', researchQuestions.length);
 
       // Build snapshot
       const snapshot = contextService.buildSnapshot({
@@ -87,28 +88,28 @@ export const autoContextCapture = {
         snapshot.last_document = existingSnapshot.last_document;
       }
 
-      console.log('[AutoCapture] Built snapshot:', snapshot);
+      log.debug('[AutoCapture] Built snapshot:', snapshot);
 
       // Generate AI insights if there's meaningful activity
       const hasActivity = snapshot.last_document || snapshot.last_highlight || snapshot.last_note;
 
       if (hasActivity) {
-        console.log('[AutoCapture] Generating AI insights...');
+        log.debug('[AutoCapture] Generating AI insights...');
         try {
           const aiInsights = await geminiAIService.analyzeSession(snapshot);
           snapshot.ai_insights = aiInsights;
-          console.log('[AutoCapture] ✅ AI insights generated successfully:', aiInsights);
+          log.debug('[AutoCapture] ✅ AI insights generated successfully:', aiInsights);
         } catch (error) {
           console.error('[AutoCapture] ⚠️ AI insights generation failed:', error);
           // Continue without AI insights - don't fail the entire capture
         }
       } else {
-        console.log('[AutoCapture] No activity, skipping AI insights generation');
+        log.debug('[AutoCapture] No activity, skipping AI insights generation');
       }
 
       // Save snapshot
       await contextService.saveSnapshot(sessionId, snapshot);
-      console.log('[AutoCapture] ✅ Context snapshot saved successfully');
+      log.debug('[AutoCapture] ✅ Context snapshot saved successfully');
 
       return true;
     } catch (error) {
@@ -150,12 +151,12 @@ export const autoContextCapture = {
         const fifteenMinutes = 15 * 60 * 1000;
 
         if (now - lastCaptureTime < fifteenMinutes) {
-          console.log('[AutoCapture] Activity threshold met, but last capture was < 15 min ago. Skipping.');
+          log.debug('[AutoCapture] Activity threshold met, but last capture was < 15 min ago. Skipping.');
           return false;
         }
       }
 
-      console.log('[AutoCapture] Activity threshold met! Triggering auto-capture...');
+      log.debug('[AutoCapture] Activity threshold met! Triggering auto-capture...');
       return await this.captureOnClose(sessionId, sessionGoal);
     } catch (error) {
       console.error('[AutoCapture] Activity-based capture failed:', error);

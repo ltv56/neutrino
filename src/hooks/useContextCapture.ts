@@ -8,6 +8,7 @@ import {
   geminiAIService,
   phasePersistenceService,
 } from '@/services';
+import { log } from '../lib/logger';
 
 interface AppState {
   currentDocumentId?: string;
@@ -23,29 +24,29 @@ export const useContextCapture = (appState: AppState) => {
 
   const captureAndSaveContext = useCallback(async () => {
     if (!currentSession) {
-      console.log('[ContextCapture] No active session, skipping capture');
+      log.debug('[ContextCapture] No active session, skipping capture');
       return;
     }
 
     try {
-      console.log('[ContextCapture] Capturing context...', appState);
-      console.log('[ContextCapture] Current session:', currentSession);
-      console.log('[ContextCapture] Open notes being captured:', appState.openNotes);
+      log.debug('[ContextCapture] Capturing context...', appState);
+      log.debug('[ContextCapture] Current session:', currentSession);
+      log.debug('[ContextCapture] Open notes being captured:', appState.openNotes);
 
       // Query for additional context data
       const [recentHighlights, recentNotes] = await Promise.all([
         highlightService.getRecentBySession(currentSession.id, 1).catch((e) => {
-          console.log('[ContextCapture] Failed to get highlights:', e);
+          log.debug('[ContextCapture] Failed to get highlights:', e);
           return [];
         }),
         noteService.getAll(currentSession.id).catch((e) => {
-          console.log('[ContextCapture] Failed to get notes:', e);
+          log.debug('[ContextCapture] Failed to get notes:', e);
           return [];
         }),
       ]);
 
-      console.log('[ContextCapture] Recent highlights:', recentHighlights);
-      console.log('[ContextCapture] Recent notes:', recentNotes);
+      log.debug('[ContextCapture] Recent highlights:', recentHighlights);
+      log.debug('[ContextCapture] Recent notes:', recentNotes);
 
       // Get last highlight (most recent)
       const lastHighlight = recentHighlights.length > 0 ? recentHighlights[0] : undefined;
@@ -56,8 +57,8 @@ export const useContextCapture = (appState: AppState) => {
       );
       const lastNote = sortedNotes.length > 0 ? sortedNotes[0] : undefined;
 
-      console.log('[ContextCapture] Last highlight:', lastHighlight);
-      console.log('[ContextCapture] Last note:', lastNote);
+      log.debug('[ContextCapture] Last highlight:', lastHighlight);
+      log.debug('[ContextCapture] Last note:', lastNote);
 
       // Extract research questions from notes (simple pattern matching)
       const researchQuestions: string[] = [];
@@ -115,20 +116,20 @@ export const useContextCapture = (appState: AppState) => {
         sessionStatistics: behaviorData.session_statistics,
       });
 
-      console.log('[ContextCapture] Built snapshot:', snapshot);
+      log.debug('[ContextCapture] Built snapshot:', snapshot);
 
       // Generate AI insights
-      console.log('[ContextCapture] Generating AI insights...');
+      log.debug('[ContextCapture] Generating AI insights...');
       try {
         const aiInsights = await geminiAIService.analyzeSession(snapshot);
         snapshot.ai_insights = aiInsights;
-        console.log('[ContextCapture] AI insights generated:', aiInsights);
+        log.debug('[ContextCapture] AI insights generated:', aiInsights);
       } catch (error) {
         console.error('[ContextCapture] Failed to generate AI insights:', error);
       }
 
       await contextService.saveSnapshot(currentSession.id, snapshot);
-      console.log('[ContextCapture] Context saved successfully');
+      log.debug('[ContextCapture] Context saved successfully');
     } catch (error) {
       console.error('[ContextCapture] Failed to save context:', error);
     }

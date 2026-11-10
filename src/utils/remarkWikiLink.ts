@@ -1,7 +1,8 @@
 import { visit, SKIP } from 'unist-util-visit';
 import type { Plugin } from 'unified';
 import type { Root, Link, Text, Parent } from 'mdast';
-console.log('[remarkWikiLink] Module loaded!');
+import { log } from '../lib/logger';
+log.debug('[remarkWikiLink] Module loaded!');
 
 /**
  * Remark plugin to convert [[wiki-style]] links to markdown links
@@ -92,7 +93,7 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
           ],
         };
 
-        console.log('[remarkWikiLink] Created link:', { url: linkNode.url, text: displayText, page: pageNumber });
+        log.debug('[remarkWikiLink] Created link:', { url: linkNode.url, text: displayText, page: pageNumber });
         newNodes.push(linkNode);
         lastIndex = matchIndex + fullMatch.length;
       }

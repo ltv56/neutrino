@@ -1,5 +1,6 @@
 import { WidgetType } from '@codemirror/view';
 import { noteService } from '@/services';
+import { log } from '../../../../lib/logger';
 
 /**
  * WikiLinkWidget - Clickable widget for [[wiki links]]
@@ -60,7 +61,7 @@ export class WikiLinkWidget extends WidgetType {
 
                 if (isDocument) {
                     // TODO: Search for document by title and open in split view
-                    console.log('[WikiLink] Opening document:', targetTitle, 'page:', pageNumber);
+                    log.debug('[WikiLink] Opening document:', targetTitle, 'page:', pageNumber);
                     // For now, just log - document search would need to be implemented
                 } else {
                     // Search for note by title
@@ -78,7 +79,7 @@ export class WikiLinkWidget extends WidgetType {
                         );
                     } else {
                         // No matching note found - could create one or show message
-                        console.log('[WikiLink] Note not found:', targetTitle);
+                        log.debug('[WikiLink] Note not found:', targetTitle);
 
                         // Optionally: Create new note with this title
                         // For now, show a subtle indication that note doesn't exist
