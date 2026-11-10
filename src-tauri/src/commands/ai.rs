@@ -120,20 +120,20 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
     let mut last_error = String::new();
 
     for (model, model_name) in &models {
-        println!("[AI] Trying model: {}", model_name);
+        log::debug!("[AI] Trying model: {}", model_name);
 
         match try_gemini_model(&api_key, model, &prompt).await {
             Ok(response) => {
-                println!("[AI] ✓ Success with {}", model_name);
+                log::info!("[AI] ✓ Success with {}", model_name);
                 return Ok(response);
             }
             Err(e) => {
-                println!("[AI] ✗ {} failed: {}", model_name, e);
+                log::info!("[AI] ✗ {} failed: {}", model_name, e);
                 last_error = format!("{} failed: {}", model_name, e);
 
                 // Check if it's a rate limit error (429) - try next model
                 if e.contains("429") || e.contains("rate limit") || e.contains("quota") {
-                    println!("[AI] Rate limit detected, trying next model...");
+                    log::warn!("[AI] Rate limit detected, trying next model...");
                     continue;
                 }
 

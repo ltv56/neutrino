@@ -43,11 +43,11 @@ impl Database {
 
         let pool = SqlitePool::connect_with(options).await?;
 
-        println!("[Database] SQLite configured:");
-        println!("  - Journal mode: WAL");
-        println!("  - Busy timeout: 30s");
-        println!("  - Synchronous: NORMAL");
-        println!("  - Cache size: 64MB");
+        log::info!("[Database] SQLite configured:");
+        log::info!("  - Journal mode: WAL");
+        log::info!("  - Busy timeout: 30s");
+        log::info!("  - Synchronous: NORMAL");
+        log::info!("  - Cache size: 64MB");
 
         // Get migrations before running
         let migrations_before: Vec<i64> =
@@ -74,9 +74,9 @@ impl Database {
             .collect();
 
         if !new_migrations.is_empty() {
-            println!("[Migrations] ✨ Applied new migrations: {:?}", new_migrations);
+            log::info!("[Migrations] ✨ Applied new migrations: {:?}", new_migrations);
         } else {
-            println!("[Migrations] ✓ All migrations up to date");
+            log::info!("[Migrations] ✓ All migrations up to date");
         }
 
         let pool = Arc::new(pool);

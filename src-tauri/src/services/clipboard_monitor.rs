@@ -60,12 +60,12 @@ impl ClipboardMonitor {
 
             match Master::new(handler) {
                 Ok(mut master) => {
-                    println!("[ClipboardMonitor] Clipboard listener started (real-time)");
+                    log::info!("[ClipboardMonitor] Clipboard listener started (real-time)");
                     let _ = master.run();
-                    println!("[ClipboardMonitor] Clipboard listener stopped");
+                    log::info!("[ClipboardMonitor] Clipboard listener stopped");
                 }
                 Err(e) => {
-                    eprintln!("[ClipboardMonitor] Failed to start clipboard listener: {}", e);
+                    log::error!("[ClipboardMonitor] Failed to start clipboard listener: {}", e);
                 }
             }
         });
@@ -73,7 +73,7 @@ impl ClipboardMonitor {
 
     #[cfg(not(target_os = "windows"))]
     pub fn start(&self, _app: AppHandle, _interval_ms: u64) {
-        eprintln!("[ClipboardMonitor] Not supported on this platform");
+        log::error!("[ClipboardMonitor] Not supported on this platform");
     }
 
     pub fn stop(&self) {
@@ -124,7 +124,7 @@ impl ClipboardHandler for ClipboardChangeHandler {
                         let context = context_detection::get_active_window_context().ok();
 
                         if let Some(ref ctx) = context {
-                            println!("[Clipboard] Detected copy from: {} - {}", ctx.app_name, ctx.window_title);
+                            log::debug!("[Clipboard] Detected copy from: {} - {}", ctx.app_name, ctx.window_title);
                         }
 
                         let clipboard_content = ClipboardContent {
@@ -148,7 +148,7 @@ impl ClipboardHandler for ClipboardChangeHandler {
     }
 
     fn on_clipboard_error(&mut self, error: std::io::Error) -> CallbackResult {
-        eprintln!("[ClipboardMonitor] Error: {}", error);
+        log::error!("[ClipboardMonitor] Error: {}", error);
         CallbackResult::Next
     }
 }

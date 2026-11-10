@@ -26,8 +26,8 @@ fn get_available_memory() -> u64 {
 
 #[tauri::command]
 async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
-    println!("[Vite] Build complete");
-    println!("[App] Showing window...");
+    log::info!("[Vite] Build complete");
+    log::info!("[App] Showing window...");
 
     let window = app.get_webview_window("main").ok_or("Window not found")?;
     window.show().map_err(|e| e.to_string())?;
@@ -35,7 +35,7 @@ async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(debug_assertions)]
     {
         window.open_devtools();
-        println!("[Setup] DevTools opened");
+        log::info!("[Setup] DevTools opened");
     }
 
     Ok(())
@@ -66,7 +66,7 @@ async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
         } else {
             // Detect context BEFORE showing window
             if let Ok(context) = services::context_detection::get_active_window_context() {
-                println!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
+                log::debug!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
                 // Emit context to frontend
                 let _ = app.emit("floating-note-context", context);
             }
@@ -77,7 +77,7 @@ async fn toggle_floating_note(app: tauri::AppHandle) -> Result<(), String> {
     } else {
         // Detect context BEFORE creating window
         if let Ok(context) = services::context_detection::get_active_window_context() {
-            println!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
+            log::debug!("[FloatingNote] Detected context: {} - {}", context.app_name, context.window_title);
             // Emit context to frontend
             let _ = app.emit("floating-note-context", context);
         }
@@ -184,7 +184,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // When second instance is launched, show the main window from tray
-            println!("[Single Instance] Another instance detected, restoring window from tray");
+            log::info!("[Single Instance] Another instance detected, restoring window from tray");
             if let Some(window) = app.get_webview_window("main") {
                 // Restore window visibility
                 let _ = window.unminimize();
@@ -194,9 +194,9 @@ pub fn run() {
                 // Flash taskbar to get user attention (Windows)
                 let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
                 
-                println!("[Single Instance] Window restored successfully");
+                log::info!("[Single Instance] Window restored successfully");
             } else {
-                eprintln!("[Single Instance] Could not find main window!");
+                log::error!("[Single Instance] Could not find main window!");
             }
         }))
         .plugin(
@@ -228,13 +228,19 @@ pub fn run() {
                             let app_handle = app.clone();
                             tauri::async_runtime::spawn(async move {
                                 if let Err(e) = toggle_floating_note(app_handle).await {
-                                    eprintln!("[FloatingNote] Error: {}", e);
+                                    log::error!("[FloatingNote] Error: {}", e);
                                 }
                             });
                         }
                     }
                 })
                 .build()
+        )
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(if cfg!(debug_assertions) { log::LevelFilter::Debug } else { log::LevelFilter::Info })
+                .level_for("sqlx", log::LevelFilter::Warn)
+                .build(),
         )
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
@@ -349,23 +355,23 @@ pub fn run() {
         ])
         .setup(|app| {
             let setup_start = std::time::Instant::now();
-            println!("[Setup] Starting...");
+            log::info!("[Setup] Starting...");
 
             // Load .env file for environment variables (like GEMINI_API_KEY)
             // Try src-tauri/.env first (production/secure), then fallback to root .env (dev)
             let env_path = std::path::Path::new("src-tauri/.env");
             if env_path.exists() {
                 match dotenvy::from_path(env_path) {
-                    Ok(_) => println!("[Setup] .env file loaded from src-tauri/.env"),
-                    Err(e) => println!("[Setup] Warning: Could not load src-tauri/.env: {}", e),
+                    Ok(_) => log::info!("[Setup] .env file loaded from src-tauri/.env"),
+                    Err(e) => log::warn!("[Setup] Warning: Could not load src-tauri/.env: {}", e),
                 }
             } else if let Err(e) = dotenvy::dotenv() {
-                println!("[Setup] Warning: Could not load .env file: {}", e);
+                log::warn!("[Setup] Warning: Could not load .env file: {}", e);
             } else {
-                println!("[Setup] .env file loaded from root");
+                log::info!("[Setup] .env file loaded from root");
             }
 
-            println!("[Vite] Building UI...");
+            log::info!("[Vite] Building UI...");
 
             // Initialize database SYNCHRONOUSLY before anything else
             let app_data_dir = app.path().app_data_dir()
@@ -384,11 +390,11 @@ pub fn run() {
                     .expect("Failed to initialize database")
             });
             app.manage(db);
-            println!("[Setup] Database initialized in {}ms", db_start.elapsed().as_millis());
+            log::info!("[Setup] Database initialized in {}ms", db_start.elapsed().as_millis());
 
             // Start HTTP server for PDF streaming
             http_server::start_http_server(app.handle().clone());
-            println!("[Setup] HTTP server started");
+            log::info!("[Setup] HTTP server started");
 
             // Setup system tray
             let show_item = MenuItem::with_id(app, "show", "Show", true, None::<&str>).unwrap();
@@ -420,37 +426,37 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
-            println!("[Setup] System tray initialized");
+            log::info!("[Setup] System tray initialized");
 
             // Register global shortcuts using the correct API
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
             // Register Ctrl+Alt+N for main window
             let main_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyN);
-            println!("[Setup] Registering global shortcut: Ctrl+Alt+N");
+            log::info!("[Setup] Registering global shortcut: Ctrl+Alt+N");
             match app.global_shortcut().register(main_shortcut) {
-                Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Alt+N) registered successfully!"),
-                Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
+                Ok(_) => log::info!("[Setup] ✓ Global shortcut (Ctrl+Alt+N) registered successfully!"),
+                Err(e) => log::error!("[Setup] ✗ Failed to register shortcut: {}", e),
             }
 
             // Register Ctrl+Shift+F for floating note
             let floating_note_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyF);
-            println!("[Setup] Registering global shortcut: Ctrl+Shift+F");
+            log::info!("[Setup] Registering global shortcut: Ctrl+Shift+F");
             match app.global_shortcut().register(floating_note_shortcut) {
-                Ok(_) => println!("[Setup] ✓ Global shortcut (Ctrl+Shift+F) registered successfully!"),
-                Err(e) => eprintln!("[Setup] ✗ Failed to register shortcut: {}", e),
+                Ok(_) => log::info!("[Setup] ✓ Global shortcut (Ctrl+Shift+F) registered successfully!"),
+                Err(e) => log::error!("[Setup] ✗ Failed to register shortcut: {}", e),
             }
 
             // Context monitor is available but NOT started automatically
             // Start it manually from Debug Overlay for testing
-            println!("[Setup] Context monitor available (start from Debug Overlay)");
+            log::info!("[Setup] Context monitor available (start from Debug Overlay)");
 
             // Start clipboard monitor automatically (real-time event-driven)
             let clipboard_monitor = get_clipboard_monitor().lock().unwrap();
             clipboard_monitor.start(app.handle().clone(), 1000);
-            println!("[Setup] Clipboard monitor started (real-time)");
+            log::info!("[Setup] Clipboard monitor started (real-time)");
 
-            println!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
+            log::info!("[Setup] Complete in {}ms", setup_start.elapsed().as_millis());
             Ok(())
         })
         .on_window_event(|window, event| {
