@@ -22,7 +22,7 @@ pub fn start_http_server(app: AppHandle) {
                 }
                 Err(e) => {
                     if port == SERVER_PORT {
-                        eprintln!("[HTTP Server] Port {} busy, trying next port... ({})", port, e);
+                        log::error!("[HTTP Server] Port {} busy, trying next port... ({})", port, e);
                     }
                     continue;
                 }
@@ -32,22 +32,22 @@ pub fn start_http_server(app: AppHandle) {
         let server = match server {
             Some(s) => s,
             None => {
-                eprintln!("[HTTP Server] Failed to start: All ports {} to {} are busy", SERVER_PORT, SERVER_PORT + 9);
-                eprintln!("[HTTP Server] PDF streaming will not work. Please close other instances.");
+                log::error!("[HTTP Server] Failed to start: All ports {} to {} are busy", SERVER_PORT, SERVER_PORT + 9);
+                log::error!("[HTTP Server] PDF streaming will not work. Please close other instances.");
                 return;
             }
         };
 
         let addr = format!("127.0.0.1:{}", actual_port);
-        println!("[HTTP Server] Started on http://{}", addr);
-        println!("[HTTP Server] Security: Origin-based (tauri:// + localhost dev)");
+        log::info!("[HTTP Server] Started on http://{}", addr);
+        log::info!("[HTTP Server] Security: Origin-based (tauri:// + localhost dev)");
 
         for request in server.incoming_requests() {
             let app_handle = app.clone();
 
             // Parse the request path
             let url_path = request.url().to_string();
-            println!("[HTTP Server] Request: {} {}", request.method(), url_path);
+            log::debug!("[HTTP Server] Request: {} {}", request.method(), url_path);
 
             // Security: Check Origin header (accept tauri:// and localhost dev server)
             let origin = request.headers().iter()
@@ -60,7 +60,7 @@ pub fn start_http_server(app: AppHandle) {
                     || origin_value.starts_with("http://localhost:"); // Dev server
 
                 if !is_valid_origin {
-                    eprintln!("[HTTP Server] Rejected request from unauthorized origin: {}", origin_value);
+                    log::error!("[HTTP Server] Rejected request from unauthorized origin: {}", origin_value);
                     let response = Response::from_string("Forbidden: Invalid origin")
                         .with_status_code(StatusCode(403));
                     let _ = request.respond(response);
@@ -97,7 +97,7 @@ pub fn start_http_server(app: AppHandle) {
             let file_path = match get_document_path(&app_handle, document_id) {
                 Ok(path) => path,
                 Err(e) => {
-                    eprintln!("[HTTP Server] Error getting document path: {}", e);
+                    log::error!("[HTTP Server] Error getting document path: {}", e);
                     let response = Response::from_string("Internal Server Error")
                         .with_status_code(StatusCode(500));
                     let _ = request.respond(response);
@@ -116,7 +116,7 @@ pub fn start_http_server(app: AppHandle) {
             let mut file = match File::open(&file_path) {
                 Ok(f) => f,
                 Err(e) => {
-                    eprintln!("[HTTP Server] Error opening file: {}", e);
+                    log::error!("[HTTP Server] Error opening file: {}", e);
                     let response = Response::from_string("Internal Server Error")
                         .with_status_code(StatusCode(500));
                     let _ = request.respond(response);
@@ -127,7 +127,7 @@ pub fn start_http_server(app: AppHandle) {
             let file_size = match file.metadata() {
                 Ok(m) => m.len(),
                 Err(e) => {
-                    eprintln!("[HTTP Server] Error getting file metadata: {}", e);
+                    log::error!("[HTTP Server] Error getting file metadata: {}", e);
                     let response = Response::from_string("Internal Server Error")
                         .with_status_code(StatusCode(500));
                     let _ = request.respond(response);
@@ -151,7 +151,7 @@ pub fn start_http_server(app: AppHandle) {
 
                         // Seek to start position
                         if let Err(e) = file.seek(SeekFrom::Start(start)) {
-                            eprintln!("[HTTP Server] Error seeking file: {}", e);
+                            log::error!("[HTTP Server] Error seeking file: {}", e);
                             let response = Response::from_string("Internal Server Error")
                                 .with_status_code(StatusCode(500));
                             let _ = request.respond(response);
@@ -161,14 +161,14 @@ pub fn start_http_server(app: AppHandle) {
                         // Read the requested chunk
                         let mut buffer = vec![0u8; content_length as usize];
                         if let Err(e) = file.read_exact(&mut buffer) {
-                            eprintln!("[HTTP Server] Error reading file: {}", e);
+                            log::error!("[HTTP Server] Error reading file: {}", e);
                             let response = Response::from_string("Internal Server Error")
                                 .with_status_code(StatusCode(500));
                             let _ = request.respond(response);
                             continue;
                         }
 
-                        println!("[HTTP Server] Serving range: {}-{}/{} ({} bytes)", start, end, file_size, content_length);
+                        log::debug!("[HTTP Server] Serving range: {}-{}/{} ({} bytes)", start, end, file_size, content_length);
 
                         // Return 206 Partial Content
                         let response = Response::from_data(buffer)
@@ -202,14 +202,14 @@ pub fn start_http_server(app: AppHandle) {
                     // No range header, return full file
                     let mut buffer = Vec::new();
                     if let Err(e) = file.read_to_end(&mut buffer) {
-                        eprintln!("[HTTP Server] Error reading file: {}", e);
+                        log::error!("[HTTP Server] Error reading file: {}", e);
                         let response = Response::from_string("Internal Server Error")
                             .with_status_code(StatusCode(500));
                         let _ = request.respond(response);
                         continue;
                     }
 
-                    println!("[HTTP Server] Serving full file: {} bytes", buffer.len());
+                    log::debug!("[HTTP Server] Serving full file: {} bytes", buffer.len());
 
                     let response = Response::from_data(buffer)
                         .with_status_code(StatusCode(200))

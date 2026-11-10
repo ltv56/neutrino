@@ -93,15 +93,15 @@ pub async fn vacuum_database(
 
     let pool = database.pool();
 
-    println!("[DatabaseVacuum] Starting VACUUM...");
+    log::info!("[DatabaseVacuum] Starting VACUUM...");
 
     // VACUUM will rebuild the database file, removing all fragmentation
     pool.execute("VACUUM").await.map_err(|e| {
-        eprintln!("[DatabaseVacuum] FAILED: {:?}", e);
+        log::error!("[DatabaseVacuum] FAILED: {:?}", e);
         e.to_string()
     })?;
 
-    println!("[DatabaseVacuum] VACUUM completed successfully");
+    log::info!("[DatabaseVacuum] VACUUM completed successfully");
     Ok("Database vacuumed successfully".to_string())
 }
 
@@ -115,7 +115,7 @@ pub async fn check_database_integrity(
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    println!("[DatabaseIntegrity] Running integrity check...");
+    log::info!("[DatabaseIntegrity] Running integrity check...");
 
     // SQLite PRAGMA integrity_check (full check)
     match sqlx::query("PRAGMA integrity_check")
@@ -124,7 +124,7 @@ pub async fn check_database_integrity(
     {
         Ok(row) => {
             let result: String = row.try_get(0).unwrap_or_else(|_| "unknown".to_string());
-            println!("[DatabaseIntegrity] PRAGMA integrity_check: {}", result);
+            log::info!("[DatabaseIntegrity] PRAGMA integrity_check: {}", result);
 
             if result != "ok" {
                 errors.push(format!("Database integrity check failed: {}", result));
@@ -132,7 +132,7 @@ pub async fn check_database_integrity(
         }
         Err(e) => {
             let err_msg = format!("Failed to run integrity check: {}", e);
-            eprintln!("[DatabaseIntegrity] {}", err_msg);
+            log::error!("[DatabaseIntegrity] {}", err_msg);
             errors.push(err_msg);
         }
     }
@@ -146,7 +146,7 @@ pub async fn check_database_integrity(
             let busy: i64 = row.try_get(0).unwrap_or(0);
             let log: i64 = row.try_get(1).unwrap_or(0);
             let checkpointed: i64 = row.try_get(2).unwrap_or(0);
-            println!("[DatabaseIntegrity] WAL checkpoint - Busy: {}, Log: {}, Checkpointed: {}", busy, log, checkpointed);
+            log::info!("[DatabaseIntegrity] WAL checkpoint - Busy: {}, Log: {}, Checkpointed: {}", busy, log, checkpointed);
 
             if log > 1000 {
                 warnings.push(format!("WAL file has {} frames (consider checkpointing)", log));
@@ -184,7 +184,7 @@ pub async fn check_database_integrity(
     {
         Ok(row) => {
             let page_count: i64 = row.try_get(0).unwrap_or(0);
-            println!("[DatabaseIntegrity] Page count: {}", page_count);
+            log::info!("[DatabaseIntegrity] Page count: {}", page_count);
 
             if page_count == 0 {
                 errors.push("Database appears to be empty or corrupted".to_string());
@@ -197,7 +197,7 @@ pub async fn check_database_integrity(
 
     let is_ok = errors.is_empty();
 
-    println!("[DatabaseIntegrity] Check complete - OK: {}, Errors: {}, Warnings: {}",
+    log::warn!("[DatabaseIntegrity] Check complete - OK: {}, Errors: {}, Warnings: {}",
              is_ok, errors.len(), warnings.len());
 
     Ok(DatabaseIntegrityCheck {
@@ -254,9 +254,9 @@ pub async fn get_fts_debug_info(
         .filter_map(|row| row.try_get::<String, _>("title").ok())
         .collect();
 
-    println!("[FTSDebug] Documents: {}, FTS: {}", documents_count, documents_fts_count);
-    println!("[FTSDebug] Notes: {}, FTS: {}", notes_count, notes_fts_count);
-    println!("[FTSDebug] Sample documents: {:?}", sample_documents);
+    log::info!("[FTSDebug] Documents: {}, FTS: {}", documents_count, documents_fts_count);
+    log::info!("[FTSDebug] Notes: {}, FTS: {}", notes_count, notes_fts_count);
+    log::info!("[FTSDebug] Sample documents: {:?}", sample_documents);
 
     Ok(FTSDebugInfo {
         documents_count,
@@ -275,7 +275,7 @@ pub async fn rebuild_fts_index(
 
     let pool = database.pool();
 
-    println!("[FTSRebuild] Starting FTS rebuild...");
+    log::info!("[FTSRebuild] Starting FTS rebuild...");
 
     // Rebuild documents_fts
     pool.execute("DELETE FROM documents_fts").await.map_err(|e| e.to_string())?;
@@ -291,6 +291,6 @@ pub async fn rebuild_fts_index(
          SELECT id, title, content, tags FROM notes"
     ).await.map_err(|e| e.to_string())?;
 
-    println!("[FTSRebuild] FTS rebuild completed");
+    log::info!("[FTSRebuild] FTS rebuild completed");
     Ok("FTS index rebuilt successfully".to_string())
 }
