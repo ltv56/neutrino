@@ -15,16 +15,6 @@ impl DocumentRepository {
         Self { pool }
     }
 
-    pub async fn create(
-        &self,
-        title: String,
-        file_path: String,
-        content_type: String,
-    ) -> DbResult<Document> {
-        self.create_with_metadata(title, file_path, content_type, None)
-            .await
-    }
-
     pub async fn create_with_metadata(
         &self,
         title: String,
@@ -314,7 +304,7 @@ impl DocumentRepository {
 
         // FTS query (if not empty after sanitization)
         let fts_query = if !query.trim().is_empty() {
-            Some(transform_to_fts5_query(query))
+            Some(crate::core::fts::to_prefix_query(query))
         } else {
             None
         };
@@ -499,7 +489,7 @@ impl DocumentRepository {
         }
 
         // Transform user query to FTS5 prefix search
-        let fts_query = transform_to_fts5_query(query);
+        let fts_query = crate::core::fts::to_prefix_query(query);
 
         let rows = sqlx::query_as!(
             DocumentRow,
@@ -580,27 +570,3 @@ struct DocumentRow {
     pub updated_at: Option<String>,
 }
 
-/// Transform user query to FTS5 prefix search query
-/// Example: "hello world" → "hello* world*"
-/// Sanitizes special FTS5 characters to prevent syntax errors
-fn transform_to_fts5_query(query: &str) -> String {
-    query
-        .trim()
-        .split_whitespace()
-        .filter_map(|word| {
-            // Remove special FTS5 characters: . - " * ( ) and keep only alphanumeric + underscore
-            let cleaned: String = word
-                .chars()
-                .filter(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-
-            // Only include non-empty tokens
-            if cleaned.is_empty() {
-                None
-            } else {
-                Some(format!("{}*", cleaned))
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}

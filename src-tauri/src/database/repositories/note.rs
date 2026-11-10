@@ -365,7 +365,7 @@ impl NoteRepository {
 
         // FTS query (if not empty after sanitization)
         let fts_query = if !query.trim().is_empty() {
-            Some(transform_to_fts5_query(query))
+            Some(crate::core::fts::to_prefix_query(query))
         } else {
             None
         };
@@ -542,30 +542,6 @@ impl NoteRepository {
 
         Ok(results)
     }
-}
-
-/// Transform user query to FTS5 prefix search query
-/// Example: "hello world" → "hello* world*"
-/// Sanitizes special FTS5 characters to prevent syntax errors
-fn transform_to_fts5_query(query: &str) -> String {
-    query
-        .trim()
-        .split_whitespace()
-        .filter_map(|word| {
-            // Remove special FTS5 characters: . - " * ( ) and keep only alphanumeric + underscore
-            let cleaned: String = word
-                .chars()
-                .filter(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-
-            if cleaned.is_empty() {
-                None
-            } else {
-                Some(format!("{}*", cleaned))
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 // Row structs so SQLx maps types correctly: all TEXT fields are Option<String>
