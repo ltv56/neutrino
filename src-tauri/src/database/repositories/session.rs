@@ -48,56 +48,6 @@ impl SessionRepository {
         })
     }
 
-    #[allow(dead_code)] // used once update_session_phase is registered
-    pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ResearchSession>> {
-        let id_str = id.to_string();
-        let row = sqlx::query_as!(
-            ResearchSessionRow,
-            "SELECT id, title, goal, phase, context_state, created_at, updated_at
-             FROM research_sessions WHERE id = ?",
-            id_str
-        )
-        .fetch_optional(&*self.pool)
-        .await?;
-
-        let Some(row) = row else {
-            return Ok(None);
-        };
-
-        // Extract values first to avoid ownership issues
-        let id_value = row.id.as_ref().ok_or_else(|| DatabaseError::InvalidUuid {
-            value: "null".to_string(),
-        })?;
-        let created_at_value =
-            row.created_at
-                .as_ref()
-                .ok_or_else(|| DatabaseError::InvalidDateTime {
-                    value: "null".to_string(),
-                })?;
-        let updated_at_value =
-            row.updated_at
-                .as_ref()
-                .ok_or_else(|| DatabaseError::InvalidDateTime {
-                    value: "null".to_string(),
-                })?;
-
-        let session = ResearchSession {
-            id: self.parse_uuid(id_value)?,
-            title: row.title.ok_or_else(|| DatabaseError::InternalError {
-                message: "Missing title".to_string(),
-            })?,
-            goal: row.goal,
-            phase: row.phase.ok_or_else(|| DatabaseError::InternalError {
-                message: "Missing phase".to_string(),
-            })?,
-            context_state: row.context_state,
-            created_at: self.parse_datetime(created_at_value)?,
-            updated_at: self.parse_datetime(updated_at_value)?,
-        };
-
-        Ok(Some(session))
-    }
-
     pub async fn find_all(&self) -> DbResult<Vec<ResearchSession>> {
         let rows = sqlx::query_as!(
             ResearchSessionRow,
@@ -166,7 +116,6 @@ impl SessionRepository {
         Ok(())
     }
 
-    #[allow(dead_code)] // used once update_session_phase is registered
     pub async fn update_phase(&self, id: Uuid, phase: String) -> DbResult<()> {
         let now_str = Utc::now().to_rfc3339();
         let id_str = id.to_string();

@@ -267,6 +267,7 @@ pub fn run() {
             commands::get_research_sessions,
             commands::delete_research_session,
             commands::update_research_session,
+            commands::update_session_phase,
             commands::save_context_snapshot,
             commands::get_context_snapshot,
 

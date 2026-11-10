@@ -9,7 +9,7 @@ pub struct WindowContext {
 
 #[cfg(target_os = "windows")]
 pub fn get_active_window_context() -> Result<WindowContext, String> {
-    use windows::Win32::Foundation::{HWND, MAX_PATH};
+    use windows::Win32::Foundation::{CloseHandle, HWND, MAX_PATH};
     use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_NAME_WIN32};
     use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId};
     use windows::core::PWSTR;
@@ -41,12 +41,16 @@ pub fn get_active_window_context() -> Result<WindowContext, String> {
                     let mut path_buffer = [0u16; MAX_PATH as usize];
                     let mut size = MAX_PATH;
 
-                    match QueryFullProcessImageNameW(
+                    let query = QueryFullProcessImageNameW(
                         process_handle,
                         PROCESS_NAME_WIN32,
                         PWSTR(path_buffer.as_mut_ptr()),
                         &mut size,
-                    ) {
+                    );
+                    // handle from OpenProcess must be closed or it leaks per call
+                    let _ = CloseHandle(process_handle);
+
+                    match query {
                         Ok(_) => {
                             let full_path = String::from_utf16_lossy(&path_buffer[..size as usize]);
                             // Extract just the executable name
