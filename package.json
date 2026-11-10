@@ -18,7 +18,8 @@
     "db:migrate": "cd src-tauri && sqlx migrate run",
     "db:prepare": "cd src-tauri && cargo sqlx prepare",
     "db:reset": "cd src-tauri && sqlx database drop -y && sqlx database create && sqlx migrate run",
-    "db:update": "npm run db:migrate && npm run db:prepare"
+    "db:update": "npm run db:migrate && npm run db:prepare",
+    "test": "vitest run"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",
@@ -80,6 +81,7 @@
     "globals": "^16.4.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.44.0",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vitest": "^3.2.7"
   }
 }
