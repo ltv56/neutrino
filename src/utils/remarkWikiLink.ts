@@ -2,6 +2,7 @@ import { visit, SKIP } from 'unist-util-visit';
 import type { Plugin } from 'unified';
 import type { Root, Link, Text, Parent } from 'mdast';
 import { log } from '../lib/logger';
+import { splitPageSuffix } from '../lib/wikilink';
 log.debug('[remarkWikiLink] Module loaded!');
 
 /**
@@ -58,11 +59,9 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
         // else: auto mode (wikilink)
 
         // Step 2: Parse page number from title (e.g., "Title#5" or "Title.md#5")
-        const pageMatch = targetTitle.match(/^(.+?)#(\d+)$/);
-        if (pageMatch) {
-          targetTitle = pageMatch[1];
-          pageNumber = pageMatch[2];
-        }
+        const split = splitPageSuffix(targetTitle);
+        targetTitle = split.title;
+        if (split.page !== null) pageNumber = String(split.page);
 
         // Step 3: Strip .md suffix for auto mode (user may have typed [[Sample.md]])
         if (protocol === 'wikilink' && targetTitle.endsWith('.md')) {

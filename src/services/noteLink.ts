@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { NoteLink, LinkTarget, BacklinksResult, ParsedLink, LinkType } from '@/types';
+import { splitPageSuffix } from '../lib/wikilink';
 
 export const noteLinkService = {
   /**
@@ -105,11 +106,9 @@ export const noteLinkService = {
         }
 
         // Parse page number
-        const pageMatch = cleanText.match(/#(\d+)$/);
-        if (pageMatch) {
-          page = parseInt(pageMatch[1]);
-          cleanText = cleanText.substring(0, cleanText.lastIndexOf('#'));
-        }
+        const split = splitPageSuffix(cleanText);
+        cleanText = split.title;
+        if (split.page !== null) page = split.page;
 
         // Strip .md extension for consistency
         if (cleanText.endsWith('.md')) {
@@ -165,10 +164,7 @@ export const noteLinkService = {
     if (clean.startsWith('note:')) clean = clean.substring(5);
 
     // Remove page number
-    const pageMatch = clean.match(/#\d+$/);
-    if (pageMatch) {
-      clean = clean.substring(0, clean.lastIndexOf('#'));
-    }
+    clean = splitPageSuffix(clean).title;
 
     // Strip .md extension for consistency
     if (clean.endsWith('.md')) {

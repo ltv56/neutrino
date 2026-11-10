@@ -1,6 +1,7 @@
 import { WidgetType } from '@codemirror/view';
 import { noteService } from '@/services';
 import { log } from '../../../../lib/logger';
+import { splitPageSuffix } from '../../../../lib/wikilink';
 
 /**
  * WikiLinkWidget - Clickable widget for [[wiki links]]
@@ -48,11 +49,9 @@ export class WikiLinkWidget extends WidgetType {
                 }
 
                 // Parse page number (e.g., "Title#5")
-                const pageMatch = targetTitle.match(/^(.+?)#(\d+)$/);
-                if (pageMatch) {
-                    targetTitle = pageMatch[1];
-                    pageNumber = parseInt(pageMatch[2], 10);
-                }
+                const split = splitPageSuffix(targetTitle);
+                targetTitle = split.title;
+                if (split.page !== null) pageNumber = split.page;
 
                 // Strip .md suffix
                 if (targetTitle.endsWith('.md')) {

@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import { noteService, documentService } from '@/services';
+import { splitPageSuffix } from '../../../../lib/wikilink';
 
 /**
  * Extension to handle Ctrl+Click on wiki links [[...]]
@@ -79,11 +80,9 @@ async function handleWikiLinkClick(linkText: string): Promise<void> {
         }
 
         // Parse page number (e.g., "Title#5")
-        const pageMatch = targetTitle.match(/^(.+?)#(\d+)$/);
-        if (pageMatch) {
-            targetTitle = pageMatch[1];
-            pageNumber = parseInt(pageMatch[2], 10);
-        }
+        const split = splitPageSuffix(targetTitle);
+        targetTitle = split.title;
+        if (split.page !== null) pageNumber = split.page;
 
         // Auto-detect document by file extension
         if (!isDocument && (targetTitle.endsWith('.pdf') || targetTitle.endsWith('.docx') || targetTitle.endsWith('.txt'))) {
