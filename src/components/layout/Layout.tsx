@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import CommandPalette from '@/components/ui/CommandPalette';
-
+import DebugOverlay from '@/components/debug/DebugOverlay';
 import { ROUTES, SEARCH_CONTEXTS } from '@/constants/routes';
 import type { SidebarTab } from '@/constants/sidebar';
 import { useEdgeDetection, useSidebarMode, useSessionsContext } from '@/hooks';
@@ -308,7 +308,7 @@ const Layout: React.FC = () => {
         onUpdate={updateSession}
       />
 
-
+      {import.meta.env.DEV && <DebugOverlay />}
     </div>
   );
 };
