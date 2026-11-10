@@ -158,21 +158,10 @@ pub fn start_http_server(app: AppHandle) {
                             continue;
                         }
 
-                        // Read the requested chunk
-                        let mut buffer = vec![0u8; content_length as usize];
-                        if let Err(e) = file.read_exact(&mut buffer) {
-                            log::error!("[HTTP Server] Error reading file: {}", e);
-                            let response = Response::from_string("Internal Server Error")
-                                .with_status_code(StatusCode(500));
-                            let _ = request.respond(response);
-                            continue;
-                        }
-
                         log::debug!("[HTTP Server] Serving range: {}-{}/{} ({} bytes)", start, end, file_size, content_length);
 
                         // Return 206 Partial Content
-                        let response = Response::from_data(buffer)
-                            .with_status_code(StatusCode(206))
+                        let response = Response::new(StatusCode(206), vec![], file.take(content_length), Some(content_length as usize), None)
                             .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/pdf"[..]).unwrap())
                             .with_header(Header::from_bytes(&b"Accept-Ranges"[..], &b"bytes"[..]).unwrap())
                             .with_header(Header::from_bytes(
@@ -200,19 +189,9 @@ pub fn start_http_server(app: AppHandle) {
                 }
                 None => {
                     // No range header, return full file
-                    let mut buffer = Vec::new();
-                    if let Err(e) = file.read_to_end(&mut buffer) {
-                        log::error!("[HTTP Server] Error reading file: {}", e);
-                        let response = Response::from_string("Internal Server Error")
-                            .with_status_code(StatusCode(500));
-                        let _ = request.respond(response);
-                        continue;
-                    }
+                    log::debug!("[HTTP Server] Serving full file: {} bytes", file_size);
 
-                    log::debug!("[HTTP Server] Serving full file: {} bytes", buffer.len());
-
-                    let response = Response::from_data(buffer)
-                        .with_status_code(StatusCode(200))
+                    let response = Response::new(StatusCode(200), vec![], file, Some(file_size as usize), None)
                         .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/pdf"[..]).unwrap())
                         .with_header(Header::from_bytes(&b"Accept-Ranges"[..], &b"bytes"[..]).unwrap())
                         .with_header(Header::from_bytes(
@@ -230,40 +209,29 @@ pub fn start_http_server(app: AppHandle) {
 }
 
 fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
-    // Parse "bytes=start-end" format
-    if !range_str.starts_with("bytes=") {
+    if file_size == 0 {
         return None;
     }
+    let range_part = range_str.strip_prefix("bytes=")?;
+    let (first, last) = range_part.split_once('-')?;
+    let last_byte = file_size - 1;
 
-    let range_part = &range_str[6..]; // Remove "bytes="
-    let parts: Vec<&str> = range_part.split('-').collect();
-
-    if parts.len() != 2 {
-        return None;
-    }
-
-    let start = if parts[0].is_empty() {
-        // bytes=-500 means last 500 bytes
-        if let Ok(suffix_length) = parts[1].parse::<u64>() {
-            file_size.saturating_sub(suffix_length)
-        } else {
+    let (start, end) = if first.is_empty() {
+        // bytes=-500: last 500 bytes
+        let suffix: u64 = last.parse().ok()?;
+        if suffix == 0 {
             return None;
         }
+        (file_size.saturating_sub(suffix), last_byte)
     } else {
-        parts[0].parse::<u64>().ok()?
-    };
-
-    let end = if parts[1].is_empty() {
-        // bytes=500- means from 500 to end
-        file_size - 1
-    } else {
-        parts[1].parse::<u64>().ok()?.min(file_size - 1)
+        let start: u64 = first.parse().ok()?;
+        let end = if last.is_empty() { last_byte } else { last.parse::<u64>().ok()?.min(last_byte) };
+        (start, end)
     };
 
     if start > end || start >= file_size {
         return None;
     }
-
     Some((start, end))
 }
 
@@ -286,5 +254,39 @@ fn get_document_path(app: &AppHandle, document_id: &str) -> Result<PathBuf, Stri
     match result {
         Ok((file_path,)) => Ok(PathBuf::from(file_path)),
         Err(e) => Err(format!("Database error: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_range;
+
+    #[test]
+    fn zero_byte_file_has_no_satisfiable_range() {
+        assert_eq!(parse_range("bytes=0-", 0), None);
+        assert_eq!(parse_range("bytes=0-10", 0), None);
+        assert_eq!(parse_range("bytes=-5", 0), None);
+    }
+
+    #[test]
+    fn explicit_and_open_ranges() {
+        assert_eq!(parse_range("bytes=0-99", 1000), Some((0, 99)));
+        assert_eq!(parse_range("bytes=900-", 1000), Some((900, 999)));
+        assert_eq!(parse_range("bytes=900-5000", 1000), Some((900, 999)));
+    }
+
+    #[test]
+    fn suffix_range() {
+        assert_eq!(parse_range("bytes=-100", 1000), Some((900, 999)));
+        assert_eq!(parse_range("bytes=-5000", 1000), Some((0, 999)));
+    }
+
+    #[test]
+    fn rejects_bad_ranges() {
+        assert_eq!(parse_range("bytes=1000-", 1000), None);
+        assert_eq!(parse_range("bytes=50-10", 1000), None);
+        assert_eq!(parse_range("items=0-1", 1000), None);
+        assert_eq!(parse_range("bytes=a-b", 1000), None);
+        assert_eq!(parse_range("bytes=0-1,5-9", 1000), None);
     }
 }
