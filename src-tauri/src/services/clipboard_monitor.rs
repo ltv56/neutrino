@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use super::context_detection::{self, WindowContext};
+use crate::core::content_type::{detect_content_type, ContentType};
 use crate::core::listener_state::ListenerState;
 
 #[cfg(target_os = "windows")]
@@ -17,15 +18,6 @@ pub struct ClipboardContent {
     pub content_type: ContentType,
     pub timestamp: i64,
     pub context: Option<WindowContext>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ContentType {
-    Text,
-    Code,
-    Url,
-    FilePath,
-    Unknown,
 }
 
 pub struct ClipboardMonitor {
@@ -157,30 +149,6 @@ impl ClipboardHandler for ClipboardChangeHandler {
         log::error!("[ClipboardMonitor] Error: {}", error);
         CallbackResult::Next
     }
-}
-
-fn detect_content_type(text: &str) -> ContentType {
-    let trimmed = text.trim();
-
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        return ContentType::Url;
-    }
-
-    if trimmed.contains(":\\") || trimmed.starts_with("/") || trimmed.starts_with("~/") {
-        return ContentType::FilePath;
-    }
-
-    let code_indicators = [
-        "function ", "const ", "let ", "var ", "import ", "export ",
-        "class ", "def ", "fn ", "=>", "{", "}", "[]", "()",
-        "if (", "for (", "while (", "return ", "public ", "private "
-    ];
-
-    if code_indicators.iter().any(|&indicator| trimmed.contains(indicator)) {
-        return ContentType::Code;
-    }
-
-    ContentType::Text
 }
 
 #[cfg(all(test, target_os = "windows"))]
