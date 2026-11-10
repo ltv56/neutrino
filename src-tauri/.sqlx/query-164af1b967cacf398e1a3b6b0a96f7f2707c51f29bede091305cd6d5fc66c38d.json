@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, name, parent_folder_id, created_at, updated_at\n             FROM folders WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_folder_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "164af1b967cacf398e1a3b6b0a96f7f2707c51f29bede091305cd6d5fc66c38d"
+}
