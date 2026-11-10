@@ -48,6 +48,7 @@ impl SessionRepository {
         })
     }
 
+    #[allow(dead_code)] // used once update_session_phase is registered
     pub async fn find_by_id(&self, id: Uuid) -> DbResult<Option<ResearchSession>> {
         let id_str = id.to_string();
         let row = sqlx::query_as!(
@@ -165,6 +166,7 @@ impl SessionRepository {
         Ok(())
     }
 
+    #[allow(dead_code)] // used once update_session_phase is registered
     pub async fn update_phase(&self, id: Uuid, phase: String) -> DbResult<()> {
         let now_str = Utc::now().to_rfc3339();
         let id_str = id.to_string();
