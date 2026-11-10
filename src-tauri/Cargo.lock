@@ -2720,7 +2720,6 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-process",
  "tauri-plugin-single-instance",
- "tauri-plugin-sql",
  "thiserror 1.0.69",
  "tiny_http",
  "tokio",
@@ -4607,7 +4606,6 @@ dependencies = [
  "sha2",
  "smallvec",
  "thiserror 2.0.17",
- "time",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -4693,7 +4691,6 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 2.0.17",
- "time",
  "tracing",
  "uuid",
  "whoami",
@@ -4733,7 +4730,6 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 2.0.17",
- "time",
  "tracing",
  "uuid",
  "whoami",
@@ -4760,7 +4756,6 @@ dependencies = [
  "serde_urlencoded",
  "sqlx-core",
  "thiserror 2.0.17",
- "time",
  "tracing",
  "url",
  "uuid",
@@ -5223,25 +5218,6 @@ dependencies = [
  "tracing",
  "windows-sys 0.60.2",
  "zbus",
-]
-
-[[package]]
-name = "tauri-plugin-sql"
-version = "2.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a593f08c357091ba802a388d1161e99f05751278fb7204faeb08520da579a7c"
-dependencies = [
- "futures-core",
- "indexmap 2.12.1",
- "log",
- "serde",
- "serde_json",
- "sqlx",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.17",
- "time",
- "tokio",
 ]
 
 [[package]]
