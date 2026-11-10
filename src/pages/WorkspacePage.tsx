@@ -13,6 +13,7 @@ import { useToast } from '@/contexts/ToastContext';
 import Tooltip from '@/components/common/Tooltip';
 import WelcomeBackBanner from '@/components/welcome/WelcomeBackBanner';
 import type { ContextSnapshot } from '@/types';
+import { log } from '../lib/logger';
 
 interface WorkspacePageProps {
   isVaultOpen: boolean;
@@ -782,7 +783,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
     // Cleanup function runs when component unmounts (app closes)
     return () => {
-      console.log('[AutoCapture] App closing, triggering auto-capture...');
+      log.debug('[AutoCapture] App closing, triggering auto-capture...');
       // Use void to ignore promise - this is fire-and-forget on unmount
       void autoContextCapture.captureOnClose(currentSession.id, currentSession.goal);
     };
@@ -838,15 +839,15 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           const needsRegeneration = !snapshot.ai_insights || existingSignature !== currentSignature;
 
           if (needsRegeneration) {
-            console.log('[WelcomeBanner] ⏳ Generating AI insights (context changed or missing)...');
-            console.log('[WelcomeBanner] Signature:', currentSignature);
+            log.debug('[WelcomeBanner] ⏳ Generating AI insights (context changed or missing)...');
+            log.debug('[WelcomeBanner] Signature:', currentSignature);
 
             // Import geminiAIService dynamically to avoid circular deps
             import('@/services').then(async ({ geminiAIService }) => {
               try {
                 const aiInsights = await geminiAIService.analyzeSession(snapshot);
                 if (aiInsights) {
-                  console.log('[WelcomeBanner] ✅ AI insights generated:', aiInsights.summary);
+                  log.debug('[WelcomeBanner] ✅ AI insights generated:', aiInsights.summary);
 
                   // Store signature for future comparison
                   (aiInsights as any)._context_signature = currentSignature;
@@ -863,7 +864,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
               }
             });
           } else {
-            console.log('[WelcomeBanner] 📝 AI insights up-to-date, skipping regeneration');
+            log.debug('[WelcomeBanner] 📝 AI insights up-to-date, skipping regeneration');
           }
         }
       } catch (error) {

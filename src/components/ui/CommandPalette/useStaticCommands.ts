@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AVAILABLE_COMMANDS } from '@/constants/commands';
 import { ROUTES } from '@/constants/routes';
 import type { CommandItem, CommandPaletteActions } from './types';
+import { log } from '../../../lib/logger';
 
 export const useStaticCommands = (
   actions: CommandPaletteActions,
@@ -55,7 +56,7 @@ export const useStaticCommands = (
           break;
         case 'import-pdf':
           action = () => {
-            console.log('Import PDF');
+            log.debug('Import PDF');
             onClose();
           };
           break;
@@ -67,7 +68,7 @@ export const useStaticCommands = (
           break;
         default:
           action = () => {
-            console.log('Command not implemented:', cmd.id);
+            log.debug('Command not implemented:', cmd.id);
             onClose();
           };
       }

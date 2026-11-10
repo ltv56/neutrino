@@ -12,6 +12,7 @@ import BacklinksSlidePanel from '@/components/links/BacklinksSlidePanel';
 import SelectionToolbar from './SelectionToolbar';
 import Tooltip from '@/components/common/Tooltip';
 import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_HIGHLIGHT_OPACITY, MIN_SELECTION_SIZE } from '@/constants/highlight';
+import { log } from '../../lib/logger';
 
 // Configure PDF.js worker - use local worker from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -179,7 +180,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
 
           // Debug: log span dimensions
           const spans = Array.from(textLayer.querySelectorAll('span')).slice(0, 3);
-          console.log('[PDFViewer] Text layer rendered:', {
+          log.debug('[PDFViewer] Text layer rendered:', {
             spanCount: textLayer.querySelectorAll('span').length,
             firstThreeSpans: spans.map((span, i) => {
               const el = span as HTMLElement;
@@ -263,7 +264,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
 
       // Dispatch document activated event for LinksPanel
       const eventDetail = { documentId: doc.id };
-      console.log('[PDFViewer] Dispatching document-activated event:', eventDetail);
+      log.debug('[PDFViewer] Dispatching document-activated event:', eventDetail);
 
       // Set global state immediately (for LinksPanel to check on mount)
       (window as any).__lastDocumentActivated = eventDetail;
@@ -727,7 +728,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
         });
       }
 
-      console.log('[PDFViewer] Creating highlight from selection:', {
+      log.debug('[PDFViewer] Creating highlight from selection:', {
         selectedText: textSelection.text.substring(0, 50) + '...',
         textLength: textSelection.text.length,
         totalRects: rects.length,
@@ -764,7 +765,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       window.getSelection()?.removeAllRanges();
       setTextSelection(null);
 
-      console.log('[PDFViewer] Highlight created:', {
+      log.debug('[PDFViewer] Highlight created:', {
         id: newHighlight.id,
         textSent: textSelection.text,
         textSentLength: textSelection.text.length,

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { phaseDetectionService } from './phaseDetection';
 import { readingBehaviorTracker } from './readingBehaviorTracker';
 import type { ResearchPhase } from '@/types';
+import { log } from '../lib/logger';
 
 /**
  * Phase Persistence Service - Session End Save Strategy
@@ -168,7 +169,7 @@ class PhasePersistenceService {
 
             if (!shouldSave) {
                 // Keep this log for long-term testing
-                console.log(`[PhasePersistence] ⏭️ Skipped: ${reason}`);
+                log.debug(`[PhasePersistence] ⏭️ Skipped: ${reason}`);
                 return;
             }
 
@@ -181,7 +182,7 @@ class PhasePersistenceService {
             this.lastSavedPhase = phaseResult.phase;
 
             // Keep this log for long-term testing - shows successful save with details
-            console.log(
+            log.debug(
                 `[PhasePersistence] ✅ Saved: ${phaseResult.phase} (${Math.round(phaseResult.confidence * 100)}%)`
             );
         } catch (error) {
@@ -217,7 +218,7 @@ class PhasePersistenceService {
         );
 
         if (!shouldSave) {
-            console.log(`[PhasePersistence] ⏭️ Skipped: ${reason}`);
+            log.debug(`[PhasePersistence] ⏭️ Skipped: ${reason}`);
             return;
         }
 
@@ -229,7 +230,7 @@ class PhasePersistenceService {
             console.error('[PhasePersistence] ❌ Failed:', error);
         });
 
-        console.log(`[PhasePersistence] ✅ Saved: ${phaseResult.phase}`);
+        log.debug(`[PhasePersistence] ✅ Saved: ${phaseResult.phase}`);
     }
 
     /**
@@ -255,7 +256,7 @@ class PhasePersistenceService {
         });
 
         this.lastSavedPhase = phaseResult.phase;
-        console.log(`[PhasePersistence] ✅ Force saved: ${phaseResult.phase}`);
+        log.debug(`[PhasePersistence] ✅ Force saved: ${phaseResult.phase}`);
     }
 
     /**

@@ -3,6 +3,7 @@ import type {
   ContextSnapshot,
   AIInsights,
 } from '@/types';
+import { log } from '../lib/logger';
 
 export const geminiAIService = {
   async analyzeSession(snapshot: ContextSnapshot): Promise<AIInsights> {
@@ -10,7 +11,7 @@ export const geminiAIService = {
       const prompt = this.buildAnalysisPrompt(snapshot);
       const response = await this.callGeminiAPI(prompt);
 
-      console.log('[GeminiAI] Raw response from Gemini:', response);
+      log.debug('[GeminiAI] Raw response from Gemini:', response);
       return this.parseGeminiResponse(response);
     } catch (error) {
       console.error('[GeminiAI] Analysis failed:', error);
@@ -176,8 +177,8 @@ export const geminiAIService = {
 
   parseGeminiResponse(responseText: string): AIInsights {
     try {
-      console.log('[GeminiAI] Raw response text:', responseText);
-      console.log('[GeminiAI] Response length:', responseText.length);
+      log.debug('[GeminiAI] Raw response text:', responseText);
+      log.debug('[GeminiAI] Response length:', responseText.length);
 
       // Remove markdown code blocks if present (```json ... ``` or ``` ... ```)
       let cleanedText = responseText
@@ -193,7 +194,7 @@ export const geminiAIService = {
       }
 
       const jsonText = jsonMatch[0];
-      console.log('[GeminiAI] Extracted JSON text:', jsonText);
+      log.debug('[GeminiAI] Extracted JSON text:', jsonText);
 
       // Try to fix common JSON issues
       let fixedJson = jsonText;
@@ -219,7 +220,7 @@ export const geminiAIService = {
         fixedJson = fixedJson.substring(0, lastBrace) + '"' + fixedJson.substring(lastBrace);
       }
 
-      console.log('[GeminiAI] Fixed JSON text:', fixedJson);
+      log.debug('[GeminiAI] Fixed JSON text:', fixedJson);
 
       const parsed = JSON.parse(fixedJson);
 

@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { tabStateService, type WorkspaceState } from '@/services/tabState';
+import { log } from '../lib/logger';
 
 /**
  * Simple hook to auto-save workspace state
@@ -26,7 +27,7 @@ export const useTabStatePersistence = (getState: () => WorkspaceState) => {
   return {
     saveNow: () => {
       const state = getState();
-      console.log('[useTabStatePersistence] Saving state:', state);
+      log.debug('[useTabStatePersistence] Saving state:', state);
       tabStateService.saveState(state);
     },
     clearState: () => tabStateService.clearState(),
