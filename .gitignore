@@ -44,7 +44,7 @@ Thumbs.db
 *.tgz
 *.tar.gz
 
-docs
+.local/
 bak
 
 # Database files
