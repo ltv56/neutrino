@@ -100,9 +100,6 @@ impl From<DatabaseError> for String {
     }
 }
 
-// Result type alias for convenience
-pub type DatabaseResult<T> = Result<T, DatabaseError>;
-
 // Helper functions for creating specific errors
 impl DatabaseError {
     pub fn session_not_found(id: impl Into<String>) -> Self {

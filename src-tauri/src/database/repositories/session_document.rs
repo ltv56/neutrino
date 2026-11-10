@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sqlx::{SqlitePool, Row};
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
@@ -100,46 +100,6 @@ impl SessionDocumentRepository {
         }
 
         Ok(documents)
-    }
-
-    /// Get all sessions that contain a specific document
-    pub async fn find_sessions_by_document(&self, document_id: Uuid) -> Result<Vec<Uuid>> {
-        let rows = sqlx::query(
-            "SELECT session_id
-             FROM session_documents
-             WHERE document_id = ?"
-        )
-        .bind(document_id.to_string())
-        .fetch_all(&*self.pool)
-        .await?;
-
-        let session_ids = rows
-            .iter()
-            .map(|row| {
-                Uuid::parse_str(&row.get::<String, _>("session_id"))
-                    .map_err(|e| anyhow::anyhow!("Failed to parse session_id: {}", e))
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(session_ids)
-    }
-
-    /// Check if a document is in a session
-    pub async fn is_in_session(
-        &self,
-        session_id: Uuid,
-        document_id: Uuid,
-    ) -> Result<bool> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM session_documents
-             WHERE session_id = ? AND document_id = ?"
-        )
-        .bind(session_id.to_string())
-        .bind(document_id.to_string())
-        .fetch_one(&*self.pool)
-        .await?;
-
-        Ok(count > 0)
     }
 
     /// Update notes for a document in a session

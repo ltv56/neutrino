@@ -41,42 +41,6 @@ impl TransactionService {
         Ok(session)
     }
 
-    pub async fn import_research_data(
-        &self,
-        session_data: ImportSessionData,
-    ) -> DbResult<ResearchSession> {
-        let mut tx = self.pool.begin().await?;
-
-        // Create session
-        let session = self.create_session_tx(
-            &mut tx,
-            session_data.title,
-            session_data.goal,
-        ).await?;
-
-        // Create documents and link to session
-        for doc in session_data.documents {
-            let document = self.create_document_tx(&mut tx, doc).await?;
-            self.link_document_to_session_tx(&mut tx, &session.id, &document.id).await?;
-
-            // Create initial notes for document
-            for note in session_data.notes.get(&document.id).unwrap_or(&vec![]) {
-                self.create_note_tx(&mut tx, &session.id, Some(&document.id), None, note.clone()).await?;
-            }
-        }
-
-        // Create session-level notes
-        for note in session_data.session_notes {
-            self.create_note_tx(&mut tx, &session.id, None, None, note).await?;
-        }
-
-        tx.commit().await.map_err(|e| DatabaseError::TransactionFailed {
-            reason: e.to_string(),
-        })?;
-
-        Ok(session)
-    }
-
     // Private transaction helper methods
     async fn create_session_tx(
         &self,
@@ -179,55 +143,6 @@ impl TransactionService {
         Ok(())
     }
 
-    async fn create_note_tx(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        session_id: &Uuid,
-        document_id: Option<&Uuid>,
-        folder_id: Option<&Uuid>,
-        note_req: CreateNoteRequest,
-    ) -> DbResult<Note> {
-        let note_id = Uuid::new_v4();
-        let now = Utc::now();
-        let now_str = now.to_rfc3339();
-
-        let note_id_str = note_id.to_string();
-        let session_id_str = session_id.to_string();
-        let document_id_str = document_id.map(|id| id.to_string());
-        let folder_id_str = folder_id.map(|id| id.to_string());
-
-        sqlx::query!(
-            r#"
-            INSERT INTO notes (id, session_id, document_id, folder_id, title, content, note_type, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-            "#,
-            note_id_str,
-            session_id_str,
-            document_id_str,
-            folder_id_str,
-            note_req.title,
-            note_req.content,
-            note_req.note_type,
-            now_str,
-            now_str
-        )
-        .execute(&mut **tx)
-        .await?;
-
-        Ok(Note {
-            id: note_id,
-            session_id: Some(*session_id),
-            document_id: document_id.copied(),
-            folder_id: folder_id.copied(),
-            title: note_req.title,
-            content: note_req.content,
-            note_type: note_req.note_type,
-            position: None,
-            tags: None,
-            created_at: now,
-            updated_at: now,
-        })
-    }
 }
 
 // Request DTOs
@@ -237,19 +152,4 @@ pub struct CreateDocumentRequest {
     pub file_path: String,
     pub content_type: String,
 }
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CreateNoteRequest {
-    pub title: String,
-    pub content: String,
-    pub note_type: String,
-}
-
-#[derive(Debug)]
-pub struct ImportSessionData {
-    pub title: String,
-    pub goal: Option<String>,
-    pub documents: Vec<CreateDocumentRequest>,
-    pub notes: std::collections::HashMap<Uuid, Vec<CreateNoteRequest>>, // document_id -> notes
-    pub session_notes: Vec<CreateNoteRequest>,
-}
+

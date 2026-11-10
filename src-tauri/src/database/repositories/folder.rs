@@ -84,25 +84,6 @@ impl FolderRepository {
         }
     }
 
-    pub async fn find_by_parent(&self, parent_folder_id: Option<Uuid>) -> DbResult<Vec<Folder>> {
-        let parent_folder_id_str = parent_folder_id.map(|id| id.to_string());
-        let rows = sqlx::query_as!(
-            FolderRow,
-            "SELECT id, name, parent_folder_id, created_at, updated_at
-             FROM folders WHERE parent_folder_id IS ? ORDER BY name ASC",
-            parent_folder_id_str
-        )
-        .fetch_all(&*self.pool)
-        .await?;
-
-        let mut folders = Vec::new();
-        for row in rows {
-            folders.push(self.row_to_folder(row)?);
-        }
-
-        Ok(folders)
-    }
-
     pub async fn update(&self, folder_id: Uuid, name: String) -> DbResult<()> {
         let folder_id_str = folder_id.to_string();
         let now_str = Utc::now().to_rfc3339();

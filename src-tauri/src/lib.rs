@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![allow(dead_code)]
 use tauri::{Manager, Emitter, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}};
 
+mod core;
 mod database;
 mod debug;
 mod commands;

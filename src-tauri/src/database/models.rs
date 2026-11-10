@@ -45,18 +45,6 @@ pub struct DocumentSearchResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DocumentLink {
-    pub id: Uuid,
-    pub source_doc_id: Uuid,
-    pub target_doc_id: Uuid,
-    pub source_position: Option<String>, // JSON: page, section, paragraph
-    pub target_position: Option<String>,
-    pub link_type: String, // reference, quote, concept, contradicts, supports
-    pub context: Option<String>, // user description of the link
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NoteLink {
     pub id: Uuid,
     pub source_note_id: Uuid,
@@ -139,32 +127,6 @@ pub struct NoteSearchResult {
 }
 
 impl Note {
-    pub fn to_search_result(&self) -> NoteSearchResult {
-        let preview: String = self.content
-            .trim()
-            .replace("\n", " ")
-            .chars()
-            .take(60)
-            .collect();
-
-        let content_preview = if self.content.len() > 60 {
-            format!("{}...", preview)
-        } else {
-            preview
-        };
-
-        NoteSearchResult {
-            id: self.id,
-            session_id: self.session_id,
-            session_name: None, // Set by search query when joining with sessions
-            document_id: self.document_id,
-            title: self.title.clone(),
-            content_preview,
-            note_type: self.note_type.clone(),
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -180,29 +142,6 @@ pub struct ReadingEvent {
     pub linked_note_id: Option<Uuid>, // Linked note for bi-directional linking
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Concept {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub domain: Option<String>, // ML, NLP, etc.
-    pub evolution_data: Option<String>, // JSON: how understanding evolved
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ConceptLink {
-    pub id: Uuid,
-    pub concept_id: Uuid,
-    pub document_id: Option<Uuid>,
-    pub note_id: Option<Uuid>,
-    pub position: Option<String>,
-    pub relationship: String, // defines, uses, extends, contradicts
-    pub confidence: f32, // AI confidence score
-    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

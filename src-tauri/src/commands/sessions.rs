@@ -40,6 +40,7 @@ pub async fn update_research_session(
         .map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)] // not registered in invoke_handler yet
 #[tauri::command]
 pub async fn update_session_phase(
     database: tauri::State<'_, Database>,

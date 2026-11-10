@@ -1,15 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AIInsights {
-    pub generated_at: String,
-    pub summary: Option<String>,
-    pub struggle_areas: Option<Vec<String>>,
-    pub suggestions: Option<Vec<String>>,
-    pub learning_pattern: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 struct GeminiRequest {
     contents: Vec<GeminiContent>,
     #[serde(rename = "generationConfig")]
