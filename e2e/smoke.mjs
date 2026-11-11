@@ -59,6 +59,20 @@ try {
   if (csp.host.includes('tauri.localhost') && !csp.v.some((u) => u.includes('example.com'))) {
     throw new Error('CSP does not block external connections');
   }
+  // capabilities: what the UI needs works, what it does not need is denied
+  const caps = await wd('POST', `/session/${session}/execute/async`, {
+    script: `const done = arguments[arguments.length - 1];
+      const call = (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args).then(() => 'ok', (e) => 'denied');
+      Promise.all([
+        call('plugin:window|is_maximized', { label: 'main' }),
+        call('plugin:fs|exists', { path: 'C:/Windows' }),
+        call('plugin:global-shortcut|is_registered', { shortcut: 'Ctrl+Alt+N' }),
+      ]).then(([windowOk, fs, shortcut]) => done({ windowOk, fs, shortcut }));`,
+    args: [],
+  });
+  console.log('capabilities:', JSON.stringify(caps));
+  if (caps.windowOk !== 'ok') throw new Error('window permission missing');
+  if (caps.fs !== 'denied' || caps.shortcut !== 'denied') throw new Error('unused plugin permissions are still granted');
   await shot('smoke.png');
   if (!tabs) throw new Error('no tab rendered');
 } catch (e) {
