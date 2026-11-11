@@ -14,7 +14,7 @@ lib/, utils/ (pure logic)    core/            pure logic, no Tauri imports
                              documents/       file storage, PDF handling
 ```
 
-- `src/services/*`: one wrapper per backend area; components never call `invoke` directly.
+- `src/services/*`: one wrapper per backend area; only `src/services/*` and the debug tools (`components/debug/*`, `TestOverlay`) call `invoke`; ESLint enforces it.
 - `src-tauri/src/core/`: pure, unit-tested logic (`fts`, `ai_error`, `content_type`, `listener_state`). New pure logic goes here, not into commands.
 - `commands/` parse arguments, call a repository, map errors to `String`.
 

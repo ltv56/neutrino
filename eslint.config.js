@@ -22,6 +22,12 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-unused-vars': 'off',
       'no-unused-vars': 'off',
+      // backend calls live in src/services
+      'no-restricted-imports': ['error', { paths: [{ name: '@tauri-apps/api/core', message: 'Call the backend through src/services.' }] }],
     },
+  },
+  {
+    files: ['src/services/**', 'src/components/debug/**', 'src/components/ui/TestOverlay.tsx'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 ])
