@@ -2,6 +2,7 @@ export * from './sessions';
 export * from './documents';
 export * from './debug';
 export * from './pdf';
+export * from './window';
 export * from './highlights';
 export * from './notes';
 export * from './tabState';

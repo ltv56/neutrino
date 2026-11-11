@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/core";
+import { windowService } from "@/services";
 import Layout from "@/components/layout/Layout";
 import FloatingNote from "@/components/floating/FloatingNote";
 import { SessionsProvider, PDFCacheProvider } from "@/contexts";
@@ -13,7 +13,7 @@ function App() {
   useEffect(() => {
     // Only show main window if not floating note
     if (!isFloatingNote) {
-      invoke('show_main_window').catch(console.error);
+      windowService.showMainWindow().catch(console.error);
     }
   }, [isFloatingNote]);
 
