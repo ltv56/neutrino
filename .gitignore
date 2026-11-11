@@ -56,3 +56,5 @@ bak
 test.db
 
 *.local.*
+# e2e screenshots
+e2e/out/

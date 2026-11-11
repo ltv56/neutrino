@@ -181,8 +181,12 @@ fn get_current_clipboard() -> Result<Option<String>, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    let builder = tauri::Builder::default();
+    // scratch-data runs (e2e) must be able to start next to a running app
+    let builder = if std::env::var("NEUTRINO_DATA_DIR").is_ok() {
+        builder
+    } else {
+        builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // When second instance is launched, show the main window from tray
             log::info!("[Single Instance] Another instance detected, restoring window from tray");
             if let Some(window) = app.get_webview_window("main") {
@@ -199,6 +203,8 @@ pub fn run() {
                 log::error!("[Single Instance] Could not find main window!");
             }
         }))
+    };
+    builder
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -381,7 +387,7 @@ pub fn run() {
             log::info!("[Vite] Building UI...");
 
             // Initialize database SYNCHRONOUSLY before anything else
-            let app_data_dir = app.path().app_data_dir()
+            let app_data_dir = documents::storage::data_dir(app.handle())
                 .expect("Failed to resolve app data directory");
 
             std::fs::create_dir_all(&app_data_dir)
