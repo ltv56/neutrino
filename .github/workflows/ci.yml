@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run lint:eslint
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm test
       - run: npm run build
       - uses: dtolnay/rust-toolchain@stable
@@ -26,4 +27,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: cargo test
+        working-directory: src-tauri
+      - uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit
         working-directory: src-tauri

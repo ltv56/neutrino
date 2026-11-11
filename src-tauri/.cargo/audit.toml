@@ -1,0 +1,7 @@
+[advisories]
+ignore = [
+  # rsa comes from sqlx-mysql, which is in Cargo.lock but not compiled (SQLite only)
+  "RUSTSEC-2023-0071",
+  # bundled SQLite C library; fix needs sqlx 0.9 (rustc >= 1.94). Remove once sqlx is upgraded.
+  "RUSTSEC-2026-0459",
+]
