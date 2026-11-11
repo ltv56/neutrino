@@ -23,3 +23,5 @@ npm run e2e         # starts the app on a scratch data dir, screenshot in e2e/ou
 ```
 
 `NEUTRINO_DATA_DIR` points the app at a scratch directory (never the real app data) and skips the single-instance check, so it runs next to a normal app.
+
+Rust 1.94 or newer is required (sqlx 0.9). Update with `rustup update stable`.
