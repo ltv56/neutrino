@@ -12,6 +12,7 @@
     "tauri:build": "tauri build",
     "tauri:build:debug": "tauri build --debug",
     "lint": "tsc --noEmit",
+    "lint:eslint": "eslint .",
     "format": "prettier --write src/",
     "clean": "rm -rf dist target",
     "db:create": "cd src-tauri && sqlx database create",

@@ -181,7 +181,7 @@ export const geminiAIService = {
       log.debug('[GeminiAI] Response length:', responseText.length);
 
       // Remove markdown code blocks if present (```json ... ``` or ``` ... ```)
-      let cleanedText = responseText
+      const cleanedText = responseText
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/g, '')
         .trim();

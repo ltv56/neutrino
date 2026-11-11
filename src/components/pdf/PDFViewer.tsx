@@ -267,8 +267,8 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       log.debug('[PDFViewer] Dispatching document-activated event:', eventDetail);
 
       // Set global state immediately (for LinksPanel to check on mount)
-      (window as any).__lastDocumentActivated = eventDetail;
-      (window as any).__lastNoteActivated = null;
+      window.__lastDocumentActivated = eventDetail;
+      window.__lastNoteActivated = null;
 
       window.dispatchEvent(new CustomEvent('document-activated', {
         detail: eventDetail

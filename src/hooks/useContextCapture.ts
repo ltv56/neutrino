@@ -155,8 +155,8 @@ export const useContextCapture = (appState: AppState) => {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Expose debug functions
-    (window as any).__debugCaptureContext = captureAndSaveContext;
-    (window as any).__debugPhasePersistence = phasePersistenceService.getDebugState.bind(phasePersistenceService);
+    window.__debugCaptureContext = captureAndSaveContext;
+    window.__debugPhasePersistence = phasePersistenceService.getDebugState.bind(phasePersistenceService);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);

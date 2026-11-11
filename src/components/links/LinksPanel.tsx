@@ -27,8 +27,8 @@ export const LinksPanel: React.FC<LinksPanelProps> = ({
 
   // Check for already-active note/document on mount
   useEffect(() => {
-    const lastNoteEvent = (window as any).__lastNoteActivated;
-    const lastDocEvent = (window as any).__lastDocumentActivated;
+    const lastNoteEvent = window.__lastNoteActivated;
+    const lastDocEvent = window.__lastDocumentActivated;
 
     if (lastNoteEvent) {
       setActiveEntity({ id: lastNoteEvent.noteId, type: 'note' });
@@ -40,14 +40,14 @@ export const LinksPanel: React.FC<LinksPanelProps> = ({
   // Listen for active note and document changes
   useEffect(() => {
     const handleNoteActivated = (e: CustomEvent) => {
-      (window as any).__lastNoteActivated = e.detail;
-      (window as any).__lastDocumentActivated = null;
+      window.__lastNoteActivated = e.detail;
+      window.__lastDocumentActivated = null;
       setActiveEntity({ id: e.detail.noteId, type: 'note' });
     };
 
     const handleDocumentActivated = (e: CustomEvent) => {
-      (window as any).__lastDocumentActivated = e.detail;
-      (window as any).__lastNoteActivated = null;
+      window.__lastDocumentActivated = e.detail;
+      window.__lastNoteActivated = null;
       setActiveEntity({ id: e.detail.documentId, type: 'document' });
     };
 
