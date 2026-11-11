@@ -15,6 +15,23 @@ impl DocumentRepository {
         Self { pool }
     }
 
+    pub async fn set_doc_hash(&self, id: Uuid, hash: &str) -> DbResult<()> {
+        sqlx::query("UPDATE documents SET doc_hash = ? WHERE id = ?")
+            .bind(hash)
+            .bind(id.to_string())
+            .execute(&*self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_doc_hash(&self, id: Uuid) -> DbResult<Option<String>> {
+        let row: Option<(Option<String>,)> = sqlx::query_as("SELECT doc_hash FROM documents WHERE id = ?")
+            .bind(id.to_string())
+            .fetch_optional(&*self.pool)
+            .await?;
+        Ok(row.and_then(|(h,)| h))
+    }
+
     pub async fn create_with_metadata(
         &self,
         title: String,
@@ -570,3 +587,23 @@ struct DocumentRow {
     pub updated_at: Option<String>,
 }
 
+
+#[cfg(test)]
+mod hash_tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn doc_hash_roundtrip() {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let repo = DocumentRepository::new(Arc::new(pool));
+
+        let doc = repo.create_with_metadata("Paper".into(), "a.pdf".into(), "pdf".into(), None).await.unwrap();
+        assert_eq!(repo.get_doc_hash(doc.id).await.unwrap(), None);
+
+        repo.set_doc_hash(doc.id, "abc123").await.unwrap();
+        assert_eq!(repo.get_doc_hash(doc.id).await.unwrap().as_deref(), Some("abc123"));
+        assert_eq!(repo.get_doc_hash(Uuid::new_v4()).await.unwrap(), None);
+    }
+}

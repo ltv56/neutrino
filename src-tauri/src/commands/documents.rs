@@ -8,10 +8,37 @@ pub async fn create_document(
     content_type: String,
     metadata: Option<String>,
 ) -> Result<models::Document, String> {
-    database.documents()
+    let document = database.documents()
         .create_with_metadata(title, file_path, content_type, metadata)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // the hash is for anchors; a failure here must not block the import
+    let path = document.file_path.clone();
+    let hash = tauri::async_runtime::spawn_blocking(move || {
+        std::fs::File::open(&path).and_then(|mut f| crate::core::hash::sha256_hex(&mut f))
+    })
+    .await;
+    match hash {
+        Ok(Ok(h)) => {
+            if let Err(e) = database.documents().set_doc_hash(document.id, &h).await {
+                log::warn!("[Documents] could not store hash: {}", e);
+            }
+        }
+        Ok(Err(e)) => log::warn!("[Documents] could not hash {}: {}", document.file_path, e),
+        Err(e) => log::warn!("[Documents] hash task failed: {}", e),
+    }
+
+    Ok(document)
+}
+
+#[tauri::command]
+pub async fn get_document_hash(
+    database: tauri::State<'_, Database>,
+    document_id: String,
+) -> Result<Option<String>, String> {
+    let id = uuid::Uuid::parse_str(&document_id).map_err(|e| e.to_string())?;
+    database.documents().get_doc_hash(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
