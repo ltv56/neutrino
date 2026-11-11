@@ -8,6 +8,9 @@ pub mod models;
 pub mod repositories;
 pub mod transactions;
 
+#[cfg(test)]
+mod fts_tests;
+
 use repositories::{SessionRepository, DocumentRepository, NoteRepository, ReadingEventRepository, SessionDocumentRepository, NoteLinkRepository, FolderRepository};
 use transactions::*;
 
