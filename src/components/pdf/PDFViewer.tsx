@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { TextLayer } from 'pdfjs-dist';
-import { documentService, highlightService, documentPositionTracker } from '@/services';
+import { documentService, highlightService, documentPositionTracker, pdfService } from '@/services';
 import { tabPositionTracker } from '@/services/tabPositionTracker';
 import type { Document, Highlight, HighlightPosition, HighlightRect } from '@/types';
 import { usePDFCache } from '@/contexts';
@@ -215,32 +215,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
     }
   }, [zoomMode, manualZoom, documentId, getCachedPage, cachePage]);
 
-  // Auto-detect HTTP server port (try ports 43572-43582)
-  const detectServerPort = useCallback(async (documentId: string): Promise<number | null> => {
-    const BASE_PORT = 43572;
-    const PORT_RANGE = 10;
-
-    for (let port = BASE_PORT; port < BASE_PORT + PORT_RANGE; port++) {
-      try {
-        // Make a lightweight HEAD request to check if server is running
-        const testUrl = `http://localhost:${port}/documents/${documentId}`;
-        const response = await fetch(testUrl, {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(500) // 500ms timeout per port
-        });
-
-        if (response.ok || response.status === 404) {
-          // Server is running (404 is ok - document might not exist yet, but server is there)
-          return port;
-        }
-      } catch (err) {
-        // Port not available or timeout, try next
-        continue;
-      }
+  // The backend knows which port it bound; probing could reach another running instance
+  const getServerPort = useCallback(async (): Promise<number | null> => {
+    try {
+      return await pdfService.getServerPort();
+    } catch (err) {
+      console.error('[PDF] PDF server is not running:', err);
+      return null;
     }
-
-    console.error('[PDF] No HTTP server found on ports 43572-43582');
-    return null;
   }, []);
 
   const loadDocument = useCallback(async () => {
@@ -314,7 +296,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       }
 
       // 3. Auto-detect HTTP server port
-      const serverPort = await detectServerPort(documentId);
+      const serverPort = await getServerPort();
       if (!serverPort) {
         setError('PDF server not available. Please ensure the app is running.');
         setLoading(false);
@@ -377,7 +359,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ documentId, tabId, initialPage, i
       setError(err instanceof Error ? err.message : 'Failed to load PDF');
       setLoading(false);
     }
-  }, [documentId, getCachedDocument, cacheDocument, detectServerPort, tabId, initialPage]);
+  }, [documentId, getCachedDocument, cacheDocument, getServerPort, tabId, initialPage]);
 
   useEffect(() => {
     if (!documentId) {
