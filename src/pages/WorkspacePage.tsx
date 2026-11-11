@@ -15,6 +15,15 @@ import WelcomeBackBanner from '@/components/welcome/WelcomeBackBanner';
 import type { ContextSnapshot } from '@/types';
 import { log } from '../lib/logger';
 
+interface SnapshotEventDetail {
+  noteId?: string;
+  highlightId?: string;
+  pageNumber?: number;
+  content?: string;
+  documentId?: string;
+  documentTitle?: string;
+}
+
 interface WorkspacePageProps {
   isVaultOpen: boolean;
   splitViewOpen: boolean;
@@ -103,7 +112,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
     let timer: ReturnType<typeof setTimeout>;
     let pendingSave: (() => Promise<void>) | null = null;
 
-    const updateSnapshotIncremental = async (eventType: string, detail?: any) => {
+    const updateSnapshotIncremental = async (eventType: string, detail?: SnapshotEventDetail) => {
       if (!currentSession) {
         return;
       }
@@ -113,7 +122,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
       const doSave = async () => {
         try {
-          let existingSnapshot = await contextService.getSnapshot(currentSession.id);
+          const existingSnapshot = await contextService.getSnapshot(currentSession.id);
           let shouldReset = false;
 
           if (!hasNewActivitySinceLoad.current && existingSnapshot) {
@@ -774,7 +783,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
   // Expose manual save for debugging
   useEffect(() => {
-    (window as any).__debugSaveTabState = saveNow;
+    window.__debugSaveTabState = saveNow;
   }, [saveNow]);
 
   // Auto-capture context on app close (Tier 1 - Primary)
@@ -835,7 +844,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
           const currentSignature = buildSignature(snapshot);
 
           // Check if we need to regenerate AI (new or context changed)
-          const existingSignature = (snapshot.ai_insights as any)?._context_signature;
+          const existingSignature = (snapshot.ai_insights as { _context_signature?: string } | undefined)?._context_signature;
           const needsRegeneration = !snapshot.ai_insights || existingSignature !== currentSignature;
 
           if (needsRegeneration) {
@@ -850,7 +859,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({
                   log.debug('[WelcomeBanner] ✅ AI insights generated:', aiInsights.summary);
 
                   // Store signature for future comparison
-                  (aiInsights as any)._context_signature = currentSignature;
+                  (aiInsights as { _context_signature?: string })._context_signature = currentSignature;
 
                   // Update snapshot with AI insights
                   snapshot.ai_insights = aiInsights;

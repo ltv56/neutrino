@@ -39,7 +39,8 @@ const TimeTrackingDebug = () => {
       const stats = snapshot.session_statistics;
       const signals = snapshot.struggle_signals;
 
-      const trackerInternal = readingBehaviorTracker as any;
+      // debug view reads private state on purpose
+      const trackerInternal = readingBehaviorTracker as unknown as { isPaused?: boolean };
       const isPaused = trackerInternal.isPaused || false;
 
       setMetrics({
@@ -64,7 +65,11 @@ const TimeTrackingDebug = () => {
       });
 
       // Calculate phase detection scores
-      const service = phaseDetectionService as any;
+      type Scorer = (b: typeof behavior, sig: typeof signals, st: typeof stats) => { phase: string; score: number; reasons: string[] };
+      const service = phaseDetectionService as unknown as Record<
+        'scoreExploration' | 'scoreDeepDive' | 'scoreSynthesis' | 'scoreValidation',
+        Scorer
+      >;
       const scores = [
         service.scoreExploration(behavior, signals, stats),
         service.scoreDeepDive(behavior, signals, stats),

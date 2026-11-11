@@ -93,8 +93,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         log.debug('[NoteEditor] Dispatching note-activated event:', eventDetail);
 
         // Set global state immediately (for LinksPanel to check on mount)
-        (window as any).__lastNoteActivated = eventDetail;
-        (window as any).__lastDocumentActivated = null;
+        window.__lastNoteActivated = eventDetail;
+        window.__lastDocumentActivated = null;
 
         window.dispatchEvent(new CustomEvent('note-activated', {
           detail: eventDetail

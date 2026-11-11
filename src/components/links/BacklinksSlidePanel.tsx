@@ -35,8 +35,8 @@ const BacklinksSlidePanel: React.FC<BacklinksSlidePanelProps> = ({
       setActiveEntityType('document');
     };
 
-    const lastNoteEvent = (window as any).__lastNoteActivated;
-    const lastDocEvent = (window as any).__lastDocumentActivated;
+    const lastNoteEvent = window.__lastNoteActivated;
+    const lastDocEvent = window.__lastDocumentActivated;
 
     if (lastNoteEvent) {
       setActiveEntityType('note');
