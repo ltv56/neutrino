@@ -5,8 +5,14 @@ import type {
 } from '@/types';
 import { log } from '../lib/logger';
 
+// off until the provider layer lands; set VITE_AI_ENABLED=true to call Gemini
+const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
+
 export const geminiAIService = {
   async analyzeSession(snapshot: ContextSnapshot): Promise<AIInsights> {
+    if (!AI_ENABLED) {
+      return this.generateFallbackInsights(snapshot);
+    }
     try {
       const prompt = this.buildAnalysisPrompt(snapshot);
       const response = await this.callGeminiAPI(prompt);
