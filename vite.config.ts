@@ -64,15 +64,14 @@ export default defineConfig({
             '@tauri-apps/plugin-fs',
             '@tauri-apps/plugin-process',
           ],
-          'codemirror-core': [
+          'codemirror': [
             '@codemirror/state',
             '@codemirror/view',
             '@codemirror/commands',
             '@codemirror/language',
             '@codemirror/autocomplete',
             '@codemirror/search',
-          ],
-          'codemirror-langs': [
+            // core and langs import each other, so they must share one chunk
             '@codemirror/lang-markdown',
             '@codemirror/lang-javascript',
             '@codemirror/lang-python',
