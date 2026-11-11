@@ -323,6 +323,7 @@ pub fn run() {
 
             // ========== Folder Management ==========
             commands::get_document_hash,
+            commands::get_http_server_port,
             commands::save_document_pages,
             commands::get_document_page,
             commands::search_document_pages,
