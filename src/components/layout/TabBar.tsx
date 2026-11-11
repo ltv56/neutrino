@@ -88,16 +88,6 @@ const TabBar: React.FC<TabBarProps> = ({
       }}
       aria-label="Tab navigation"
     >
-      {/* Border bottom - accent if focused */}
-      <div
-        className="absolute bottom-0 left-2 right-2 h-[0.5px]"
-        style={{
-          backgroundColor: isFocused ? 'var(--accent)' : 'var(--border-light)',
-          zIndex: 0,
-          transition: 'none', // Instant color change, no delay
-        }}
-      />
-
       {/* Left scroll button */}
       {canScrollLeft && (
         <button
@@ -118,6 +108,10 @@ const TabBar: React.FC<TabBarProps> = ({
         style={{
           gap: '2px',
           zIndex: 10,
+          // 2px taller than the bar: overflow-x clips y too, and the active tab overlaps the content border by 2px
+          alignSelf: 'flex-start',
+          height: 'calc(100% + 2px)',
+          paddingBottom: '2px',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           paddingLeft: canScrollLeft ? '0' : '10px', // Must be >= curve-size for proper clipping

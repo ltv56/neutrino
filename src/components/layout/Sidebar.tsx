@@ -173,10 +173,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             style={{
               height: '100%',
               width: isVaultOpen ? 'calc(240px + var(--sidebar-width))' : 'var(--sidebar-width)',
-              backgroundColor: 'var(--bg-background)',
-              border: isFloating ? '1px solid var(--border)' : 'none',
+              // floating: the inner card paints its own bg, so no bg shows at the rounded corners
+              backgroundColor: isFloating ? 'transparent' : 'var(--bg-background)',
+              border: 'none',
               borderRadius: isFloating ? '8px' : '0',
-              boxShadow: isFloating ? '0 8px 32px rgba(0, 0, 0, 0.5)' : 'none',
+              boxShadow: isFloating ? '0 8px 32px rgba(0, 0, 0, 0.25)' : 'none',
               overflow: 'hidden',
               // Smooth transition for pin/unpin and vault toggle
               transition: animationClass ? 'none' : 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1), border 0.5s ease, border-radius 0.5s ease, box-shadow 0.5s ease',

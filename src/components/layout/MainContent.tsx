@@ -84,7 +84,7 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab, isFocused = true }
       style={{
         backgroundColor: 'var(--bg-secondary)',
         borderRadius: '8px',
-        borderWidth: '0 1px 1px 1px',
+        borderWidth: '1px',
         borderStyle: 'solid',
         borderColor: isFocused ? 'var(--accent)' : 'var(--border-light)',
       }}

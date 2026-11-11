@@ -15,87 +15,55 @@
 }
 
 .tab-active {
-  height: 100%;
+  /* overlaps the content border by exactly its 1px so the tab opens into the content */
+  height: calc(100% - 1px);
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--bg-secondary);
-  margin-bottom: -2px;
+  border-bottom: 0; /* a bottom border would meet the side borders in a diagonal notch */
+  margin-bottom: -1px;
   z-index: 3;
   transition: none;
   /* Disable any inherited transitions */
 }
 
-/* Curved corners configuration */
+/* Concave feet: a radial gradient draws the arc (stroke) and fills the corner next to the tab */
 .tab-active {
   --curve-size: 8px;
+  --curve-stroke: var(--border-light);
 }
 
-/* Layer 1: background block that extends the active tab to both sides */
-.tab-active::before,
-.tab-active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  width: var(--curve-size);
-  height: var(--curve-size);
-  background: var(--bg-secondary);
-  z-index: -1;
-  transition: none;
+.tabbar-focused .tab-active {
+  --curve-stroke: var(--accent);
+  border-top-color: var(--accent);
+  border-left-color: var(--accent);
+  border-right-color: var(--accent);
 }
 
-.tab-active::before {
-  left: calc(-1 * var(--curve-size));
-}
-
-.tab-active::after {
-  right: calc(-1 * var(--curve-size));
-}
-
-/* Layer 2: cover with the container background; border-radius reveals the curve */
 .tab-active .tab-curve-left,
 .tab-active .tab-curve-right {
-  content: "";
   position: absolute;
-  bottom: -1px;
-  width: var(--curve-size);
+  bottom: 0;
+  /* curve-size + the 1px tab border: the foot also covers the border column below the arc start */
+  width: calc(var(--curve-size) + 1px);
   height: calc(var(--curve-size) + 1px);
-  background: var(--bg-background);
-  z-index: 1;
   pointer-events: none;
   transition: none;
+  --arc: radial-gradient(circle at var(--foot-x) 0,
+      transparent calc(var(--curve-size) - 0.2px),
+      var(--curve-stroke) calc(var(--curve-size) + 0.3px),
+      var(--curve-stroke) calc(var(--curve-size) + 0.7px),
+      var(--bg-secondary) calc(var(--curve-size) + 1.2px));
+  background: var(--arc);
 }
 
 .tab-active .tab-curve-left {
-  bottom: 1px !important;
-  left: calc(-1 * var(--curve-size));
-  border-bottom-right-radius: var(--curve-size);
-  border-right: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
-  box-shadow: calc(var(--curve-size) / 2) 0 0 0 var(--bg-secondary);
+  --foot-x: 0;
+  left: calc(-1 * (var(--curve-size) + 1px));
 }
 
 .tab-active .tab-curve-right {
-  bottom: 1px !important;
-  right: calc(-1 * var(--curve-size));
-  border-bottom-left-radius: var(--curve-size);
-  border-left: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
-  box-shadow: calc(-1 * var(--curve-size) / 2) 0 0 0 var(--bg-secondary);
-}
-
-/* Focused panel - accent borders */
-.tabbar-focused .tab-active {
-  border-color: var(--accent);
-}
-
-.tabbar-focused .tab-active .tab-curve-left {
-  border-right-color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.tabbar-focused .tab-active .tab-curve-right {
-  border-left-color: var(--accent);
-  border-bottom-color: var(--accent);
+  --foot-x: 100%;
+  right: calc(-1 * (var(--curve-size) + 1px));
 }
 
 /* Close button */
@@ -111,42 +79,4 @@
 
 .close-btn:hover {
   background-color: var(--bg-tertiary);
-}
-
-/* MainContent corner borders - only draw borders for the 2 rounded corners */
-.main-content-with-corner-borders::before,
-.main-content-with-corner-borders::after {
-  content: "";
-  position: absolute;
-  top: -0.5px;
-  width: 8px;
-  height: 8px;
-  border-top: 1px solid var(--border-light);
-  pointer-events: none;
-}
-
-.main-content-with-corner-borders::before {
-  left: 0px;
-  border-left: 1px solid var(--border-light);
-  border-top-left-radius: 8px;
-}
-
-.main-content-with-corner-borders::after {
-  right: 0px;
-  border-right: 1px solid var(--border-light);
-  border-top-right-radius: 8px;
-}
-
-/* Focused panel - accent border for corner borders */
-.tabbar-focused+div .main-content-with-corner-borders::before,
-.tabbar-focused+div .main-content-with-corner-borders::after {
-  border-top-color: var(--accent);
-}
-
-.tabbar-focused+div .main-content-with-corner-borders::before {
-  border-left-color: var(--accent);
-}
-
-.tabbar-focused+div .main-content-with-corner-borders::after {
-  border-right-color: var(--accent);
 }

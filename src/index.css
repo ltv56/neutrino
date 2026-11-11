@@ -101,6 +101,12 @@
     outline: 1px solid var(--accent);
   }
 
+  /* Desktop app: no focus ring on buttons (it stayed visible after clicks and shortcuts) */
+  button:focus,
+  [role="button"]:focus {
+    outline: none;
+  }
+
   /* Hide number input spinner arrows */
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
@@ -195,7 +201,7 @@
   }
 
   /* Command Palette animations */
-  @keyframes fadeIn {
+  @keyframes cp-fade-in {
     from {
       opacity: 0;
     }
@@ -205,7 +211,7 @@
     }
   }
 
-  @keyframes slideDown {
+  @keyframes cp-slide-in {
     from {
       opacity: 0;
       transform: translateX(-50%) translateY(-20px) scale(0.96);
@@ -218,11 +224,11 @@
   }
 
   .command-palette-backdrop {
-    animation: fadeIn 0.15s ease-out;
+    animation: cp-fade-in 0.15s ease-out;
   }
 
   .command-palette-content {
-    animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: cp-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   /* Sidebar animations
