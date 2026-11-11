@@ -1,6 +1,7 @@
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum AiErrorKind {
     InvalidKey,
+    OutOfCredit,
     RateLimited,
     Other,
 }
@@ -8,14 +9,15 @@ pub enum AiErrorKind {
 pub fn classify_status(status: u16) -> AiErrorKind {
     match status {
         400 | 401 | 403 => AiErrorKind::InvalidKey,
+        402 => AiErrorKind::OutOfCredit,
         429 => AiErrorKind::RateLimited,
         _ => AiErrorKind::Other,
     }
 }
 
-// A bad key fails the same way on every model, so only the other kinds fall through.
+// A bad key or an empty balance fails the same way on every model, so only the other kinds fall through.
 pub fn should_try_next_model(kind: AiErrorKind) -> bool {
-    kind != AiErrorKind::InvalidKey
+    !matches!(kind, AiErrorKind::InvalidKey | AiErrorKind::OutOfCredit)
 }
 
 #[cfg(test)]
@@ -27,6 +29,11 @@ mod tests {
         for s in [400, 401, 403] {
             assert_eq!(classify_status(s), AiErrorKind::InvalidKey, "{s}");
         }
+    }
+
+    #[test]
+    fn out_of_credit_is_account_level() {
+        assert_eq!(classify_status(402), AiErrorKind::OutOfCredit);
     }
 
     #[test]
@@ -44,6 +51,7 @@ mod tests {
     #[test]
     fn fallback_policy() {
         assert!(!should_try_next_model(AiErrorKind::InvalidKey));
+        assert!(!should_try_next_model(AiErrorKind::OutOfCredit));
         assert!(should_try_next_model(AiErrorKind::RateLimited));
         assert!(should_try_next_model(AiErrorKind::Other));
     }
