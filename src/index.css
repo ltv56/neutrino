@@ -101,6 +101,12 @@
     outline: 1px solid var(--accent);
   }
 
+  /* Desktop app: no focus ring on buttons (it stayed visible after clicks and shortcuts) */
+  button:focus,
+  [role="button"]:focus {
+    outline: none;
+  }
+
   /* Hide number input spinner arrows */
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
