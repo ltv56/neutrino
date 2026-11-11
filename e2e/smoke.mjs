@@ -44,6 +44,21 @@ try {
     tabs = await run('return document.querySelectorAll(".tab").length').catch(() => 0);
   }
   console.log('title:', await wd('GET', `/session/${session}/title`), '| tabs:', tabs);
+  // CSP: the PDF server must stay reachable, anything else on the network must be blocked
+  const csp = await wd('POST', `/session/${session}/execute/async`, {
+    script: `const done = arguments[arguments.length - 1]; const v = [];
+      document.addEventListener('securitypolicyviolation', (e) => v.push(e.blockedURI));
+      const tryFetch = (u) => fetch(u).catch(() => {});
+      Promise.all([tryFetch('http://127.0.0.1:43572/documents/none'), tryFetch('https://example.com/')])
+        .then(() => setTimeout(() => done({ host: location.host, v }), 300));`,
+    args: [],
+  });
+  console.log('csp:', JSON.stringify(csp));
+  if (csp.v.some((u) => u.includes('127.0.0.1'))) throw new Error('CSP blocks the PDF server');
+  // a dev server page (devUrl) gets no CSP from Tauri, only the embedded build does
+  if (csp.host.includes('tauri.localhost') && !csp.v.some((u) => u.includes('example.com'))) {
+    throw new Error('CSP does not block external connections');
+  }
   await shot('smoke.png');
   if (!tabs) throw new Error('no tab rendered');
 } catch (e) {
