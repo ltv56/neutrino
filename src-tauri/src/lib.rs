@@ -381,7 +381,7 @@ pub fn run() {
             log::info!("[Vite] Building UI...");
 
             // Initialize database SYNCHRONOUSLY before anything else
-            let app_data_dir = app.path().app_data_dir()
+            let app_data_dir = documents::storage::data_dir(app.handle())
                 .expect("Failed to resolve app data directory");
 
             std::fs::create_dir_all(&app_data_dir)

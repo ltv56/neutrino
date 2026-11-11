@@ -19,11 +19,15 @@ pub struct AppDirectories {
     pub documents: String,
 }
 
+pub fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let default = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let env = std::env::var("NEUTRINO_DATA_DIR").ok();
+    Ok(crate::core::data_dir::pick_data_dir(env.as_deref(), default))
+}
+
 /// Get app directories for document storage
 pub fn get_app_directories(app: &AppHandle) -> Result<AppDirectories, String> {
-    let app_dir = app.path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_dir = data_dir(app)?;
 
     Ok(AppDirectories {
         app_data: app_dir.to_string_lossy().to_string(),
@@ -37,9 +41,7 @@ pub fn save_pdf_file(
     file_name: String,
     file_data: Vec<u8>,
 ) -> Result<SavedFileInfo, String> {
-    let app_dir = app.path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_dir = data_dir(app)?;
 
     let documents_dir = app_dir.join("documents");
 
@@ -84,9 +86,7 @@ pub fn read_pdf_file(file_path: String) -> Result<Vec<u8>, String> {
 
 /// Delete PDF file from storage
 pub fn delete_pdf_file(app: &AppHandle, file_path: String) -> Result<(), String> {
-    let app_dir = app.path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_dir = data_dir(app)?;
 
     let file = PathBuf::from(&file_path);
 
