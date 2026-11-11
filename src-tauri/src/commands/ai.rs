@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use crate::services::secrets;
 use crate::core::ai_error::{classify_status, should_try_next_model, AiErrorKind};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -124,10 +125,39 @@ async fn try_gemini_model(
     Ok(text)
 }
 
+const GEMINI_KEY_NAME: &str = "gemini-api-key";
+
+// keychain first; the env var stays as a dev fallback
+fn gemini_api_key() -> Result<String, String> {
+    if let Some(key) = secrets::get_secret(GEMINI_KEY_NAME)? {
+        return Ok(key);
+    }
+    std::env::var("GEMINI_API_KEY")
+        .map_err(|_| "No Gemini API key set. Add one in Settings.".to_string())
+}
+
+#[tauri::command]
+pub fn set_gemini_api_key(key: String) -> Result<(), String> {
+    let key = key.trim();
+    if key.is_empty() {
+        return Err("API key is empty".to_string());
+    }
+    secrets::set_secret(GEMINI_KEY_NAME, key)
+}
+
+#[tauri::command]
+pub fn has_gemini_api_key() -> Result<bool, String> {
+    Ok(gemini_api_key().is_ok())
+}
+
+#[tauri::command]
+pub fn delete_gemini_api_key() -> Result<(), String> {
+    secrets::delete_secret(GEMINI_KEY_NAME)
+}
+
 #[tauri::command]
 pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
-    let api_key = std::env::var("GEMINI_API_KEY")
-        .map_err(|_| "GEMINI_API_KEY not found in environment".to_string())?;
+    let api_key = gemini_api_key()?;
 
     let mut last_error = String::new();
 
@@ -159,4 +189,14 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
 pub async fn test_gemini_connection() -> Result<String, String> {
     let test_prompt = "Respond with exactly: 'Connection successful!'";
     call_gemini_api(test_prompt.to_string()).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn blank_key_is_rejected_without_touching_the_keychain() {
+        assert!(set_gemini_api_key("   ".to_string()).is_err());
+    }
 }

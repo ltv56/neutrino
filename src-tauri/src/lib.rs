@@ -354,6 +354,9 @@ pub fn run() {
 
             // ========== AI Integration ==========
             commands::call_gemini_api,
+            commands::set_gemini_api_key,
+            commands::has_gemini_api_key,
+            commands::delete_gemini_api_key,
             commands::test_gemini_connection,
         ])
         .setup(|app| {
