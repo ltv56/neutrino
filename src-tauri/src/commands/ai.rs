@@ -172,7 +172,12 @@ pub async fn call_gemini_api(prompt: String) -> Result<String, String> {
             Err(e) => {
                 log::info!("[AI] ✗ {} failed: {}", model_name, e.message);
                 if !should_try_next_model(e.kind) {
-                    return Err(format!("Gemini rejected the API key: {}", e.message));
+                    return Err(match e.kind {
+                        AiErrorKind::OutOfCredit => {
+                            "Gemini credits are used up. Top up billing in Google AI Studio.".to_string()
+                        }
+                        _ => format!("Gemini rejected the API key: {}", e.message),
+                    });
                 }
                 if e.kind == AiErrorKind::RateLimited {
                     log::warn!("[AI] Rate limited, trying next model...");
