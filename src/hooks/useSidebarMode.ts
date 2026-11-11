@@ -43,14 +43,10 @@ export const useSidebarMode = (): UseSidebarModeReturn => {
   // Pin/Unpin toggle with smooth animation
   const handleTogglePin = () => {
     if (sidebarMode === 'pinned') {
-      // Unpinning: Switch to floating first (for animation), then hide
+      // Same update as the mode switch: a later hide left a frame with a fully visible floating sidebar
       setSidebarMode('floating');
+      setSidebarVisible(false);
       localStorage.setItem('neutrino_sidebar_mode', 'floating');
-
-      // Small delay to let mode switch apply, then trigger slide out
-      requestAnimationFrame(() => {
-        setSidebarVisible(false);
-      });
     } else {
       // Pinning: Switch to pinned and show sidebar
       setSidebarMode('pinned');

@@ -11,6 +11,16 @@ interface UseSidebarAnimationReturn {
   shouldRender: boolean;
 }
 
+// Derived at render time: waiting for an effect left one frame of a fully visible floating sidebar.
+export const resolveAnimationClass = (
+  isFloating: boolean,
+  isVisible: boolean,
+  stateClass: string
+): string => {
+  if (!isFloating) return '';
+  return isVisible ? stateClass : 'sidebar-exit';
+};
+
 /**
  * Custom hook to manage sidebar animation state
  * Handles enter/exit animations and delayed unmounting
@@ -56,5 +66,5 @@ export const useSidebarAnimation = ({
     }
   }, [isVisible, isFloating]);
 
-  return { animationClass, shouldRender };
+  return { animationClass: resolveAnimationClass(isFloating, isVisible, animationClass), shouldRender };
 };
