@@ -461,7 +461,8 @@ impl DocumentRepository {
         );
 
         // Execute query with dynamic parameters
-        let mut query_builder = sqlx::query(&sql);
+        // sql is built from fixed fragments only; user input goes through bind
+        let mut query_builder = sqlx::query(sqlx::AssertSqlSafe(sql));
         for param in params {
             query_builder = query_builder.bind(param);
         }
