@@ -13,7 +13,7 @@ async fn migrated_pool() -> SqlitePool {
 }
 
 async fn hits(pool: &SqlitePool, table: &str, term: &str) -> i64 {
-    sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table} WHERE {table} MATCH ?"))
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table} WHERE {table} MATCH ?")))
         .bind(term)
         .fetch_one(pool)
         .await
