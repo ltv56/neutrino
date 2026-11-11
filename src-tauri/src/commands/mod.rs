@@ -9,8 +9,10 @@ mod ai;
 mod note_links;
 mod concepts;
 mod folders;
+mod document_pages;
 
 pub use sessions::*;
+pub use document_pages::*;
 pub use documents::*;
 pub use debug::*;
 pub use transactions::*;
