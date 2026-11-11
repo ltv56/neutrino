@@ -1,43 +1,47 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU16, Ordering};
 use tauri::{AppHandle, Manager};
 use tiny_http::{Response, Server, Header, StatusCode};
 
 pub const SERVER_PORT: u16 = 43572;
 
-pub fn start_http_server(app: AppHandle) {
-    std::thread::spawn(move || {
-        // Try to find an available port in range 43572-43582
-        let mut server = None;
-        let mut actual_port = SERVER_PORT;
+static ACTIVE_PORT: AtomicU16 = AtomicU16::new(0);
 
-        for port in SERVER_PORT..(SERVER_PORT + 10) {
-            let addr = format!("127.0.0.1:{}", port);
-            match Server::http(&addr) {
-                Ok(s) => {
-                    server = Some(s);
-                    actual_port = port;
-                    break;
-                }
-                Err(e) => {
-                    if port == SERVER_PORT {
-                        log::error!("[HTTP Server] Port {} busy, trying next port... ({})", port, e);
-                    }
-                    continue;
-                }
+// The port this instance really bound. The frontend asks for it instead of probing,
+// so a second running app cannot be mistaken for this one.
+pub fn active_port() -> Option<u16> {
+    match ACTIVE_PORT.load(Ordering::SeqCst) {
+        0 => None,
+        p => Some(p),
+    }
+}
+
+pub fn bind_in_range(base: u16, count: u16) -> Option<(Server, u16)> {
+    (base..base + count).find_map(|port| {
+        match Server::http(format!("127.0.0.1:{}", port)) {
+            Ok(server) => Some((server, port)),
+            Err(e) => {
+                log::warn!("[HTTP Server] Port {} busy ({})", port, e);
+                None
             }
         }
+    })
+}
 
-        let server = match server {
-            Some(s) => s,
-            None => {
-                log::error!("[HTTP Server] Failed to start: All ports {} to {} are busy", SERVER_PORT, SERVER_PORT + 9);
-                log::error!("[HTTP Server] PDF streaming will not work. Please close other instances.");
-                return;
-            }
-        };
+pub fn start_http_server(app: AppHandle) {
+    let (server, actual_port) = match bind_in_range(SERVER_PORT, 10) {
+        Some(found) => found,
+        None => {
+            log::error!("[HTTP Server] Failed to start: All ports {} to {} are busy", SERVER_PORT, SERVER_PORT + 9);
+            log::error!("[HTTP Server] PDF streaming will not work. Please close other instances.");
+            return;
+        }
+    };
+    ACTIVE_PORT.store(actual_port, Ordering::SeqCst);
 
+    std::thread::spawn(move || {
         let addr = format!("127.0.0.1:{}", actual_port);
         log::info!("[HTTP Server] Started on http://{}", addr);
         log::info!("[HTTP Server] Security: Origin-based (tauri:// + localhost dev)");
@@ -259,7 +263,23 @@ fn get_document_path(app: &AppHandle, document_id: &str) -> Result<PathBuf, Stri
 
 #[cfg(test)]
 mod tests {
-    use super::parse_range;
+    use super::{bind_in_range, parse_range};
+
+    #[test]
+    fn bind_skips_a_busy_port_and_reports_the_one_it_took() {
+        let base = 47100;
+        let _busy = std::net::TcpListener::bind(("127.0.0.1", base)).unwrap();
+        let (_server, port) = bind_in_range(base, 3).unwrap();
+        assert_eq!(port, base + 1);
+    }
+
+    #[test]
+    fn bind_gives_up_when_the_whole_range_is_busy() {
+        let base = 47200;
+        let _a = std::net::TcpListener::bind(("127.0.0.1", base)).unwrap();
+        let _b = std::net::TcpListener::bind(("127.0.0.1", base + 1)).unwrap();
+        assert!(bind_in_range(base, 2).is_none());
+    }
 
     #[test]
     fn zero_byte_file_has_no_satisfiable_range() {

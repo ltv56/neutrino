@@ -20,6 +20,11 @@ function memory(app) {
   return { workingSetMb: mb(ws), privateMb: mb(priv), processes: count };
 }
 
+// Another running instance holds the first port: the viewer must still find this app's server.
+import { createServer } from 'node:http';
+const decoy = createServer((_, res) => { res.statusCode = 404; res.end(); });
+await new Promise((r) => { decoy.once('error', r); decoy.listen(43572, '127.0.0.1', r); });
+
 const h = await startApp();
 const result = { pages: PAGES };
 let failed = false;
@@ -72,5 +77,6 @@ try {
   } catch {}
 } finally {
   await h.close();
+  decoy.close();
 }
 process.exit(failed ? 1 : 0);

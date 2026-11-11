@@ -28,6 +28,13 @@ export const pdfService = {
   },
 
   /**
+   * Port of this instance's local PDF server
+   */
+  async getServerPort(): Promise<number> {
+    return await invoke<number>('get_http_server_port');
+  },
+
+  /**
    * Read file from storage (returns bytes)
    */
   async readFile(filePath: string): Promise<number[]> {

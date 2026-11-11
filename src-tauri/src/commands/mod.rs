@@ -10,9 +10,11 @@ mod note_links;
 mod concepts;
 mod folders;
 mod document_pages;
+mod http_port;
 
 pub use sessions::*;
 pub use document_pages::*;
+pub use http_port::*;
 pub use documents::*;
 pub use debug::*;
 pub use transactions::*;
