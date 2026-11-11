@@ -316,6 +316,9 @@ pub fn run() {
             commands::search_notes,
 
             // ========== Folder Management ==========
+            commands::save_document_pages,
+            commands::get_document_page,
+            commands::search_document_pages,
             commands::create_folder,
             commands::get_folders,
             commands::get_folder,

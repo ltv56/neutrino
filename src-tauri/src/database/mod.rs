@@ -11,7 +11,7 @@ pub mod transactions;
 #[cfg(test)]
 mod fts_tests;
 
-use repositories::{SessionRepository, DocumentRepository, NoteRepository, ReadingEventRepository, SessionDocumentRepository, NoteLinkRepository, FolderRepository};
+use repositories::{SessionRepository, DocumentRepository, NoteRepository, ReadingEventRepository, SessionDocumentRepository, NoteLinkRepository, FolderRepository, DocumentPageRepository};
 use transactions::*;
 
 #[derive(Clone)]
@@ -24,6 +24,7 @@ pub struct Database {
     session_documents: SessionDocumentRepository,
     note_links: NoteLinkRepository,
     folders: FolderRepository,
+    document_pages: DocumentPageRepository,
     transactions: TransactionService,
 }
 
@@ -92,6 +93,7 @@ impl Database {
             session_documents: SessionDocumentRepository::new(pool.clone()),
             note_links: NoteLinkRepository::new(pool.clone()),
             folders: FolderRepository::new(pool.clone()),
+            document_pages: DocumentPageRepository::new(pool.clone()),
             transactions: TransactionService::new(pool.clone()),
             pool,
         })
@@ -123,6 +125,10 @@ impl Database {
 
     pub fn folders(&self) -> &FolderRepository {
         &self.folders
+    }
+
+    pub fn document_pages(&self) -> &DocumentPageRepository {
+        &self.document_pages
     }
 
     pub fn transactions(&self) -> &TransactionService {
